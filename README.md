@@ -41,7 +41,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+WARDFLOW_GITHUB_REPO_URL=https://github.com/ofbperth/WardFlow.git
 ```
+
+`WARDFLOW_GITHUB_REPO_URL` is the canonical repository URL for this project if you want the app, scripts, or deployment tooling to reference the GitHub remote explicitly.
 
 4. Start the dev server:
 
