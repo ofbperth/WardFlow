@@ -1,0 +1,14 @@
+import { AppShell } from "@/components/app-shell";
+import { requireAppSession } from "@/lib/auth";
+
+export default async function ProtectedLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  const session = await requireAppSession();
+
+  return (
+    <AppShell profile={session.profile}>
+      {children}
+    </AppShell>
+  );
+}

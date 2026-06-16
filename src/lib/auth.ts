@@ -1,0 +1,119 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { demoUser } from "@/lib/demo-data";
+import {
+  canUseBrowserSupabase,
+  hasIncompleteSupabaseSetup,
+  hasLiveSupabase,
+  isDemoModeEnabled,
+} from "@/lib/env";
+import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
+import type { SessionContext, UserProfile } from "@/lib/types";
+
+export const DEMO_COOKIE = "wardflow-demo";
+
+function mapProfileRow(row: Record<string, unknown>): UserProfile {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? "Unknown User"),
+    email: String(row.email ?? ""),
+    avatarUrl: (row.avatar_url as string | null | undefined) ?? null,
+    role: (row.role as UserProfile["role"] | undefined) ?? "doctor",
+    wardAssignment: (row.ward_assignment as string | null | undefined) ?? null,
+  };
+}
+
+async function ensureLiveProfile() {
+  const supabase = await createServerSupabaseClient();
+  const admin = createAdminSupabaseClient() as {
+    from: (table: string) => {
+      upsert: (...args: unknown[]) => Promise<unknown>;
+      select: (...args: unknown[]) => {
+        eq: (...eqArgs: unknown[]) => {
+          single: () => Promise<{ error: unknown; data: Record<string, unknown> | null }>;
+        };
+      };
+    };
+  } | null;
+
+  if (!supabase || !admin) {
+    return null;
+  }
+
+  const claimsResult = await supabase.auth.getClaims();
+  const claims = claimsResult.data?.claims;
+
+  if (!claims?.sub) {
+    return null;
+  }
+
+  const userResult = await supabase.auth.getUser();
+  const user = userResult.data.user;
+
+  const fallbackName =
+    user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    user?.email?.split("@")[0] ??
+    "WardFlow User";
+
+  await admin.from("profiles").upsert(
+    {
+      id: claims.sub,
+      name: fallbackName,
+      email: user?.email ?? "",
+      avatar_url: (user?.user_metadata?.avatar_url as string | undefined) ?? null,
+    },
+    { onConflict: "id" },
+  );
+
+  const profileResult = await admin.from("profiles").select("*").eq("id", claims.sub).single();
+
+  if (profileResult.error || !profileResult.data) {
+    return null;
+  }
+
+  return mapProfileRow(profileResult.data);
+}
+
+export async function getCurrentSessionContext(): Promise<SessionContext | null> {
+  if (hasLiveSupabase()) {
+    const profile = await ensureLiveProfile();
+    return profile ? { profile, mode: "live" } : null;
+  }
+
+  if (isDemoModeEnabled()) {
+    const cookieStore = await cookies();
+    if (cookieStore.get(DEMO_COOKIE)?.value === "1") {
+      return { profile: demoUser, mode: "demo" };
+    }
+  }
+
+  return null;
+}
+
+export async function requireAppSession() {
+  const session = await getCurrentSessionContext();
+  if (!session) {
+    redirect("/login");
+  }
+
+  return session;
+}
+
+export async function requireAdminSession() {
+  const session = await requireAppSession();
+  if (session.profile.role !== "admin") {
+    redirect("/wards");
+  }
+
+  return session;
+}
+
+export function getLoginModeInfo() {
+  return {
+    supportsGoogleLogin: hasLiveSupabase(),
+    supportsDemoLogin: isDemoModeEnabled(),
+    hasIncompleteSupabaseSetup: hasIncompleteSupabaseSetup(),
+    hasAnySupabaseConfig: canUseBrowserSupabase(),
+  };
+}

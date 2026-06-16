@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WardFlow
 
-## Getting Started
+WardFlow is a mobile-first ward work management module for doctors, nurses, and admins. It sits between ward round, ward work, and handover without trying to become a full EMR.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- TypeScript
+- Tailwind CSS v4
+- Supabase Auth + Postgres + Realtime
+- Local demo mode when Supabase envs are not configured
+
+## Features
+
+- Google Login with Supabase Auth
+- Role-based access (`doctor`, `senior_doctor`, `nurse`, `admin`)
+- Ward census cards
+- Patient summary, structured problem list, and task board
+- Auto-generated handover mode
+- Full activity timeline
+- Supabase migration for core schema, RLS, and Realtime publication
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy env template:
+
+```bash
+copy .env.example .env.local
+```
+
+3. Fill live Supabase envs for production-shaped auth and database mode:
+
+```env
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+4. Start the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+If the Supabase envs are missing and you are running locally, the login page exposes a demo mode so the UI can still be reviewed end-to-end.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Migration: `supabase/migrations/20260616130500_create_wardflow.sql`
+- Realtime tables: `patients`, `problems`, `ward_tasks`, `handover_notes`
+- Seeded task templates are included in the migration
 
-## Learn More
+## Verification
 
-To learn more about Next.js, take a look at the following resources:
+Run the standard checks:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
