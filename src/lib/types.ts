@@ -1,6 +1,7 @@
 export const roleValues = ["admin", "resident", "student"] as const;
 export const patientStatusValues = ["stable", "watch", "critical"] as const;
 export const patientLifecycleValues = ["active", "discharged"] as const;
+export const precautionValues = ["none", "contact", "droplet", "airborne"] as const;
 export const problemStatusValues = ["active", "improving", "worsening", "resolved"] as const;
 export const taskStatusValues = [
   "not_started",
@@ -23,6 +24,7 @@ export const taskTypeValues = [
 export type Role = (typeof roleValues)[number];
 export type PatientStatus = (typeof patientStatusValues)[number];
 export type PatientLifecycle = (typeof patientLifecycleValues)[number];
+export type Precaution = (typeof precautionValues)[number];
 export type ProblemStatus = (typeof problemStatusValues)[number];
 export type TaskStatus = (typeof taskStatusValues)[number];
 export type TaskPriority = (typeof taskPriorityValues)[number];
@@ -62,7 +64,7 @@ export type Patient = {
   responsibleDoctorId: string | null;
   responsibleDoctorName: string | null;
   allergy: string | null;
-  isolationFlag: boolean;
+  precaution: Precaution;
   codeStatus: string | null;
   lifecycle: PatientLifecycle;
   dischargedAt: string | null;

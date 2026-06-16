@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { savePatientAction } from "@/app/actions";
 import {
   EmptyState,
@@ -12,15 +13,11 @@ import {
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { getProfiles, getWardSummaries } from "@/lib/wardflow";
-import Link from "next/link";
 
 export default async function WardsPage() {
   const session = await requireAppSession();
   const canManagePatient = session.profile.role === "admin" || session.profile.role === "resident";
-  const [summaries, profiles] = await Promise.all([
-    getWardSummaries(session),
-    getProfiles(session),
-  ]);
+  const [summaries, profiles] = await Promise.all([getWardSummaries(session), getProfiles(session)]);
 
   return (
     <div className="space-y-6">
@@ -51,8 +48,8 @@ export default async function WardsPage() {
           <div className="space-y-4">
             {canManagePatient ? (
               <GlassPanel
-                title="Quick admit"
-                subtitle="เพิ่มผู้ป่วยใหม่เข้าวอร์ดได้รวดเร็วจากหน้านี้"
+                title="Admit patient"
+                subtitle="เพิ่มผู้ป่วยใหม่เข้าวอร์ดจากหน้านี้ได้ทันที"
                 className="h-fit"
               >
                 <SectionLabel>New patient</SectionLabel>
@@ -78,21 +75,29 @@ export default async function WardsPage() {
                   <Field label="Diagnosis">
                     <TextInput name="diagnosis" placeholder="Pneumonia with AKI" required />
                   </Field>
+                  <Field label="Precaution">
+                    <SelectBox name="precaution" defaultValue="none">
+                      <option value="none">None</option>
+                      <option value="contact">Contact</option>
+                      <option value="droplet">Droplet</option>
+                      <option value="airborne">Airborne</option>
+                    </SelectBox>
+                  </Field>
                   <div className="grid gap-3 md:grid-cols-2">
                     <Field label="Status">
                       <SelectBox name="status" defaultValue="stable">
-                        <option value="stable">คงที่</option>
-                        <option value="watch">เฝ้าระวัง</option>
-                        <option value="critical">วิกฤต</option>
+                        <option value="stable">Stable</option>
+                        <option value="watch">Watch</option>
+                        <option value="critical">Critical</option>
                       </SelectBox>
                     </Field>
-                    <Field label="ผู้รับผิดชอบ">
+                    <Field label="Responsible">
                       <SelectBox name="responsibleDoctorId" defaultValue={session.profile.id}>
                         <StaffOptions profiles={profiles} />
                       </SelectBox>
                     </Field>
                   </div>
-                  <SubmitButton>สร้างผู้ป่วย</SubmitButton>
+                  <SubmitButton>Admit patient</SubmitButton>
                 </form>
               </GlassPanel>
             ) : (

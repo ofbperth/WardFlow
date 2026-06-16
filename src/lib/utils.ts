@@ -4,6 +4,7 @@ import { th } from "date-fns/locale";
 import type {
   PatientLifecycle,
   PatientStatus,
+  Precaution,
   ProblemStatus,
   Role,
   TaskPriority,
@@ -139,6 +140,15 @@ export function labelForLifecycle(lifecycle: PatientLifecycle) {
     active: "Active",
     discharged: "Discharged",
   }[lifecycle];
+}
+
+export function labelForPrecaution(precaution: Precaution) {
+  return {
+    none: "None",
+    contact: "Contact",
+    droplet: "Droplet",
+    airborne: "Airborne",
+  }[precaution];
 }
 
 export function labelForActivityAction(action: string) {

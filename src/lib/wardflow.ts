@@ -56,6 +56,7 @@ const patientSchema = z.object({
   diagnosis: z.string().min(1),
   status: z.enum(["stable", "watch", "critical"]),
   responsibleDoctorId: z.string().optional().nullable(),
+  precaution: z.enum(["none", "contact", "droplet", "airborne"]),
 });
 
 const problemSchema = z.object({
@@ -354,10 +355,6 @@ export async function updateUserRole(formData: FormData, session: SessionContext
 }
 
 export async function savePatient(formData: FormData, session: SessionContext) {
-  if (!canManagePatients(session)) {
-    throw new Error("Only admin or resident can create or update patient");
-  }
-
   const parsed = patientSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
@@ -366,12 +363,16 @@ export async function savePatient(formData: FormData, session: SessionContext) {
     diagnosis: formData.get("diagnosis"),
     status: formData.get("status"),
     responsibleDoctorId: textOrNull(formData.get("responsibleDoctorId")),
+    precaution: formData.get("precaution"),
   });
   requireWardAccess(session, parsed.wardId);
 
   const ownerName = getPatientDirectoryName(parsed.responsibleDoctorId ?? null, session.profile.name);
 
   if (parsed.id) {
+    if (!canManageClinicalEntries(session)) {
+      throw new Error("Clinical entries are not allowed");
+    }
     const existing = patientById(parsed.id);
     if (!existing) throw new Error("Patient not found");
     const before = structuredClone(existing);
@@ -382,9 +383,13 @@ export async function savePatient(formData: FormData, session: SessionContext) {
     existing.status = parsed.status;
     existing.responsibleDoctorId = parsed.responsibleDoctorId ?? session.profile.id;
     existing.responsibleDoctorName = ownerName;
+    existing.precaution = parsed.precaution;
     existing.lastUpdate = now();
     addActivity(session, existing.id, "patient.updated", "patient", existing.id, before, existing);
   } else {
+    if (!canManagePatients(session)) {
+      throw new Error("Only admin or resident can admit patient");
+    }
     const patient: Patient = {
       id: nextId("patient"),
       wardId: parsed.wardId,
@@ -397,7 +402,7 @@ export async function savePatient(formData: FormData, session: SessionContext) {
       responsibleDoctorId: parsed.responsibleDoctorId ?? session.profile.id,
       responsibleDoctorName: ownerName,
       allergy: null,
-      isolationFlag: false,
+      precaution: parsed.precaution,
       codeStatus: null,
       lifecycle: "active",
       dischargedAt: null,

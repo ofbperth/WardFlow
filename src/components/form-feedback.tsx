@@ -163,6 +163,18 @@ export function TaskEditor({
   );
 }
 
+export function PatientEditor({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor buttonLabel="Edit patient detail" panelTitle="Edit patient detail">
+      {children}
+    </InlineEditor>
+  );
+}
+
 export function ProblemCreator({
   children,
 }: {

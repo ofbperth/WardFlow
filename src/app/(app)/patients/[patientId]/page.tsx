@@ -2,11 +2,17 @@ import {
   dischargePatientAction,
   reorderProblemAction,
   saveHandoverAction,
+  savePatientAction,
   saveProblemAction,
   saveTaskAction,
   updateTaskStatusAction,
 } from "@/app/actions";
-import { PendingSubmitButton, ProblemCreator, TaskCreator } from "@/components/form-feedback";
+import {
+  PatientEditor,
+  PendingSubmitButton,
+  ProblemCreator,
+  TaskCreator,
+} from "@/components/form-feedback";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
   EmptyState,
@@ -65,7 +71,7 @@ export default async function PatientPage({
       />
 
       <GlassPanel
-        title={`${bundle.patient.displayName} | เตียง ${bundle.patient.bed}`}
+        title={`${bundle.patient.displayName} | Bed ${bundle.patient.bed}`}
         subtitle={`อัปเดตล่าสุด ${formatDateTime(bundle.patient.lastUpdate)}`}
         action={
           canManagePatient && bundle.patient.lifecycle === "active" ? (
@@ -82,6 +88,51 @@ export default async function PatientPage({
         }
       >
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
+        {canEditClinical ? (
+          <PatientEditor>
+            <form action={savePatientAction} className="space-y-3">
+              <input type="hidden" name="id" value={bundle.patient.id} />
+              <input type="hidden" name="wardId" value={bundle.patient.wardId} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Bed">
+                  <TextInput name="bed" defaultValue={bundle.patient.bed} required />
+                </Field>
+                <Field label="Display name">
+                  <TextInput name="displayName" defaultValue={bundle.patient.displayName} required />
+                </Field>
+              </div>
+              <Field label="Diagnosis">
+                <TextInput name="diagnosis" defaultValue={bundle.patient.diagnosis} required />
+              </Field>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Status">
+                  <SelectBox name="status" defaultValue={bundle.patient.status}>
+                    <option value="stable">Stable</option>
+                    <option value="watch">Watch</option>
+                    <option value="critical">Critical</option>
+                  </SelectBox>
+                </Field>
+                <Field label="Responsible">
+                  <SelectBox
+                    name="responsibleDoctorId"
+                    defaultValue={bundle.patient.responsibleDoctorId ?? ""}
+                  >
+                    <StaffOptions profiles={profiles} />
+                  </SelectBox>
+                </Field>
+                <Field label="Precaution">
+                  <SelectBox name="precaution" defaultValue={bundle.patient.precaution}>
+                    <option value="none">None</option>
+                    <option value="contact">Contact</option>
+                    <option value="droplet">Droplet</option>
+                    <option value="airborne">Airborne</option>
+                  </SelectBox>
+                </Field>
+              </div>
+              <SubmitButton pendingLabel="Updating patient...">Update patient detail</SubmitButton>
+            </form>
+          </PatientEditor>
+        ) : null}
       </GlassPanel>
 
       <div className="grid gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
@@ -194,10 +245,10 @@ export default async function PatientPage({
                         <option value="imaging">imaging</option>
                         <option value="consult">consult</option>
                         <option value="procedure">procedure</option>
-                        <option value="family_talk">คุยญาติ</option>
-                        <option value="discharge">จำหน่าย</option>
-                        <option value="medication">ยา</option>
-                        <option value="other">อื่น ๆ</option>
+                        <option value="family_talk">Family talk</option>
+                        <option value="discharge">Discharge</option>
+                        <option value="medication">Medication</option>
+                        <option value="other">Other</option>
                       </SelectBox>
                     </Field>
                     <Field label="เวลาที่ต้องเสร็จ">
