@@ -89,9 +89,13 @@ export function PendingIconButton({
   );
 }
 
-export function ProblemEditor({
+export function InlineEditor({
+  buttonLabel,
+  panelTitle,
   children,
 }: {
+  buttonLabel: string;
+  panelTitle: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -104,7 +108,7 @@ export function ProblemEditor({
         className="mt-4 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100"
       >
         <Pencil className="h-4 w-4" />
-        Edit problem detail
+        {buttonLabel}
       </button>
     );
   }
@@ -112,7 +116,7 @@ export function ProblemEditor({
   return (
     <div className="mt-4 rounded-[20px] bg-mint-50/70 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-mint-700">Edit problem detail</p>
+        <p className="text-sm font-semibold text-mint-700">{panelTitle}</p>
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -129,5 +133,29 @@ export function ProblemEditor({
         {children}
       </div>
     </div>
+  );
+}
+
+export function ProblemEditor({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor buttonLabel="Edit problem detail" panelTitle="Edit problem detail">
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function TaskEditor({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor buttonLabel="Edit task detail" panelTitle="Edit task detail">
+      {children}
+    </InlineEditor>
   );
 }

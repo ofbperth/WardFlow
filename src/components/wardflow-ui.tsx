@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
-  Pencil,
   Sparkles,
 } from "lucide-react";
 import {
@@ -24,6 +23,7 @@ import {
   PendingIconButton,
   PendingSubmitButton,
   ProblemEditor,
+  TaskEditor,
 } from "@/components/form-feedback";
 import type {
   ActivityLog,
@@ -403,13 +403,7 @@ function TaskCard({
       </div>
 
       {canEdit ? (
-        <details className="mt-4 rounded-[20px] bg-mint-50/70 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-mint-700">
-            <span className="inline-flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              Edit task detail
-            </span>
-          </summary>
+        <TaskEditor>
           <form action={saveTaskAction} className="mt-4 space-y-3">
             <input type="hidden" name="id" value={task.id} />
             <input type="hidden" name="patientId" value={patient.id} />
@@ -465,7 +459,7 @@ function TaskCard({
             </Field>
             <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
           </form>
-        </details>
+        </TaskEditor>
       ) : null}
 
       {!compact ? (
