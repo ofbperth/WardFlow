@@ -68,7 +68,7 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
-              aria-label={mobileMenuOpen ? "Close settings menu" : "Open settings menu"}
+              aria-label={mobileMenuOpen ? "ปิดเมนูการตั้งค่า" : "เปิดเมนูการตั้งค่า"}
               className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-foreground shadow-sm"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Settings className="h-5 w-5" />}
@@ -116,7 +116,7 @@ export function AppShell({
                 <div>
                   <p className="font-display font-semibold">Operational layer</p>
                   <p className="text-sm text-muted">
-                    round, follow-up, and handover in one place
+                    round, follow-up, และ handover ในที่เดียว
                   </p>
                 </div>
               </div>
@@ -140,7 +140,7 @@ export function AppShell({
                         <Icon className="h-4 w-4" />
                         {item.label}
                       </span>
-                      <span className="text-xs opacity-80">{active ? "Open" : ""}</span>
+                      <span className="text-xs opacity-80">{active ? "กำลังดู" : ""}</span>
                     </Link>
                   );
                 })}
