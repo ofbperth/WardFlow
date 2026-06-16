@@ -55,11 +55,11 @@ export function AppShell({
           <div className="hidden md:block">
             <form action={logoutAction}>
               <PendingSubmitButton
-                pendingLabel="กำลังออกจากระบบ..."
-                className="flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium text-foreground shadow-none hover:bg-white"
+                pendingLabel="Signing out..."
+                className="flex min-w-[144px] items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-100"
               >
                 <LogOut className="h-4 w-4" />
-                ออกจากระบบ
+                Log out
               </PendingSubmitButton>
             </form>
           </div>
@@ -68,7 +68,7 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
-              aria-label={mobileMenuOpen ? "ปิดเมนูการตั้งค่า" : "เปิดเมนูการตั้งค่า"}
+              aria-label={mobileMenuOpen ? "Close settings menu" : "Open settings menu"}
               className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-foreground shadow-sm"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Settings className="h-5 w-5" />}
@@ -97,11 +97,11 @@ export function AppShell({
 
               <form action={logoutAction}>
                 <PendingSubmitButton
-                  pendingLabel="กำลังออกจากระบบ..."
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-medium text-foreground shadow-none hover:bg-white"
+                  pendingLabel="Signing out..."
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-100"
                 >
                   <LogOut className="h-4 w-4" />
-                  ออกจากระบบ
+                  Log out
                 </PendingSubmitButton>
               </form>
             </div>
@@ -115,7 +115,9 @@ export function AppShell({
                 <Stethoscope className="h-5 w-5 text-mint-700" />
                 <div>
                   <p className="font-display font-semibold">Operational layer</p>
-                  <p className="text-sm text-muted">round, follow-up, และ handover ในที่เดียว</p>
+                  <p className="text-sm text-muted">
+                    round, follow-up, and handover in one place
+                  </p>
                 </div>
               </div>
 
@@ -138,7 +140,7 @@ export function AppShell({
                         <Icon className="h-4 w-4" />
                         {item.label}
                       </span>
-                      <span className="text-xs opacity-80">{active ? "กำลังดู" : ""}</span>
+                      <span className="text-xs opacity-80">{active ? "Open" : ""}</span>
                     </Link>
                   );
                 })}
