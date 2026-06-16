@@ -42,13 +42,17 @@ export function AppShell({
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative h-12 w-[172px] shrink-0">
+            <div className="relative h-14 w-[188px] shrink-0">
               <Image
                 src="/wardflow-header-logo.png"
                 alt="WardFlow"
                 fill
-                sizes="172px"
+                sizes="188px"
                 className="object-contain"
+                style={{
+                  filter:
+                    "saturate(1.28) contrast(1.12) brightness(0.98) drop-shadow(0 6px 12px rgba(91, 201, 110, 0.18))",
+                }}
               />
             </div>
             <div className="min-w-0">
