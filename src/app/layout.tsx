@@ -15,6 +15,16 @@ const bodyFont = Noto_Sans_Thai({
 export const metadata: Metadata = {
   title: "WardFlow",
   description: "Real-time ward work management for clinical teams.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+    shortcut: "/icon.png",
+  },
+  appleWebApp: {
+    title: "WardFlow",
+    capable: true,
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({

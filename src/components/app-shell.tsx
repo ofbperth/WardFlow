@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { PendingSubmitButton } from "@/components/form-feedback";
-import { cn, getInitials, labelForRole } from "@/lib/utils";
+import { cn, labelForRole } from "@/lib/utils";
 import type { UserProfile } from "@/lib/types";
 
 const navItems = [
@@ -41,8 +42,14 @@ export function AppShell({
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-mint-500/15 text-lg font-semibold text-mint-700">
-              {getInitials(profile.name)}
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-3xl ring-1 ring-white/70">
+              <Image
+                src="/wardflow-app-logo.png"
+                alt="WardFlow"
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
             </div>
             <div className="min-w-0">
               <p className="font-display text-lg font-semibold text-foreground">WardFlow</p>
