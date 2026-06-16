@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
@@ -92,13 +92,16 @@ export function PendingIconButton({
 export function InlineEditor({
   buttonLabel,
   panelTitle,
+  buttonIcon = "edit",
   children,
 }: {
   buttonLabel: string;
   panelTitle: string;
+  buttonIcon?: "edit" | "create";
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const Icon = buttonIcon === "create" ? Plus : Pencil;
 
   if (!open) {
     return (
@@ -107,7 +110,7 @@ export function InlineEditor({
         onClick={() => setOpen(true)}
         className="mt-4 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100"
       >
-        <Pencil className="h-4 w-4" />
+        <Icon className="h-4 w-4" />
         {buttonLabel}
       </button>
     );
@@ -155,6 +158,30 @@ export function TaskEditor({
 }) {
   return (
     <InlineEditor buttonLabel="Edit task detail" panelTitle="Edit task detail">
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function ProblemCreator({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor buttonLabel="Create problem" panelTitle="Create problem" buttonIcon="create">
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function TaskCreator({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor buttonLabel="Create task" panelTitle="Create task" buttonIcon="create">
       {children}
     </InlineEditor>
   );

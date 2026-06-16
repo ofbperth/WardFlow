@@ -14,6 +14,7 @@ import {
   formatShortTime,
   getInitials,
   labelForRole,
+  labelForTaskPriority,
   labelForTaskType,
   priorityTone,
   statusTone,
@@ -368,7 +369,7 @@ function TaskCard({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold text-foreground">{task.title}</p>
             <Pill tone={statusTone(task.status)}>{task.status}</Pill>
-            <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
+            <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
           <p className="mt-2 text-sm text-muted">{task.note ?? "No note"}</p>
@@ -387,7 +388,7 @@ function TaskCard({
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {["not_started", "in_progress", "waiting", "done", "blocked"].map((status) => (
+        {["not_started", "in_progress", "done", "blocked"].map((status) => (
           <form action={updateStatusAction} key={status}>
             <input type="hidden" name="patientId" value={patient.id} />
             <input type="hidden" name="taskId" value={task.id} />
@@ -420,17 +421,15 @@ function TaskCard({
                 <SelectBox name="status" defaultValue={task.status}>
                   <option value="not_started">not_started</option>
                   <option value="in_progress">in_progress</option>
-                  <option value="waiting">waiting</option>
                   <option value="done">done</option>
                   <option value="blocked">blocked</option>
                 </SelectBox>
               </Field>
               <Field label="Priority">
                 <SelectBox name="priority" defaultValue={task.priority}>
-                  <option value="low">low</option>
-                  <option value="normal">normal</option>
-                  <option value="high">high</option>
-                  <option value="urgent">urgent</option>
+                  <option value="normal">Normal</option>
+                  <option value="urgency">Urgency</option>
+                  <option value="emergency">Emergency</option>
                 </SelectBox>
               </Field>
             </div>
@@ -580,7 +579,7 @@ export function TaskInbox({ items }: { items: Array<{ task: WardTask; patient: P
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-base font-semibold text-foreground">{task.title}</p>
                 <Pill tone={statusTone(task.status)}>{task.status}</Pill>
-                <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
+                <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
               </div>
               <p className="mt-1 text-sm text-muted">
                 Bed {patient.bed} · {patient.displayName} · {patient.diagnosis}
@@ -711,7 +710,9 @@ export function TemplateCards({ templates }: { templates: TaskTemplate[] }) {
             <p className="font-semibold text-foreground">{template.title}</p>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(template.type)}</Pill>
           </div>
-          <p className="mt-3 text-sm text-muted">Default priority: {template.defaultPriority}</p>
+          <p className="mt-3 text-sm text-muted">
+            Default priority: {labelForTaskPriority(template.defaultPriority)}
+          </p>
         </div>
       ))}
     </div>

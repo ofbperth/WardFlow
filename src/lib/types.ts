@@ -5,11 +5,10 @@ export const problemStatusValues = ["active", "improving", "worsening", "resolve
 export const taskStatusValues = [
   "not_started",
   "in_progress",
-  "waiting",
   "done",
   "blocked",
 ] as const;
-export const taskPriorityValues = ["low", "normal", "high", "urgent"] as const;
+export const taskPriorityValues = ["normal", "urgency", "emergency"] as const;
 export const taskTypeValues = [
   "lab",
   "imaging",

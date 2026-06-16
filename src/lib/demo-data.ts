@@ -168,8 +168,8 @@ export const demoTasksSeed: WardTask[] = [
     note: "Escalate if resistant organism",
     ownerId: "demo-user-2",
     ownerName: "Dr. Pakorn R.",
-    status: "waiting",
-    priority: "urgent",
+    status: "in_progress",
+    priority: "emergency",
     type: "lab",
     dueAt: new Date(Date.now() + 1000 * 60 * 90).toISOString(),
     blockedReason: null,
@@ -185,7 +185,7 @@ export const demoTasksSeed: WardTask[] = [
     ownerId: "demo-user-1",
     ownerName: "Dr. Nicha S.",
     status: "in_progress",
-    priority: "high",
+    priority: "urgency",
     type: "family_talk",
     dueAt: new Date(Date.now() + 1000 * 60 * 40).toISOString(),
     blockedReason: null,
@@ -243,19 +243,19 @@ export const demoActivitySeed: ActivityLog[] = [
     entityType: "ward_task",
     entityId: "task-1",
     beforeJson: { status: "not_started" },
-    afterJson: { status: "waiting" },
+    afterJson: { status: "in_progress" },
     createdAt: new Date(Date.now() - 1000 * 60 * 28).toISOString(),
   },
 ];
 
 export const demoTemplatesSeed: TaskTemplate[] = [
   { id: "template-1", title: "Follow lab", type: "lab", defaultPriority: "normal" },
-  { id: "template-2", title: "Follow culture", type: "lab", defaultPriority: "high" },
+  { id: "template-2", title: "Follow culture", type: "lab", defaultPriority: "urgency" },
   {
     id: "template-3",
     title: "Consult specialist",
     type: "consult",
-    defaultPriority: "high",
+    defaultPriority: "urgency",
   },
   {
     id: "template-4",
@@ -270,11 +270,11 @@ export const demoTemplatesSeed: TaskTemplate[] = [
     defaultPriority: "normal",
   },
   { id: "template-6", title: "Home meds", type: "medication", defaultPriority: "normal" },
-  { id: "template-7", title: "Appointment", type: "other", defaultPriority: "low" },
+  { id: "template-7", title: "Appointment", type: "other", defaultPriority: "normal" },
   {
     id: "template-8",
     title: "Procedure prep",
     type: "procedure",
-    defaultPriority: "high",
+    defaultPriority: "urgency",
   },
 ];

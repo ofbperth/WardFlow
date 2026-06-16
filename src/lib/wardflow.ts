@@ -75,8 +75,8 @@ const taskSchema = z.object({
   patientId: z.string().min(1),
   title: z.string().min(1),
   ownerId: z.string().optional().nullable(),
-  status: z.enum(["not_started", "in_progress", "waiting", "done", "blocked"]),
-  priority: z.enum(["low", "normal", "high", "urgent"]),
+  status: z.enum(["not_started", "in_progress", "done", "blocked"]),
+  priority: z.enum(["normal", "urgency", "emergency"]),
   type: z.enum([
     "lab",
     "imaging",
@@ -115,7 +115,7 @@ const templateSchema = z.object({
     "medication",
     "other",
   ]),
-  defaultPriority: z.enum(["low", "normal", "high", "urgent"]),
+  defaultPriority: z.enum(["normal", "urgency", "emergency"]),
 });
 
 const userRoleSchema = z.object({

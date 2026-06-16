@@ -45,7 +45,6 @@ export function statusTone(status: PatientStatus | ProblemStatus | TaskStatus) {
     case "blocked":
       return "bg-rose-100 text-rose-700";
     case "watch":
-    case "waiting":
       return "bg-amber-100 text-amber-700";
     case "stable":
     case "improving":
@@ -64,15 +63,25 @@ export function statusTone(status: PatientStatus | ProblemStatus | TaskStatus) {
 
 export function priorityTone(priority: TaskPriority) {
   switch (priority) {
-    case "urgent":
+    case "emergency":
       return "bg-rose-100 text-rose-700";
-    case "high":
+    case "urgency":
       return "bg-amber-100 text-amber-700";
     case "normal":
-      return "bg-emerald-100 text-emerald-700";
-    case "low":
     default:
-      return "bg-slate-100 text-slate-600";
+      return "bg-emerald-100 text-emerald-700";
+  }
+}
+
+export function labelForTaskPriority(priority: TaskPriority) {
+  switch (priority) {
+    case "emergency":
+      return "Emergency";
+    case "urgency":
+      return "Urgency";
+    case "normal":
+    default:
+      return "Normal";
   }
 }
 

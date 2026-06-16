@@ -53,10 +53,9 @@ export default async function AdminTaskTemplatesPage() {
               </Field>
               <Field label="Default priority">
                 <SelectBox name="defaultPriority" defaultValue="normal">
-                  <option value="low">low</option>
-                  <option value="normal">normal</option>
-                  <option value="high">high</option>
-                  <option value="urgent">urgent</option>
+                  <option value="normal">Normal</option>
+                  <option value="urgency">Urgency</option>
+                  <option value="emergency">Emergency</option>
                 </SelectBox>
               </Field>
               <SubmitButton>Create template</SubmitButton>
