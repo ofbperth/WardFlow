@@ -158,5 +158,6 @@ export async function dischargePatientAction(formData: FormData) {
 
 export async function dischargePatientWithSummaryAction(formData: FormData) {
   const session = await requireAppSession();
-  await dischargePatientWithSummary(formData, session);
+  const summaryId = await dischargePatientWithSummary(formData, session);
+  redirect(`/discharged?summaryId=${summaryId}`);
 }

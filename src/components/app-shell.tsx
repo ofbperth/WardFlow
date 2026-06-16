@@ -42,20 +42,17 @@ export function AppShell({
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative h-14 w-[188px] shrink-0">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] ring-1 ring-white/70 shadow-lg shadow-mint-500/15">
               <Image
-                src="/wardflow-header-logo.png"
+                src="/wardflow-app-logo.png"
                 alt="WardFlow"
                 fill
-                sizes="188px"
-                className="object-contain"
-                style={{
-                  filter:
-                    "saturate(1.28) contrast(1.12) brightness(0.98) drop-shadow(0 6px 12px rgba(91, 201, 110, 0.18))",
-                }}
+                sizes="56px"
+                className="object-cover"
               />
             </div>
             <div className="min-w-0">
+              <p className="font-display text-lg font-semibold text-foreground">WardFlow</p>
               <p className="truncate text-sm text-muted">
                 {profile.name} | {labelForRole(profile.role)}
               </p>
@@ -66,7 +63,7 @@ export function AppShell({
             <form action={logoutAction}>
               <PendingSubmitButton
                 pendingLabel="Signing out..."
-                className="flex min-w-[144px] items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-100"
+                className="flex min-w-[144px] items-center justify-center gap-2 rounded-full border border-rose-500 bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white shadow-none hover:bg-rose-600"
               >
                 <LogOut className="h-4 w-4" />
                 Log out
@@ -108,7 +105,7 @@ export function AppShell({
               <form action={logoutAction}>
                 <PendingSubmitButton
                   pendingLabel="Signing out..."
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-100"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500 bg-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-none hover:bg-rose-600"
                 >
                   <LogOut className="h-4 w-4" />
                   Log out

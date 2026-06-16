@@ -709,6 +709,7 @@ export async function dischargePatientWithSummary(formData: FormData, session: S
   addActivity(session, patient.id, "discharge.summary_created", "discharge_summary", summary.id, null, summary);
 
   await dischargePatient(patient.id, session);
+  return summary.id;
 }
 
 export async function saveProblem(formData: FormData, session: SessionContext) {
