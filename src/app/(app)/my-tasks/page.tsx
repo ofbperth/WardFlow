@@ -10,14 +10,14 @@ export default async function MyTasksPage() {
     <div className="space-y-6">
       <GlassPanel
         title="My tasks"
-        subtitle="Owner-scoped queue for finishing the shift without hunting through paper."
+        subtitle="รวมงานที่ assign ให้คุณ พร้อมบริบทผู้ป่วย เพื่อปิดงานได้เร็วขึ้น"
       >
         {items.length ? (
           <TaskInbox items={items} />
         ) : (
           <EmptyState
-            title="No tasks assigned"
-            body="Once tasks are assigned to you, they will appear here with patient context."
+            title="No assigned tasks"
+            body="เมื่อมีคน assign task ให้ งานจะขึ้นที่หน้านี้พร้อมข้อมูลผู้ป่วย"
           />
         )}
       </GlassPanel>

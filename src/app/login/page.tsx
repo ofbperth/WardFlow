@@ -13,11 +13,11 @@ export default function LoginPage() {
           <section className="px-6 py-8 md:px-10 md:py-12">
             <p className="text-xs uppercase tracking-[0.28em] text-mint-700">WardFlow</p>
             <h1 className="mt-4 max-w-xl font-display text-4xl font-semibold leading-tight text-foreground md:text-5xl">
-              Operational clarity between ward round, task follow-up, and handover.
+              จัดการ ward round, task follow-up และ handover ให้ชัดเจนในที่เดียว
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted">
-              Mobile-first census, problem list, task board, handover mode, and full activity audit
-              in one calm clinical workspace.
+              หน้าจอออกแบบให้ใช้คล่องบนมือถือ พร้อม census, problem list, task board,
+              handover และ activity audit ใน workflow เดียว
             </p>
           </section>
 
@@ -25,25 +25,25 @@ export default function LoginPage() {
             <div className="rounded-[32px] bg-white/82 p-6 shadow-xl shadow-emerald-950/8">
               <h2 className="font-display text-2xl font-semibold text-foreground">Sign in</h2>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Google Login is the production path. Demo mode only appears when Supabase is not
-                configured and the app is running locally.
+                Production ใช้ Google Login ส่วน Demo mode จะขึ้นเมื่อยังไม่ได้ตั้งค่า
+                Supabase และกำลังรันในเครื่อง local
               </p>
 
               <div className="mt-6 space-y-4">
                 {state.hasIncompleteSupabaseSetup ? (
                   <SetupNotice
-                    title="Supabase setup incomplete"
-                    body="Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, and SUPABASE_SERVICE_ROLE_KEY before using live auth and database mode."
+                    title="Supabase ยังตั้งค่าไม่ครบ"
+                    body="ตั้งค่า NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY และ SUPABASE_SERVICE_ROLE_KEY ก่อนใช้ live auth และ database mode"
                   />
                 ) : null}
 
                 {state.supportsGoogleLogin ? (
                   <form action={signInWithGoogle}>
                     <PendingSubmitButton
-                      pendingLabel="Redirecting..."
+                      pendingLabel="กำลังพาไป Google..."
                       className="flex w-full items-center justify-center rounded-full bg-mint-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600"
                     >
-                      Continue with Google
+                      เข้าด้วย Google
                     </PendingSubmitButton>
                   </form>
                 ) : null}
@@ -51,18 +51,18 @@ export default function LoginPage() {
                 {state.supportsDemoLogin ? (
                   <form action={startDemoSession}>
                     <PendingSubmitButton
-                      pendingLabel="Entering demo..."
+                      pendingLabel="กำลังเข้า demo..."
                       className="flex w-full items-center justify-center rounded-full border border-white/70 bg-white px-4 py-3 text-sm font-semibold text-foreground shadow-none transition hover:bg-mint-50"
                     >
-                      Enter demo ward
+                      เข้า Demo Ward
                     </PendingSubmitButton>
                   </form>
                 ) : null}
 
                 {!state.supportsGoogleLogin && !state.supportsDemoLogin ? (
                   <SetupNotice
-                    title="No login mode available"
-                    body="This environment has neither live Supabase credentials nor local demo mode. Add the required environment variables or run locally without Supabase envs to use demo mode."
+                    title="ยังไม่มี login mode ที่ใช้ได้"
+                    body="environment นี้ยังไม่มีทั้ง live Supabase credentials และ local demo mode ให้เพิ่ม env ที่จำเป็น หรือรัน local แบบไม่มี Supabase env เพื่อใช้ demo mode"
                   />
                 ) : null}
               </div>

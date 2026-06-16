@@ -25,8 +25,8 @@ export default async function WardsPage() {
   return (
     <div className="space-y-6">
       <GlassPanel
-        title="Ward Census"
-        subtitle="Minimal, live, and patient-centered. Filter-friendly structure without dense tables."
+        title="Ward overview"
+        subtitle="ดูผู้ป่วยทั้งหมดในวอร์ดแบบอ่านง่าย อัปเดตไว และไม่ต้องไล่กระดาษ"
         action={
           <Link
             href="/discharged"
@@ -43,7 +43,7 @@ export default async function WardsPage() {
             ) : (
               <EmptyState
                 title="No wards visible yet"
-                body="Create the first ward in admin, or assign your profile to a ward."
+                body="สร้างวอร์ดในหน้า admin หรือ assign user นี้เข้าวอร์ดก่อน"
               />
             )}
           </div>
@@ -52,7 +52,7 @@ export default async function WardsPage() {
             {canManagePatient ? (
               <GlassPanel
                 title="Quick admit"
-                subtitle="Fast create patient flow for ward intake."
+                subtitle="เพิ่มผู้ป่วยใหม่เข้าวอร์ดได้รวดเร็วจากหน้านี้"
                 className="h-fit"
               >
                 <SectionLabel>New patient</SectionLabel>
@@ -60,7 +60,7 @@ export default async function WardsPage() {
                   <Field label="Ward">
                     <SelectBox name="wardId" defaultValue={session.profile.wardAssignment ?? ""}>
                       <option value="" disabled>
-                        Select ward
+                        เลือกวอร์ด
                       </option>
                       {summaries.map((summary) => (
                         <option key={summary.ward.id} value={summary.ward.id}>
@@ -69,10 +69,10 @@ export default async function WardsPage() {
                       ))}
                     </SelectBox>
                   </Field>
-                  <Field label="Bed">
+                  <Field label="เตียง">
                     <TextInput name="bed" placeholder="12" required />
                   </Field>
-                  <Field label="Patient display name">
+                  <Field label="ชื่อที่ใช้แสดง">
                     <TextInput name="displayName" placeholder="S. Woranit" required />
                   </Field>
                   <Field label="Diagnosis">
@@ -81,28 +81,28 @@ export default async function WardsPage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <Field label="Status">
                       <SelectBox name="status" defaultValue="stable">
-                        <option value="stable">stable</option>
-                        <option value="watch">watch</option>
-                        <option value="critical">critical</option>
+                        <option value="stable">คงที่</option>
+                        <option value="watch">เฝ้าระวัง</option>
+                        <option value="critical">วิกฤต</option>
                       </SelectBox>
                     </Field>
-                    <Field label="Responsible">
+                    <Field label="ผู้รับผิดชอบ">
                       <SelectBox name="responsibleDoctorId" defaultValue={session.profile.id}>
                         <StaffOptions profiles={profiles} />
                       </SelectBox>
                     </Field>
                   </div>
-                  <SubmitButton>Create patient</SubmitButton>
+                  <SubmitButton>สร้างผู้ป่วย</SubmitButton>
                 </form>
               </GlassPanel>
             ) : (
               <GlassPanel
                 title="Student access"
-                subtitle="Students can create tasks, problem lists, save handover, and edit those entries on the patient card."
+                subtitle="Student เพิ่ม task, problem list, handover และแก้ไขรายการเหล่านี้ได้จากหน้า patient"
                 className="h-fit"
               >
                 <p className="text-sm leading-6 text-muted">
-                  Patient admission and discharge stay with Residence and Admin roles.
+                  การรับผู้ป่วยเข้าและการจำหน่ายผู้ป่วย จะทำได้เฉพาะ Resident และ Admin
                 </p>
               </GlassPanel>
             )}

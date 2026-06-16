@@ -21,8 +21,8 @@ export default async function AdminWardsPage() {
   return (
     <div className="space-y-6">
       <GlassPanel
-        title="Admin · wards"
-        subtitle="Manage ward containers, edit ward names, and control user roles."
+        title="Admin | Ward management"
+        subtitle="แก้ชื่อวอร์ด สร้างวอร์ดใหม่ และจัดการ role ของผู้ใช้จากหน้านี้"
         action={
           <Link
             href="/admin/task-templates"
@@ -38,32 +38,32 @@ export default async function AdminWardsPage() {
             <div className="grid gap-3 xl:grid-cols-2">
               {summaries.map((summary) => (
                 <div key={summary.ward.id} className="rounded-[28px] bg-white/75 p-5">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted">Ward</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted">วอร์ด</p>
                   <form action={saveWardAction} className="mt-3 space-y-3">
                     <input type="hidden" name="id" value={summary.ward.id} />
                     <TextInput name="name" defaultValue={summary.ward.name} required />
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-muted">{summary.patients.length} active patients</p>
-                      <SubmitButton>Update ward</SubmitButton>
+                      <p className="text-sm text-muted">{summary.patients.length} คนที่ยังรักษาอยู่</p>
+                      <SubmitButton>บันทึกวอร์ด</SubmitButton>
                     </div>
                   </form>
                 </div>
               ))}
             </div>
 
-            <GlassPanel title="Create ward" subtitle="Keep names short and operational.">
+            <GlassPanel title="Create ward" subtitle="ตั้งชื่อให้สั้น อ่านง่าย และใช้หน้างานจริง">
               <SectionLabel>New ward</SectionLabel>
               <form action={saveWardAction} className="space-y-3">
-                <Field label="Ward name">
+                <Field label="ชื่อวอร์ด">
                   <TextInput name="name" placeholder="Medical B" required />
                 </Field>
-                <SubmitButton>Create ward</SubmitButton>
+                <SubmitButton>สร้างวอร์ด</SubmitButton>
               </form>
             </GlassPanel>
           </div>
 
           <div className="space-y-4">
-            <GlassPanel title="User roles" subtitle="Admin can change user role directly here.">
+            <GlassPanel title="User roles" subtitle="แอดมินเปลี่ยนสิทธิ์ผู้ใช้ได้จากหน้านี้ทันที">
               <StaffRoleCards profiles={profiles} updateUserRoleAction={updateUserRoleAction} />
             </GlassPanel>
           </div>

@@ -21,14 +21,14 @@ export default async function HandoverPage() {
 
       <GlassPanel
         title="Handover mode"
-        subtitle="Critical first. Watch second. Pending and blocked next. Stable / no-issue patients stay quiet by default."
+        subtitle="จัดลำดับคนวิกฤตก่อน ตามด้วยคนที่ต้องเฝ้าระวัง งานค้าง และงานที่ติดปัญหา"
       >
         {bundles.length ? (
           <HandoverCards bundles={bundles} />
         ) : (
           <EmptyState
             title="Nothing to hand over"
-            body="No visible ward data yet, or all patients are stable with no active watch items."
+            body="อาจยังไม่มีข้อมูลในวอร์ด หรือผู้ป่วยทั้งหมดคงที่และไม่มีรายการที่ต้องเฝ้าระวัง"
           />
         )}
       </GlassPanel>

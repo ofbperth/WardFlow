@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   Activity,
   Archive,
   ClipboardList,
   LayoutGrid,
   LogOut,
+  Settings,
   Shield,
   Stethoscope,
+  X,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { PendingSubmitButton } from "@/components/form-feedback";
@@ -17,10 +20,10 @@ import { cn, getInitials, labelForRole } from "@/lib/utils";
 import type { UserProfile } from "@/lib/types";
 
 const navItems = [
-  { href: "/wards", label: "Wards", icon: LayoutGrid },
-  { href: "/discharged", label: "Discharged", icon: Archive },
-  { href: "/handover", label: "Handover", icon: ClipboardList },
-  { href: "/my-tasks", label: "My tasks", icon: Activity },
+  { href: "/wards", label: "Wards", mobileLabel: "Wards", icon: LayoutGrid },
+  { href: "/discharged", label: "Discharged", mobileLabel: "Archive", icon: Archive },
+  { href: "/handover", label: "Handover", mobileLabel: "Handover", icon: ClipboardList },
+  { href: "/my-tasks", label: "My tasks", mobileLabel: "Tasks", icon: Activity },
 ];
 
 export function AppShell({
@@ -31,32 +34,79 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="page-shell min-h-screen px-4 pb-28 pt-5 md:px-8 md:pb-10">
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
-        <header className="glass-card flex items-center justify-between rounded-[28px] px-5 py-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-mint-500/15 text-lg font-semibold text-mint-700">
+        <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-mint-500/15 text-lg font-semibold text-mint-700">
               {getInitials(profile.name)}
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="font-display text-lg font-semibold text-foreground">WardFlow</p>
-              <p className="text-sm text-muted">
-                {profile.name} · {labelForRole(profile.role)}
+              <p className="truncate text-sm text-muted">
+                {profile.name} | {labelForRole(profile.role)}
               </p>
             </div>
           </div>
-          <form action={logoutAction}>
-            <PendingSubmitButton
-              pendingLabel="Logging out..."
-              className="flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium text-foreground shadow-none hover:bg-white"
+
+          <div className="hidden md:block">
+            <form action={logoutAction}>
+              <PendingSubmitButton
+                pendingLabel="กำลังออกจากระบบ..."
+                className="flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium text-foreground shadow-none hover:bg-white"
+              >
+                <LogOut className="h-4 w-4" />
+                ออกจากระบบ
+              </PendingSubmitButton>
+            </form>
+          </div>
+
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label={mobileMenuOpen ? "ปิดเมนูการตั้งค่า" : "เปิดเมนูการตั้งค่า"}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-foreground shadow-sm"
             >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </PendingSubmitButton>
-          </form>
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Settings className="h-5 w-5" />}
+            </button>
+          </div>
         </header>
+
+        {mobileMenuOpen ? (
+          <div className="glass-card rounded-[28px] p-4 md:hidden">
+            <div className="space-y-2">
+              {profile.role === "admin" ? (
+                <Link
+                  href="/admin/wards"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                    pathname.startsWith("/admin")
+                      ? "bg-slate-900 text-white"
+                      : "bg-white/70 text-foreground",
+                  )}
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin control
+                </Link>
+              ) : null}
+
+              <form action={logoutAction}>
+                <PendingSubmitButton
+                  pendingLabel="กำลังออกจากระบบ..."
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm font-medium text-foreground shadow-none hover:bg-white"
+                >
+                  <LogOut className="h-4 w-4" />
+                  ออกจากระบบ
+                </PendingSubmitButton>
+              </form>
+            </div>
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="hidden lg:block">
@@ -65,7 +115,7 @@ export function AppShell({
                 <Stethoscope className="h-5 w-5 text-mint-700" />
                 <div>
                   <p className="font-display font-semibold">Operational layer</p>
-                  <p className="text-sm text-muted">Ward round to handover, no paper chase.</p>
+                  <p className="text-sm text-muted">round, follow-up, และ handover ในที่เดียว</p>
                 </div>
               </div>
 
@@ -88,7 +138,7 @@ export function AppShell({
                         <Icon className="h-4 w-4" />
                         {item.label}
                       </span>
-                      <span className="text-xs opacity-80">{active ? "Live" : ""}</span>
+                      <span className="text-xs opacity-80">{active ? "กำลังดู" : ""}</span>
                     </Link>
                   );
                 })}
@@ -103,7 +153,7 @@ export function AppShell({
                     )}
                   >
                     <Shield className="h-4 w-4" />
-                    Admin controls
+                    Admin control
                   </Link>
                 ) : null}
               </nav>
@@ -128,7 +178,7 @@ export function AppShell({
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              {item.mobileLabel}
             </Link>
           );
         })}

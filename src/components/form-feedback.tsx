@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
   children,
-  pendingLabel = "Saving...",
+  pendingLabel = "กำลังบันทึก...",
   className,
 }: {
   children: React.ReactNode;
@@ -33,7 +33,7 @@ export function PendingSubmitButton({
 
 export function PendingGhostButton({
   children,
-  pendingLabel = "Working...",
+  pendingLabel = "กำลังดำเนินการ...",
   active = false,
   className,
 }: {
@@ -62,7 +62,7 @@ export function PendingGhostButton({
 
 export function PendingIconButton({
   children,
-  pendingLabel = "Moving...",
+  pendingLabel = "กำลังย้าย...",
   disabled,
   className,
 }: {

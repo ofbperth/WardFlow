@@ -1,6 +1,8 @@
 import { clsx } from "clsx";
 import { format, formatDistanceToNow } from "date-fns";
+import { th } from "date-fns/locale";
 import type {
+  PatientLifecycle,
   PatientStatus,
   ProblemStatus,
   Role,
@@ -15,17 +17,17 @@ export function cn(...values: Array<string | false | null | undefined>) {
 
 export function formatDateTime(value: string | null | undefined) {
   if (!value) return "-";
-  return format(new Date(value), "dd MMM yyyy HH:mm");
+  return format(new Date(value), "d MMM yyyy HH:mm", { locale: th });
 }
 
 export function formatShortTime(value: string | null | undefined) {
   if (!value) return "-";
-  return format(new Date(value), "HH:mm");
+  return `${format(new Date(value), "HH:mm", { locale: th })} น.`;
 }
 
 export function formatRelative(value: string | null | undefined) {
   if (!value) return "ไม่ระบุ";
-  return formatDistanceToNow(new Date(value), { addSuffix: true });
+  return formatDistanceToNow(new Date(value), { addSuffix: true, locale: th });
 }
 
 export function getInitials(name: string) {
@@ -101,7 +103,57 @@ export function labelForTaskType(type: TaskType) {
 export function labelForRole(role: Role) {
   return {
     admin: "Admin",
-    resident: "Residence",
+    resident: "Resident",
     student: "Student",
   }[role];
+}
+
+export function labelForPatientStatus(status: PatientStatus) {
+  return {
+    stable: "Stable",
+    watch: "Watch",
+    critical: "Critical",
+  }[status];
+}
+
+export function labelForProblemStatus(status: ProblemStatus) {
+  return {
+    active: "Active",
+    improving: "Improving",
+    worsening: "Worsening",
+    resolved: "Resolved",
+  }[status];
+}
+
+export function labelForTaskStatus(status: TaskStatus) {
+  return {
+    not_started: "Not started",
+    in_progress: "In progress",
+    done: "Done",
+    blocked: "Blocked",
+  }[status];
+}
+
+export function labelForLifecycle(lifecycle: PatientLifecycle) {
+  return {
+    active: "Active",
+    discharged: "Discharged",
+  }[lifecycle];
+}
+
+export function labelForActivityAction(action: string) {
+  return (
+    {
+      "patient.created": "สร้างผู้ป่วยใหม่",
+      "patient.updated": "อัปเดตข้อมูลผู้ป่วย",
+      "patient.discharged": "จำหน่ายผู้ป่วย",
+      "problem.created": "เพิ่ม problem list",
+      "problem.updated": "อัปเดต problem list",
+      "problem.reordered": "จัดลำดับ problem list",
+      "task.created": "สร้าง task",
+      "task.updated": "อัปเดต task",
+      "task.status_changed": "เปลี่ยนสถานะ task",
+      "handover.updated": "บันทึก handover",
+    }[action] ?? action
+  );
 }

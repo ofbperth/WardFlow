@@ -13,8 +13,13 @@ import {
   formatRelative,
   formatShortTime,
   getInitials,
+  labelForActivityAction,
+  labelForLifecycle,
+  labelForPatientStatus,
+  labelForProblemStatus,
   labelForRole,
   labelForTaskPriority,
+  labelForTaskStatus,
   labelForTaskType,
   priorityTone,
   statusTone,
@@ -93,8 +98,8 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
-          subtitle={`${summary.patients.length} patients`}
-          action={<Pill tone="bg-mint-500/15 text-mint-700">{summary.patients.length} census</Pill>}
+          subtitle={`${summary.patients.length} คนในวอร์ด`}
+          action={<Pill tone="bg-mint-500/15 text-mint-700">{summary.patients.length} ราย</Pill>}
         >
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {summary.patients.map((patient) => (
@@ -105,7 +110,7 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted">เตียง {patient.bed}</p>
                     <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.displayName}</h3>
                     <p className="mt-1 line-clamp-2 text-sm text-muted">{patient.diagnosis}</p>
                   </div>
@@ -115,18 +120,18 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Pill tone={statusTone(patient.status)}>{patient.status}</Pill>
-                  <Pill tone="bg-amber-100 text-amber-700">{patient.pendingTaskCount} pending</Pill>
+                  <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
+                  <Pill tone="bg-amber-100 text-amber-700">{patient.pendingTaskCount} งานค้าง</Pill>
                   {patient.blockedTaskCount > 0 ? (
-                    <Pill tone="bg-rose-100 text-rose-700">{patient.blockedTaskCount} blocked</Pill>
+                    <Pill tone="bg-rose-100 text-rose-700">{patient.blockedTaskCount} งานติดปัญหา</Pill>
                   ) : null}
                   {patient.lifecycle === "discharged" ? (
-                    <Pill tone="bg-slate-100 text-slate-600">discharged</Pill>
+                    <Pill tone="bg-slate-100 text-slate-600">จำหน่ายแล้ว</Pill>
                   ) : null}
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-sm text-muted">
-                  <span>{patient.responsibleDoctorName ?? "Unassigned"}</span>
+                  <span>{patient.responsibleDoctorName ?? "ยังไม่ระบุผู้รับผิดชอบ"}</span>
                   <span>{formatRelative(patient.lastUpdate)}</span>
                 </div>
               </Link>
@@ -140,16 +145,16 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
   const items = [
-    { label: "Ward", value: ward ?? "-" },
-    { label: "Bed", value: patient.bed },
+    { label: "วอร์ด", value: ward ?? "-" },
+    { label: "เตียง", value: patient.bed },
     { label: "Diagnosis", value: patient.diagnosis },
-    { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
-    { label: "Status", value: patient.status },
-    { label: "Allergy", value: patient.allergy ?? "-" },
-    { label: "Isolation", value: patient.isolationFlag ? "Yes" : "No" },
+    { label: "ผู้รับผิดชอบ", value: patient.responsibleDoctorName ?? "ยังไม่ระบุ" },
+    { label: "สถานะ", value: labelForPatientStatus(patient.status) },
+    { label: "แพ้ยา", value: patient.allergy ?? "-" },
+    { label: "Isolation", value: patient.isolationFlag ? "มี" : "ไม่มี" },
     { label: "Code status", value: patient.codeStatus ?? "-" },
-    { label: "Lifecycle", value: patient.lifecycle },
-    { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
+    { label: "สถานะการรักษา", value: labelForLifecycle(patient.lifecycle) },
+    { label: "จำหน่ายเมื่อ", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
   ];
 
   return (
@@ -188,9 +193,9 @@ export function ProblemCards({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-base font-semibold text-foreground">{problem.title}</p>
-                <Pill tone={statusTone(problem.status)}>{problem.status}</Pill>
+                <Pill tone={statusTone(problem.status)}>{labelForProblemStatus(problem.status)}</Pill>
               </div>
-              <p className="mt-2 text-sm text-muted">{problem.keyData ?? "No key data yet."}</p>
+              <p className="mt-2 text-sm text-muted">{problem.keyData ?? "ยังไม่มีข้อมูลสำคัญ"}</p>
             </div>
             <div className="flex items-center gap-2">
               {canEdit ? (
@@ -201,7 +206,7 @@ export function ProblemCards({
                     <input type="hidden" name="direction" value="up" />
                     <PendingIconButton
                       disabled={index === 0}
-                      pendingLabel="Moving..."
+                      pendingLabel="กำลังย้าย..."
                     >
                       <ChevronUp className="h-4 w-4" />
                     </PendingIconButton>
@@ -212,7 +217,7 @@ export function ProblemCards({
                     <input type="hidden" name="direction" value="down" />
                     <PendingIconButton
                       disabled={index === active.length - 1}
-                      pendingLabel="Moving..."
+                      pendingLabel="กำลังย้าย..."
                     >
                       <ChevronDown className="h-4 w-4" />
                     </PendingIconButton>
@@ -223,9 +228,9 @@ export function ProblemCards({
           </div>
 
           <div className="mt-4 grid gap-3 xl:grid-cols-3">
-            <InfoBlock label="Plan" value={problem.plan ?? "-"} />
-            <InfoBlock label="Pending" value={problem.pending ?? "-"} />
-            <InfoBlock label="Watch out" value={problem.watchOut ?? "-"} />
+            <InfoBlock label="แผน" value={problem.plan ?? "-"} />
+            <InfoBlock label="สิ่งที่ค้าง" value={problem.pending ?? "-"} />
+            <InfoBlock label="เฝ้าระวัง" value={problem.watchOut ?? "-"} />
           </div>
 
           {canEdit ? (
@@ -238,10 +243,10 @@ export function ProblemCards({
                 </Field>
                 <Field label="Status">
                   <SelectBox name="status" defaultValue={problem.status}>
-                    <option value="active">active</option>
-                    <option value="improving">improving</option>
-                    <option value="worsening">worsening</option>
-                    <option value="resolved">resolved</option>
+                    <option value="active">Active</option>
+                    <option value="improving">Improving</option>
+                    <option value="worsening">Worsening</option>
+                    <option value="resolved">Resolved</option>
                   </SelectBox>
                 </Field>
                 <Field label="Key data">
@@ -250,17 +255,17 @@ export function ProblemCards({
                 <Field label="Plan">
                   <TextArea name="plan" defaultValue={problem.plan ?? ""} />
                 </Field>
-                <Field label="Pending">
+                <Field label="สิ่งที่ค้าง">
                   <TextArea name="pending" defaultValue={problem.pending ?? ""} />
                 </Field>
-                <Field label="Watch out">
+                <Field label="เฝ้าระวัง">
                   <TextArea name="watchOut" defaultValue={problem.watchOut ?? ""} />
                 </Field>
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input type="checkbox" name="includeInHandover" defaultChecked={problem.includeInHandover} />
-                  Include in handover
+                  รวมใน handover
                 </label>
-                <SubmitButton pendingLabel="Updating problem...">Update problem</SubmitButton>
+                <SubmitButton pendingLabel="กำลังอัปเดต problem...">บันทึก problem</SubmitButton>
               </form>
             </ProblemEditor>
           ) : null}
@@ -270,13 +275,13 @@ export function ProblemCards({
       {resolved.length > 0 ? (
         <details className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-600">
-            Resolved problems ({resolved.length})
+            Problem ที่ resolved แล้ว ({resolved.length})
           </summary>
           <div className="mt-3 space-y-3">
             {resolved.map((problem) => (
               <div key={problem.id} className="rounded-2xl bg-white/75 p-3">
                 <div className="flex items-center gap-2">
-                  <Pill tone={statusTone(problem.status)}>{problem.status}</Pill>
+                  <Pill tone={statusTone(problem.status)}>{labelForProblemStatus(problem.status)}</Pill>
                   <p className="text-sm font-semibold text-slate-700">{problem.title}</p>
                 </div>
               </div>
@@ -368,15 +373,15 @@ function TaskCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold text-foreground">{task.title}</p>
-            <Pill tone={statusTone(task.status)}>{task.status}</Pill>
+            <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
-          <p className="mt-2 text-sm text-muted">{task.note ?? "No note"}</p>
+          <p className="mt-2 text-sm text-muted">{task.note ?? "ยังไม่มีโน้ต"}</p>
         </div>
         <div className="text-right text-sm text-muted">
-          <p>{task.ownerName ?? "Unassigned"}</p>
-          <p>{task.dueAt ? `Due ${formatShortTime(task.dueAt)}` : "No due time"}</p>
+          <p>{task.ownerName ?? "ยังไม่ assign"}</p>
+          <p>{task.dueAt ? `ครบกำหนด ${formatShortTime(task.dueAt)}` : "ยังไม่กำหนดเวลา"}</p>
         </div>
       </div>
 
@@ -395,9 +400,9 @@ function TaskCard({
             <input type="hidden" name="status" value={status} />
             <PendingGhostButton
               active={task.status === status}
-              pendingLabel="Updating..."
+              pendingLabel="กำลังอัปเดต..."
             >
-              {status.replace("_", " ")}
+              {labelForTaskStatus(status as WardTask["status"])}
             </PendingGhostButton>
           </form>
         ))}
@@ -419,10 +424,10 @@ function TaskCard({
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Status">
                 <SelectBox name="status" defaultValue={task.status}>
-                  <option value="not_started">not_started</option>
-                  <option value="in_progress">in_progress</option>
-                  <option value="done">done</option>
-                  <option value="blocked">blocked</option>
+                  <option value="not_started">Not started</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="done">Done</option>
+                  <option value="blocked">Blocked</option>
                 </SelectBox>
               </Field>
               <Field label="Priority">
@@ -446,24 +451,24 @@ function TaskCard({
                   <option value="other">other</option>
                 </SelectBox>
               </Field>
-              <Field label="Due time">
+              <Field label="เวลาที่ต้องเสร็จ">
                 <TextInput name="dueAt" type="datetime-local" defaultValue={toDatetimeLocal(task.dueAt)} />
               </Field>
             </div>
             <Field label="Note">
               <TextArea name="note" defaultValue={task.note ?? ""} />
             </Field>
-            <Field label="Blocked reason">
-              <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
-            </Field>
-            <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
+              <Field label="สาเหตุที่ติดปัญหา">
+                <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
+              </Field>
+            <SubmitButton pendingLabel="กำลังอัปเดต task...">บันทึก task</SubmitButton>
           </form>
         </TaskEditor>
       ) : null}
 
       {!compact ? (
         <p className="mt-4 text-xs text-muted">
-          Updated by {task.updatedByName ?? "Unknown"} · {formatRelative(task.updatedAt)}
+          อัปเดตโดย {task.updatedByName ?? "ไม่ระบุ"} | {formatRelative(task.updatedAt)}
         </p>
       ) : null}
     </div>
@@ -482,7 +487,7 @@ export function Timeline({ items }: { items: ActivityLog[] }) {
       {remainingItems.length > 0 ? (
         <details className="rounded-[24px] bg-slate-50/70 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-600">
-            Expand timeline ({remainingItems.length} more)
+            ดู activity เพิ่มเติม ({remainingItems.length})
           </summary>
           <div className="mt-3 space-y-3">
             {remainingItems.map((item) => (
@@ -506,7 +511,7 @@ function TimelineRow({ item, compact = false }: { item: ActivityLog; compact?: b
           <p className="text-sm font-semibold text-foreground">{item.actorName}</p>
           <p className="text-[11px] text-muted">{formatDateTime(item.createdAt)}</p>
         </div>
-        <p className="mt-1 text-sm text-muted">{item.action}</p>
+        <p className="mt-1 text-sm text-muted">{labelForActivityAction(item.action)}</p>
       </div>
     </div>
   );
@@ -519,7 +524,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
         <GlassPanel
           key={bundle.ward.id}
           title={bundle.ward.name}
-          subtitle="Critical first, watch second, pending and blocked next."
+          subtitle="เรียงคนวิกฤตก่อน แล้วตามด้วยคนที่ต้องเฝ้าระวัง งานค้าง และงานที่ติดปัญหา"
         >
           <div className="space-y-4">
             {bundle.patients
@@ -533,21 +538,21 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                 <div key={patient.id} className="rounded-[28px] border border-white/70 bg-white/74 p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
+                      <p className="text-xs uppercase tracking-[0.24em] text-muted">เตียง {patient.bed}</p>
                       <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.diagnosis}</h3>
                     </div>
-                    <Pill tone={statusTone(patient.status)}>{patient.status}</Pill>
+                    <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                   </div>
 
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
                     <MiniList
-                      title="Watch"
+                      title="เฝ้าระวัง"
                       items={patient.problems
                         .map((problem) => problem.watchOut)
                         .filter((value): value is string => Boolean(value))}
                     />
                     <MiniList
-                      title="Pending"
+                      title="สิ่งที่ค้าง"
                       items={[
                         ...patient.problems
                           .map((problem) => problem.pending)
@@ -557,7 +562,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                     />
                     <MiniList
                       title="Escalation"
-                      items={[patient.handover?.escalationInstruction ?? "No manual escalation note yet."]}
+                      items={[patient.handover?.escalationInstruction ?? "ยังไม่มีคำสั่ง escalation เพิ่มเติม"]}
                     />
                   </div>
                 </div>
@@ -578,16 +583,16 @@ export function TaskInbox({ items }: { items: Array<{ task: WardTask; patient: P
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-base font-semibold text-foreground">{task.title}</p>
-                <Pill tone={statusTone(task.status)}>{task.status}</Pill>
+                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
                 <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
               </div>
               <p className="mt-1 text-sm text-muted">
-                Bed {patient.bed} · {patient.displayName} · {patient.diagnosis}
+                เตียง {patient.bed} | {patient.displayName} | {patient.diagnosis}
               </p>
             </div>
             <div className="text-right text-xs text-muted">
-              <p>{task.ownerName ?? "Unassigned"}</p>
-              <p>{task.dueAt ? formatDateTime(task.dueAt) : "No due time"}</p>
+              <p>{task.ownerName ?? "ยังไม่ assign"}</p>
+              <p>{task.dueAt ? formatDateTime(task.dueAt) : "ยังไม่กำหนดเวลา"}</p>
             </div>
           </div>
         </div>
@@ -688,10 +693,58 @@ export function SetupNotice({
   );
 }
 
+export function LoadingShell({
+  title = "Loading data",
+  subtitle = "รอสักครู่ ระบบกำลังเตรียมข้อมูลล่าสุด",
+}: {
+  title?: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="space-y-6">
+      <GlassPanel title={title} subtitle={subtitle}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
+        </div>
+      </GlassPanel>
+    </div>
+  );
+}
+
+export function LoginSkeleton() {
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10">
+      <div className="glass-card soft-grid w-full overflow-hidden rounded-[40px] p-6 md:p-10">
+        <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-5">
+            <SkeletonBlock className="h-5 w-32" />
+            <SkeletonBlock className="h-12 w-full max-w-xl" />
+            <SkeletonBlock className="h-5 w-full max-w-2xl" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          </div>
+          <div className="glass-card rounded-[32px] p-6">
+            <SkeletonBlock className="h-6 w-40" />
+            <div className="mt-5 space-y-3">
+              <SkeletonBlock className="h-14 w-full rounded-2xl" />
+              <SkeletonBlock className="h-14 w-full rounded-2xl" />
+              <SkeletonBlock className="h-12 w-36 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function StaffOptions({ profiles }: { profiles: UserProfile[] }) {
   return (
     <>
-      <option value="">Unassigned</option>
+      <option value="">ยังไม่ assign</option>
       {profiles.map((profile) => (
         <option key={profile.id} value={profile.id}>
           {profile.name} ({labelForRole(profile.role)})
@@ -711,7 +764,7 @@ export function TemplateCards({ templates }: { templates: TaskTemplate[] }) {
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(template.type)}</Pill>
           </div>
           <p className="mt-3 text-sm text-muted">
-            Default priority: {labelForTaskPriority(template.defaultPriority)}
+            ความสำคัญเริ่มต้น: {labelForTaskPriority(template.defaultPriority)}
           </p>
         </div>
       ))}
@@ -736,12 +789,12 @@ export function StaffRoleCards({
             <input type="hidden" name="userId" value={profile.id} />
             <Field label="Role">
               <SelectBox name="role" defaultValue={profile.role} className="min-w-44">
-                <option value="admin">Admin</option>
-                <option value="resident">Residence</option>
+                <option value="admin">แอดมิน</option>
+                <option value="resident">Resident</option>
                 <option value="student">Student</option>
               </SelectBox>
             </Field>
-            <SubmitButton>Update role</SubmitButton>
+            <SubmitButton>อัปเดต role</SubmitButton>
           </form>
         </div>
       ))}
@@ -770,7 +823,7 @@ function MiniList({ title, items }: { title: string; items: string[] }) {
             </p>
           ))
         ) : (
-          <p className="text-sm text-muted">None</p>
+          <p className="text-sm text-muted">ไม่มี</p>
         )}
       </div>
     </div>
@@ -782,4 +835,27 @@ function toDatetimeLocal(value: string | null) {
   const date = new Date(value);
   const tzOffset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-[28px] border border-white/70 bg-white/72 p-4">
+      <SkeletonBlock className="h-4 w-24" />
+      <SkeletonBlock className="mt-3 h-7 w-40" />
+      <SkeletonBlock className="mt-3 h-4 w-full" />
+      <SkeletonBlock className="mt-2 h-4 w-2/3" />
+      <div className="mt-4 flex gap-2">
+        <SkeletonBlock className="h-7 w-20 rounded-full" />
+        <SkeletonBlock className="h-7 w-24 rounded-full" />
+      </div>
+      <div className="mt-5 flex items-center justify-between">
+        <SkeletonBlock className="h-4 w-28" />
+        <SkeletonBlock className="h-4 w-20" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonBlock({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-2xl bg-mint-100/90", className)} />;
 }

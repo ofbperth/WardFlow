@@ -10,14 +10,14 @@ export default async function DischargedPage() {
     <div className="space-y-6">
       <GlassPanel
         title="Discharged patients"
-        subtitle="Once a patient is discharged, the card moves here and leaves the active ward board."
+        subtitle="เมื่อจำหน่ายผู้ป่วยแล้ว การ์ดจะย้ายออกจาก active ward และมาอยู่หน้านี้อัตโนมัติ"
       >
         {summaries.some((summary) => summary.patients.length > 0) ? (
           <PatientCensus summaries={summaries} />
         ) : (
           <EmptyState
             title="No discharged patients yet"
-            body="Discharged patients will appear here automatically after a Residence or Admin user discharges them."
+            body="เมื่อ Resident หรือ Admin จำหน่ายผู้ป่วย รายการจะย้ายมาแสดงที่หน้านี้อัตโนมัติ"
           />
         )}
       </GlassPanel>

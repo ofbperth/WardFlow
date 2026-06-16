@@ -6,8 +6,8 @@ import {
   saveTaskAction,
   updateTaskStatusAction,
 } from "@/app/actions";
-import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { PendingSubmitButton, ProblemCreator, TaskCreator } from "@/components/form-feedback";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
   EmptyState,
   Field,
@@ -24,6 +24,7 @@ import {
   Timeline,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
+import { formatDateTime } from "@/lib/utils";
 import { getPatientBundle, getProfiles, getTaskTemplates } from "@/lib/wardflow";
 
 export default async function PatientPage({
@@ -43,7 +44,7 @@ export default async function PatientPage({
     return (
       <EmptyState
         title="Patient not found"
-        body="The requested patient is missing or outside your ward scope."
+        body="ไม่พบข้อมูลผู้ป่วยรายนี้ หรือคุณไม่มีสิทธิ์เข้าถึงวอร์ดนี้"
       />
     );
   }
@@ -64,17 +65,17 @@ export default async function PatientPage({
       />
 
       <GlassPanel
-        title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
-        subtitle={`Updated ${bundle.patient.lastUpdate}`}
+        title={`${bundle.patient.displayName} | เตียง ${bundle.patient.bed}`}
+        subtitle={`อัปเดตล่าสุด ${formatDateTime(bundle.patient.lastUpdate)}`}
         action={
           canManagePatient && bundle.patient.lifecycle === "active" ? (
             <form action={dischargePatientAction}>
               <input type="hidden" name="patientId" value={bundle.patient.id} />
               <PendingSubmitButton
-                pendingLabel="Discharging..."
+                pendingLabel="กำลังจำหน่ายผู้ป่วย..."
                 className="rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600"
               >
-                Discharge patient
+                จำหน่ายผู้ป่วย
               </PendingSubmitButton>
             </form>
           ) : null
@@ -85,7 +86,7 @@ export default async function PatientPage({
 
       <div className="grid gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
         <div className="space-y-6">
-          <GlassPanel title="Problem list" subtitle="Resolved items collapse by default.">
+          <GlassPanel title="Problem list" subtitle="รายการที่ resolved แล้วจะถูกพับไว้ให้อ่านหน้าง่าย">
             <ProblemCards
               problems={bundle.problems}
               patientId={bundle.patient.id}
@@ -95,7 +96,7 @@ export default async function PatientPage({
             />
           </GlassPanel>
 
-          <GlassPanel title="Task board" subtitle="Done tasks move into archived section automatically.">
+          <GlassPanel title="Task board" subtitle="งานที่ทำเสร็จจะย้ายไปส่วน archive อัตโนมัติ">
             <TaskCards
               tasks={bundle.tasks}
               patient={bundle.patient}
@@ -109,53 +110,53 @@ export default async function PatientPage({
 
         <div className="space-y-6">
           {canEditClinical ? (
-            <GlassPanel title="Add problem" subtitle="Structured handover-safe problem entry.">
+            <GlassPanel title="Add problem" subtitle="บันทึกข้อมูลแบบสั้น ชัด และใช้ต่อใน handover ได้">
               <SectionLabel>Problem</SectionLabel>
               <ProblemCreator>
                 <form action={saveProblemAction} className="space-y-3">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
-                  <Field label="Title">
+                  <Field label="หัวข้อ">
                     <TextInput name="title" required placeholder="Hypoxemia overnight" />
                   </Field>
-                  <Field label="Status">
+                  <Field label="สถานะ">
                     <SelectBox name="status" defaultValue="active">
-                      <option value="active">active</option>
-                      <option value="improving">improving</option>
-                      <option value="worsening">worsening</option>
-                      <option value="resolved">resolved</option>
+                      <option value="active">Active</option>
+                      <option value="improving">Improving</option>
+                      <option value="worsening">Worsening</option>
+                      <option value="resolved">Resolved</option>
                     </SelectBox>
                   </Field>
                   <Field label="Key data">
                     <TextArea name="keyData" placeholder="O2 requirement up to 5L/min" />
                   </Field>
-                  <Field label="Plan">
+                  <Field label="แผน">
                     <TextArea name="plan" placeholder="Repeat CXR and monitor saturation trend" />
                   </Field>
-                  <Field label="Pending">
+                  <Field label="สิ่งที่ค้าง">
                     <TextArea name="pending" placeholder="Await ABG" />
                   </Field>
-                  <Field label="Watch out">
+                  <Field label="เฝ้าระวัง">
                     <TextArea name="watchOut" placeholder="Desaturation during transfer" />
                   </Field>
                   <label className="flex items-center gap-2 text-sm text-foreground">
                     <input type="checkbox" name="includeInHandover" defaultChecked />
-                    Include in handover
+                    รวมใน handover
                   </label>
-                  <SubmitButton>Save problem</SubmitButton>
+                  <SubmitButton>บันทึก problem</SubmitButton>
                 </form>
               </ProblemCreator>
             </GlassPanel>
           ) : null}
 
           {canEditClinical ? (
-            <GlassPanel title="Create task" subtitle="Owner, priority, due time, and blocker aware.">
+            <GlassPanel title="Create task" subtitle="กำหนด owner, priority และเวลาให้ชัดตั้งแต่ตอนสร้าง">
               <TaskCreator>
                 <form action={saveTaskAction} className="space-y-3">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
-                  <Field label="Task title">
+                  <Field label="ชื่องาน">
                     <SelectBox name="title" defaultValue="" required>
                       <option value="" disabled>
-                        Select task title
+                        เลือก task ที่ต้องการ
                       </option>
                       {templates.map((template) => (
                         <option key={template.id} value={template.title}>
@@ -164,18 +165,18 @@ export default async function PatientPage({
                       ))}
                     </SelectBox>
                   </Field>
-                  <Field label="Owner">
+                  <Field label="ผู้รับผิดชอบ">
                     <SelectBox name="ownerId" defaultValue={session.profile.id}>
                       <StaffOptions profiles={profiles} />
                     </SelectBox>
                   </Field>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Status">
+                    <Field label="สถานะ">
                       <SelectBox name="status" defaultValue="not_started">
-                        <option value="not_started">not_started</option>
-                        <option value="in_progress">in_progress</option>
-                        <option value="done">done</option>
-                        <option value="blocked">blocked</option>
+                        <option value="not_started">Not started</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="done">Done</option>
+                        <option value="blocked">Blocked</option>
                       </SelectBox>
                     </Field>
                     <Field label="Priority">
@@ -193,30 +194,30 @@ export default async function PatientPage({
                         <option value="imaging">imaging</option>
                         <option value="consult">consult</option>
                         <option value="procedure">procedure</option>
-                        <option value="family_talk">family_talk</option>
-                        <option value="discharge">discharge</option>
-                        <option value="medication">medication</option>
-                        <option value="other">other</option>
+                        <option value="family_talk">คุยญาติ</option>
+                        <option value="discharge">จำหน่าย</option>
+                        <option value="medication">ยา</option>
+                        <option value="other">อื่น ๆ</option>
                       </SelectBox>
                     </Field>
-                    <Field label="Due time">
+                    <Field label="เวลาที่ต้องเสร็จ">
                       <TextInput name="dueAt" type="datetime-local" />
                     </Field>
                   </div>
-                  <Field label="Note">
+                  <Field label="โน้ต">
                     <TextArea name="note" placeholder="Escalate if resistant organism" />
                   </Field>
-                  <Field label="Blocked reason">
-                    <TextArea name="blockedReason" placeholder="Only when blocked" />
+                  <Field label="สาเหตุที่ติดปัญหา">
+                    <TextArea name="blockedReason" placeholder="กรอกเมื่อ task ติดปัญหา" />
                   </Field>
-                  <SubmitButton>Create task</SubmitButton>
+                  <SubmitButton>บันทึก task</SubmitButton>
                 </form>
               </TaskCreator>
             </GlassPanel>
           ) : null}
 
           {canEditClinical ? (
-            <GlassPanel title="Manual handover note" subtitle="Editable final note.">
+            <GlassPanel title="Manual handover note" subtitle="เพิ่ม short note และคำสั่ง escalation เพิ่มเติมได้">
               <form action={saveHandoverAction} className="space-y-3">
                 <input type="hidden" name="patientId" value={bundle.patient.id} />
                 <Field label="Short note">
@@ -233,7 +234,7 @@ export default async function PatientPage({
                     placeholder="Call IM resident if sat < 92% despite 5L O2"
                   />
                 </Field>
-                <SubmitButton>Save handover</SubmitButton>
+                <SubmitButton>บันทึก handover</SubmitButton>
               </form>
             </GlassPanel>
           ) : null}
@@ -242,7 +243,7 @@ export default async function PatientPage({
 
       <GlassPanel
         title="Activity timeline"
-        subtitle="Compact by default. Expand if you need deeper audit history."
+        subtitle="แสดงรายการเปลี่ยนแปลงล่าสุดก่อน และกดขยายได้เมื่ออยากดูย้อนหลังเพิ่ม"
       >
         <Timeline items={bundle.activity} />
       </GlassPanel>
