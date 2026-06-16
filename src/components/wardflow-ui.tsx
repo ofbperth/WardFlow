@@ -151,8 +151,6 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
     { label: "ผู้รับผิดชอบ", value: patient.responsibleDoctorName ?? "ยังไม่ระบุ" },
     { label: "สถานะ", value: labelForPatientStatus(patient.status) },
     { label: "แพ้ยา", value: patient.allergy ?? "-" },
-    { label: "Isolation", value: patient.isolationFlag ? "มี" : "ไม่มี" },
-    { label: "Code status", value: patient.codeStatus ?? "-" },
     { label: "สถานะการรักษา", value: labelForLifecycle(patient.lifecycle) },
     { label: "จำหน่ายเมื่อ", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
   ];
