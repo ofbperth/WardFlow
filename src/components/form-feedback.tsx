@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Pencil, Plus, ShieldAlert } from "lucide-react";
+import { Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
@@ -204,14 +204,43 @@ export function DischargeSummaryEditor({
 }: {
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <div className="mt-5 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600"
+        >
+          <TriangleAlert className="h-4 w-4" />
+          Discharge patient
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <InlineEditor
-      buttonLabel="Discharge patient"
-      panelTitle="Discharge summary"
-      buttonIcon="edit"
-    >
-      {children}
-    </InlineEditor>
+    <div className="mt-5 rounded-[20px] border border-amber-200 bg-amber-50/80 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-amber-700">Discharge summary</p>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700"
+        >
+          Cancel
+        </button>
+      </div>
+      <div
+        onSubmit={() => {
+          setOpen(false);
+        }}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
