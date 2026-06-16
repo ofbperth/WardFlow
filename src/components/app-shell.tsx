@@ -42,17 +42,16 @@ export function AppShell({
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-3xl ring-1 ring-white/70">
+            <div className="relative h-12 w-[172px] shrink-0">
               <Image
-                src="/wardflow-app-logo.png"
+                src="/wardflow-header-logo.png"
                 alt="WardFlow"
                 fill
-                sizes="56px"
-                className="object-cover"
+                sizes="172px"
+                className="object-contain"
               />
             </div>
             <div className="min-w-0">
-              <p className="font-display text-lg font-semibold text-foreground">WardFlow</p>
               <p className="truncate text-sm text-muted">
                 {profile.name} | {labelForRole(profile.role)}
               </p>
