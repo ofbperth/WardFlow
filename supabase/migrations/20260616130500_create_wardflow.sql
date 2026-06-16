@@ -3,10 +3,13 @@ create extension if not exists pgcrypto;
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'app_role') then
-    create type public.app_role as enum ('doctor', 'senior_doctor', 'nurse', 'admin');
+    create type public.app_role as enum ('admin', 'resident', 'student');
   end if;
   if not exists (select 1 from pg_type where typname = 'patient_status') then
     create type public.patient_status as enum ('stable', 'watch', 'critical');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'patient_lifecycle') then
+    create type public.patient_lifecycle as enum ('active', 'discharged');
   end if;
   if not exists (select 1 from pg_type where typname = 'problem_status') then
     create type public.problem_status as enum ('active', 'improving', 'worsening', 'resolved');
@@ -44,7 +47,7 @@ create table if not exists public.profiles (
   name text not null,
   email text not null,
   avatar_url text,
-  role public.app_role not null default 'doctor',
+  role public.app_role not null default 'student',
   ward_assignment uuid references public.wards(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -63,6 +66,8 @@ create table if not exists public.patients (
   allergy text,
   isolation_flag boolean not null default false,
   code_status text,
+  lifecycle public.patient_lifecycle not null default 'active',
+  discharged_at timestamptz,
   updated_by_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())

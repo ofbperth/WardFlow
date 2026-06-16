@@ -3,6 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import type {
   PatientStatus,
   ProblemStatus,
+  Role,
   TaskPriority,
   TaskStatus,
   TaskType,
@@ -86,4 +87,12 @@ export function labelForTaskType(type: TaskType) {
     medication: "Medication",
     other: "Other",
   }[type];
+}
+
+export function labelForRole(role: Role) {
+  return {
+    admin: "Admin",
+    resident: "Residence",
+    student: "Student",
+  }[role];
 }

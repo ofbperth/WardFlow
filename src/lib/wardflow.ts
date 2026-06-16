@@ -17,6 +17,7 @@ import type {
   Patient,
   PatientBundle,
   Problem,
+  Role,
   SessionContext,
   TaskTemplate,
   UserProfile,
@@ -48,6 +49,7 @@ const store: DemoStore = {
 };
 
 const patientSchema = z.object({
+  id: z.string().optional(),
   wardId: z.string().min(1),
   bed: z.string().min(1),
   displayName: z.string().min(1),
@@ -57,6 +59,7 @@ const patientSchema = z.object({
 });
 
 const problemSchema = z.object({
+  id: z.string().optional(),
   patientId: z.string().min(1),
   title: z.string().min(1),
   status: z.enum(["active", "improving", "worsening", "resolved"]),
@@ -68,6 +71,7 @@ const problemSchema = z.object({
 });
 
 const taskSchema = z.object({
+  id: z.string().optional(),
   patientId: z.string().min(1),
   title: z.string().min(1),
   ownerId: z.string().optional().nullable(),
@@ -95,6 +99,7 @@ const handoverSchema = z.object({
 });
 
 const wardSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1),
 });
 
@@ -113,6 +118,11 @@ const templateSchema = z.object({
   defaultPriority: z.enum(["low", "normal", "high", "urgent"]),
 });
 
+const userRoleSchema = z.object({
+  userId: z.string().min(1),
+  role: z.enum(["admin", "resident", "student"]),
+});
+
 function now() {
   return new Date().toISOString();
 }
@@ -125,6 +135,22 @@ function textOrNull(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function canManageAdmin(session: SessionContext) {
+  return session.profile.role === "admin";
+}
+
+function canManagePatients(session: SessionContext) {
+  return session.profile.role === "admin" || session.profile.role === "resident";
+}
+
+function canManageClinicalEntries(session: SessionContext) {
+  return (
+    session.profile.role === "admin" ||
+    session.profile.role === "resident" ||
+    session.profile.role === "student"
+  );
 }
 
 function requireWardAccess(session: SessionContext, wardId: string) {
@@ -174,7 +200,7 @@ function visibleWardIds(session: SessionContext) {
     : [session.profile.wardAssignment].filter(Boolean) as string[];
 }
 
-export async function getWardSummaries(session: SessionContext): Promise<WardSummary[]> {
+function buildWardSummary(session: SessionContext, lifecycle: "active" | "discharged"): WardSummary[] {
   const wardIds = visibleWardIds(session);
 
   return store.wards
@@ -182,7 +208,7 @@ export async function getWardSummaries(session: SessionContext): Promise<WardSum
     .map((ward) => ({
       ward,
       patients: store.patients
-        .filter((patient) => patient.wardId === ward.id)
+        .filter((patient) => patient.wardId === ward.id && patient.lifecycle === lifecycle)
         .map((patient) => {
           const tasks = store.tasks.filter((task) => task.patientId === patient.id);
           return {
@@ -191,7 +217,20 @@ export async function getWardSummaries(session: SessionContext): Promise<WardSum
             blockedTaskCount: tasks.filter((task) => task.status === "blocked").length,
           };
         }),
-    }));
+    }))
+    .filter((summary) => summary.patients.length > 0 || lifecycle === "active");
+}
+
+function getPatientDirectoryName(profileId: string | null, fallback: string | null = null) {
+  return store.profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
+}
+
+export async function getWardSummaries(session: SessionContext): Promise<WardSummary[]> {
+  return buildWardSummary(session, "active");
+}
+
+export async function getDischargedSummaries(session: SessionContext): Promise<WardSummary[]> {
+  return buildWardSummary(session, "discharged");
 }
 
 export async function getWardDetail(session: SessionContext, wardId: string) {
@@ -200,7 +239,10 @@ export async function getWardDetail(session: SessionContext, wardId: string) {
   return summaries.find((summary) => summary.ward.id === wardId) ?? null;
 }
 
-export async function getPatientBundle(session: SessionContext, patientId: string): Promise<PatientBundle | null> {
+export async function getPatientBundle(
+  session: SessionContext,
+  patientId: string,
+): Promise<PatientBundle | null> {
   const patient = patientById(patientId);
   if (!patient) return null;
   requireWardAccess(session, patient.wardId);
@@ -235,9 +277,18 @@ export async function getTaskTemplates() {
 }
 
 export async function getMyTasks(session: SessionContext) {
-  const patientMap = new Map(store.patients.map((patient) => [patient.id, patient]));
+  const patientMap = new Map(
+    store.patients
+      .filter((patient) => patient.lifecycle === "active")
+      .map((patient) => [patient.id, patient]),
+  );
+
   return store.tasks
-    .filter((task) => task.ownerId === session.profile.id || session.profile.role === "admin")
+    .filter(
+      (task) =>
+        patientMap.has(task.patientId) &&
+        (task.ownerId === session.profile.id || session.profile.role === "admin"),
+    )
     .map((task) => ({ task, patient: patientMap.get(task.patientId)! }));
 }
 
@@ -263,18 +314,52 @@ export async function getHandoverBundles(session: SessionContext): Promise<Hando
 }
 
 export async function saveWard(formData: FormData, session: SessionContext) {
-  if (session.profile.role !== "admin") {
+  if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
 
-  const parsed = wardSchema.parse({ name: formData.get("name") });
-  store.wards.push({ id: nextId("ward"), name: parsed.name });
+  const parsed = wardSchema.parse({
+    id: textOrNull(formData.get("id")) ?? undefined,
+    name: formData.get("name"),
+  });
+
+  if (parsed.id) {
+    const ward = store.wards.find((entry) => entry.id === parsed.id);
+    if (!ward) throw new Error("Ward not found");
+    ward.name = parsed.name;
+  } else {
+    store.wards.push({ id: nextId("ward"), name: parsed.name });
+  }
+
   revalidatePath("/wards");
+  revalidatePath("/admin/wards");
+  revalidatePath("/discharged");
+}
+
+export async function updateUserRole(formData: FormData, session: SessionContext) {
+  if (!canManageAdmin(session)) {
+    throw new Error("Admin only");
+  }
+
+  const parsed = userRoleSchema.parse({
+    userId: formData.get("userId"),
+    role: formData.get("role"),
+  });
+
+  const profile = store.profiles.find((entry) => entry.id === parsed.userId);
+  if (!profile) throw new Error("User not found");
+  profile.role = parsed.role as Role;
+
   revalidatePath("/admin/wards");
 }
 
 export async function savePatient(formData: FormData, session: SessionContext) {
+  if (!canManagePatients(session)) {
+    throw new Error("Only admin or resident can create or update patient");
+  }
+
   const parsed = patientSchema.parse({
+    id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
     bed: formData.get("bed"),
     displayName: formData.get("displayName"),
@@ -284,31 +369,77 @@ export async function savePatient(formData: FormData, session: SessionContext) {
   });
   requireWardAccess(session, parsed.wardId);
 
-  const owner = store.profiles.find((profile) => profile.id === parsed.responsibleDoctorId);
-  const patient: Patient = {
-    id: nextId("patient"),
-    wardId: parsed.wardId,
-    bed: parsed.bed,
-    displayName: parsed.displayName,
-    age: null,
-    sex: null,
-    diagnosis: parsed.diagnosis,
-    status: parsed.status,
-    responsibleDoctorId: parsed.responsibleDoctorId ?? session.profile.id,
-    responsibleDoctorName: owner?.name ?? session.profile.name,
-    allergy: null,
-    isolationFlag: false,
-    codeStatus: null,
-    lastUpdate: now(),
-  };
+  const ownerName = getPatientDirectoryName(parsed.responsibleDoctorId ?? null, session.profile.name);
 
-  store.patients.push(patient);
-  addActivity(session, patient.id, "patient.created", "patient", patient.id, null, patient);
+  if (parsed.id) {
+    const existing = patientById(parsed.id);
+    if (!existing) throw new Error("Patient not found");
+    const before = structuredClone(existing);
+    existing.wardId = parsed.wardId;
+    existing.bed = parsed.bed;
+    existing.displayName = parsed.displayName;
+    existing.diagnosis = parsed.diagnosis;
+    existing.status = parsed.status;
+    existing.responsibleDoctorId = parsed.responsibleDoctorId ?? session.profile.id;
+    existing.responsibleDoctorName = ownerName;
+    existing.lastUpdate = now();
+    addActivity(session, existing.id, "patient.updated", "patient", existing.id, before, existing);
+  } else {
+    const patient: Patient = {
+      id: nextId("patient"),
+      wardId: parsed.wardId,
+      bed: parsed.bed,
+      displayName: parsed.displayName,
+      age: null,
+      sex: null,
+      diagnosis: parsed.diagnosis,
+      status: parsed.status,
+      responsibleDoctorId: parsed.responsibleDoctorId ?? session.profile.id,
+      responsibleDoctorName: ownerName,
+      allergy: null,
+      isolationFlag: false,
+      codeStatus: null,
+      lifecycle: "active",
+      dischargedAt: null,
+      lastUpdate: now(),
+    };
+    store.patients.push(patient);
+    addActivity(session, patient.id, "patient.created", "patient", patient.id, null, patient);
+  }
+
   revalidatePath("/wards");
+  revalidatePath("/discharged");
+}
+
+export async function dischargePatient(patientId: string, session: SessionContext) {
+  if (!canManagePatients(session)) {
+    throw new Error("Only admin or resident can discharge patient");
+  }
+
+  const patient = patientById(patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardAccess(session, patient.wardId);
+
+  const before = structuredClone(patient);
+  patient.lifecycle = "discharged";
+  patient.dischargedAt = now();
+  patient.lastUpdate = patient.dischargedAt;
+  addActivity(session, patient.id, "patient.discharged", "patient", patient.id, before, patient);
+
+  revalidatePath("/wards");
+  revalidatePath("/discharged");
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath("/handover");
+  revalidatePath("/my-tasks");
 }
 
 export async function saveProblem(formData: FormData, session: SessionContext) {
+  if (!canManageClinicalEntries(session)) {
+    throw new Error("Clinical entries are not allowed");
+  }
+
   const parsed = problemSchema.parse({
+    id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
     title: formData.get("title"),
     status: formData.get("status"),
@@ -323,25 +454,40 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
   if (!patient) throw new Error("Patient not found");
   requireWardAccess(session, patient.wardId);
 
-  const problem: Problem = {
-    id: nextId("problem"),
-    patientId: parsed.patientId,
-    title: parsed.title,
-    status: parsed.status,
-    keyData: parsed.keyData ?? null,
-    plan: parsed.plan ?? null,
-    pending: parsed.pending ?? null,
-    watchOut: parsed.watchOut ?? null,
-    includeInHandover: parsed.includeInHandover,
-    sortOrder:
-      store.problems
-        .filter((entry) => entry.patientId === parsed.patientId)
-        .reduce((max, entry) => Math.max(max, entry.sortOrder), 0) + 1,
-    updatedAt: now(),
-  };
+  if (parsed.id) {
+    const existing = store.problems.find((entry) => entry.id === parsed.id);
+    if (!existing) throw new Error("Problem not found");
+    const before = structuredClone(existing);
+    existing.title = parsed.title;
+    existing.status = parsed.status;
+    existing.keyData = parsed.keyData ?? null;
+    existing.plan = parsed.plan ?? null;
+    existing.pending = parsed.pending ?? null;
+    existing.watchOut = parsed.watchOut ?? null;
+    existing.includeInHandover = parsed.includeInHandover;
+    existing.updatedAt = now();
+    addActivity(session, parsed.patientId, "problem.updated", "problem", existing.id, before, existing);
+  } else {
+    const problem: Problem = {
+      id: nextId("problem"),
+      patientId: parsed.patientId,
+      title: parsed.title,
+      status: parsed.status,
+      keyData: parsed.keyData ?? null,
+      plan: parsed.plan ?? null,
+      pending: parsed.pending ?? null,
+      watchOut: parsed.watchOut ?? null,
+      includeInHandover: parsed.includeInHandover,
+      sortOrder:
+        store.problems
+          .filter((entry) => entry.patientId === parsed.patientId)
+          .reduce((max, entry) => Math.max(max, entry.sortOrder), 0) + 1,
+      updatedAt: now(),
+    };
+    store.problems.push(problem);
+    addActivity(session, parsed.patientId, "problem.created", "problem", problem.id, null, problem);
+  }
 
-  store.problems.push(problem);
-  addActivity(session, parsed.patientId, "problem.created", "problem", problem.id, null, problem);
   refreshPatient(parsed.patientId);
   revalidatePath(`/patients/${parsed.patientId}`);
   revalidatePath("/handover");
@@ -353,6 +499,10 @@ export async function moveProblem(
   direction: "up" | "down",
   session: SessionContext,
 ) {
+  if (!canManageClinicalEntries(session)) {
+    throw new Error("Clinical entries are not allowed");
+  }
+
   const bundle = await getPatientBundle(session, patientId);
   if (!bundle) return;
   const currentIndex = bundle.problems.findIndex((problem) => problem.id === problemId);
@@ -363,6 +513,8 @@ export async function moveProblem(
   const swap = store.problems.find((problem) => problem.id === bundle.problems[swapIndex].id);
   if (!current || !swap) return;
 
+  const fromOrder = current.sortOrder;
+  const toOrder = swap.sortOrder;
   [current.sortOrder, swap.sortOrder] = [swap.sortOrder, current.sortOrder];
   current.updatedAt = now();
   swap.updatedAt = now();
@@ -372,15 +524,20 @@ export async function moveProblem(
     "problem.reordered",
     "problem",
     problemId,
-    { from: current.sortOrder, to: swap.sortOrder },
-    { from: swap.sortOrder, to: current.sortOrder },
+    { from: fromOrder, to: toOrder },
+    { from: toOrder, to: fromOrder },
   );
   refreshPatient(patientId);
   revalidatePath(`/patients/${patientId}`);
 }
 
 export async function saveTask(formData: FormData, session: SessionContext) {
+  if (!canManageClinicalEntries(session)) {
+    throw new Error("Clinical entries are not allowed");
+  }
+
   const parsed = taskSchema.parse({
+    id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
     title: formData.get("title"),
     ownerId: textOrNull(formData.get("ownerId")),
@@ -397,25 +554,44 @@ export async function saveTask(formData: FormData, session: SessionContext) {
   requireWardAccess(session, patient.wardId);
 
   const owner = store.profiles.find((profile) => profile.id === parsed.ownerId);
-  const task: WardTask = {
-    id: nextId("task"),
-    patientId: parsed.patientId,
-    title: parsed.title,
-    note: parsed.note ?? null,
-    ownerId: parsed.ownerId ?? null,
-    ownerName: owner?.name ?? null,
-    status: parsed.status,
-    priority: parsed.priority,
-    type: parsed.type,
-    dueAt: parsed.dueAt ?? null,
-    blockedReason: parsed.blockedReason ?? null,
-    updatedById: session.profile.id,
-    updatedByName: session.profile.name,
-    updatedAt: now(),
-  };
+  if (parsed.id) {
+    const existing = store.tasks.find((entry) => entry.id === parsed.id);
+    if (!existing) throw new Error("Task not found");
+    const before = structuredClone(existing);
+    existing.title = parsed.title;
+    existing.note = parsed.note ?? null;
+    existing.ownerId = parsed.ownerId ?? null;
+    existing.ownerName = owner?.name ?? null;
+    existing.status = parsed.status;
+    existing.priority = parsed.priority;
+    existing.type = parsed.type;
+    existing.dueAt = parsed.dueAt ?? null;
+    existing.blockedReason = parsed.blockedReason ?? null;
+    existing.updatedById = session.profile.id;
+    existing.updatedByName = session.profile.name;
+    existing.updatedAt = now();
+    addActivity(session, parsed.patientId, "task.updated", "ward_task", existing.id, before, existing);
+  } else {
+    const task: WardTask = {
+      id: nextId("task"),
+      patientId: parsed.patientId,
+      title: parsed.title,
+      note: parsed.note ?? null,
+      ownerId: parsed.ownerId ?? null,
+      ownerName: owner?.name ?? null,
+      status: parsed.status,
+      priority: parsed.priority,
+      type: parsed.type,
+      dueAt: parsed.dueAt ?? null,
+      blockedReason: parsed.blockedReason ?? null,
+      updatedById: session.profile.id,
+      updatedByName: session.profile.name,
+      updatedAt: now(),
+    };
+    store.tasks.unshift(task);
+    addActivity(session, parsed.patientId, "task.created", "ward_task", task.id, null, task);
+  }
 
-  store.tasks.unshift(task);
-  addActivity(session, parsed.patientId, "task.created", "ward_task", task.id, null, task);
   refreshPatient(parsed.patientId);
   revalidatePath(`/patients/${parsed.patientId}`);
   revalidatePath("/my-tasks");
@@ -428,6 +604,10 @@ export async function updateTaskStatus(
   status: WardTask["status"],
   session: SessionContext,
 ) {
+  if (!canManageClinicalEntries(session)) {
+    throw new Error("Clinical entries are not allowed");
+  }
+
   const patient = patientById(patientId);
   if (!patient) throw new Error("Patient not found");
   requireWardAccess(session, patient.wardId);
@@ -449,6 +629,10 @@ export async function updateTaskStatus(
 }
 
 export async function saveHandover(formData: FormData, session: SessionContext) {
+  if (!canManageClinicalEntries(session)) {
+    throw new Error("Clinical entries are not allowed");
+  }
+
   const parsed = handoverSchema.parse({
     patientId: formData.get("patientId"),
     note: textOrNull(formData.get("note")) ?? "",
@@ -500,7 +684,7 @@ export async function saveHandover(formData: FormData, session: SessionContext) 
 }
 
 export async function saveTemplate(formData: FormData, session: SessionContext) {
-  if (session.profile.role !== "admin") {
+  if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
 

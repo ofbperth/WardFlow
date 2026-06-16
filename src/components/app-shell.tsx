@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ClipboardList, LayoutGrid, LogOut, Shield, Stethoscope } from "lucide-react";
+import {
+  Activity,
+  Archive,
+  ClipboardList,
+  LayoutGrid,
+  LogOut,
+  Shield,
+  Stethoscope,
+} from "lucide-react";
 import { logoutAction } from "@/app/actions";
-import { cn, getInitials } from "@/lib/utils";
+import { cn, getInitials, labelForRole } from "@/lib/utils";
 import type { UserProfile } from "@/lib/types";
 
 const navItems = [
   { href: "/wards", label: "Wards", icon: LayoutGrid },
+  { href: "/discharged", label: "Discharged", icon: Archive },
   { href: "/handover", label: "Handover", icon: ClipboardList },
   { href: "/my-tasks", label: "My tasks", icon: Activity },
 ];
@@ -24,7 +33,7 @@ export function AppShell({
 
   return (
     <div className="page-shell min-h-screen px-4 pb-28 pt-5 md:px-8 md:pb-10">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-5 py-4">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-mint-500/15 text-lg font-semibold text-mint-700">
@@ -33,7 +42,7 @@ export function AppShell({
             <div>
               <p className="font-display text-lg font-semibold text-foreground">WardFlow</p>
               <p className="text-sm text-muted">
-                {profile.name} · {profile.role.replace("_", " ")}
+                {profile.name} · {labelForRole(profile.role)}
               </p>
             </div>
           </div>
@@ -104,7 +113,7 @@ export function AppShell({
         </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-4 z-30 mx-auto flex w-[min(680px,calc(100vw-24px))] items-center justify-between rounded-[30px] border border-white/65 bg-white/80 px-3 py-3 shadow-2xl shadow-emerald-950/10 backdrop-blur-2xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-4 z-30 mx-auto flex w-[min(820px,calc(100vw-24px))] items-center justify-between rounded-[30px] border border-white/65 bg-white/80 px-3 py-3 shadow-2xl shadow-emerald-950/10 backdrop-blur-2xl lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
@@ -113,7 +122,7 @@ export function AppShell({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold transition",
+                "flex flex-1 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold transition",
                 active ? "bg-mint-500 text-white" : "text-muted",
               )}
             >

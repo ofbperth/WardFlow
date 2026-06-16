@@ -18,7 +18,7 @@ function mapProfileRow(row: Record<string, unknown>): UserProfile {
     name: String(row.name ?? "Unknown User"),
     email: String(row.email ?? ""),
     avatarUrl: (row.avatar_url as string | null | undefined) ?? null,
-    role: (row.role as UserProfile["role"] | undefined) ?? "doctor",
+    role: (row.role as UserProfile["role"] | undefined) ?? "student",
     wardAssignment: (row.ward_assignment as string | null | undefined) ?? null,
   };
 }

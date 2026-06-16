@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
+  Pencil,
   Sparkles,
 } from "lucide-react";
 import {
@@ -13,6 +14,7 @@ import {
   formatRelative,
   formatShortTime,
   getInitials,
+  labelForRole,
   labelForTaskType,
   priorityTone,
   statusTone,
@@ -87,7 +89,7 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
           subtitle={`${summary.patients.length} patients`}
           action={<Pill tone="bg-mint-500/15 text-mint-700">{summary.patients.length} census</Pill>}
         >
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {summary.patients.map((patient) => (
               <Link
                 key={patient.id}
@@ -110,6 +112,9 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
                   <Pill tone="bg-amber-100 text-amber-700">{patient.pendingTaskCount} pending</Pill>
                   {patient.blockedTaskCount > 0 ? (
                     <Pill tone="bg-rose-100 text-rose-700">{patient.blockedTaskCount} blocked</Pill>
+                  ) : null}
+                  {patient.lifecycle === "discharged" ? (
+                    <Pill tone="bg-slate-100 text-slate-600">discharged</Pill>
                   ) : null}
                 </div>
 
@@ -136,10 +141,12 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
     { label: "Allergy", value: patient.allergy ?? "-" },
     { label: "Isolation", value: patient.isolationFlag ? "Yes" : "No" },
     { label: "Code status", value: patient.codeStatus ?? "-" },
+    { label: "Lifecycle", value: patient.lifecycle },
+    { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
       {items.map((item) => (
         <div key={item.label} className="rounded-[24px] bg-white/78 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted">{item.label}</p>
@@ -154,10 +161,14 @@ export function ProblemCards({
   problems,
   patientId,
   reorderAction,
+  saveProblemAction,
+  canEdit,
 }: {
   problems: Problem[];
   patientId: string;
   reorderAction: (formData: FormData) => Promise<void>;
+  saveProblemAction: (formData: FormData) => Promise<void>;
+  canEdit: boolean;
 }) {
   const active = problems.filter((problem) => problem.status !== "resolved");
   const resolved = problems.filter((problem) => problem.status === "resolved");
@@ -175,38 +186,85 @@ export function ProblemCards({
               <p className="mt-2 text-sm text-muted">{problem.keyData ?? "No key data yet."}</p>
             </div>
             <div className="flex items-center gap-2">
-              <form action={reorderAction}>
-                <input type="hidden" name="patientId" value={patientId} />
-                <input type="hidden" name="problemId" value={problem.id} />
-                <input type="hidden" name="direction" value="up" />
-                <button
-                  type="submit"
-                  disabled={index === 0}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-35"
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </button>
-              </form>
-              <form action={reorderAction}>
-                <input type="hidden" name="patientId" value={patientId} />
-                <input type="hidden" name="problemId" value={problem.id} />
-                <input type="hidden" name="direction" value="down" />
-                <button
-                  type="submit"
-                  disabled={index === active.length - 1}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-35"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </form>
+              {canEdit ? (
+                <>
+                  <form action={reorderAction}>
+                    <input type="hidden" name="patientId" value={patientId} />
+                    <input type="hidden" name="problemId" value={problem.id} />
+                    <input type="hidden" name="direction" value="up" />
+                    <button
+                      type="submit"
+                      disabled={index === 0}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-35"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                  </form>
+                  <form action={reorderAction}>
+                    <input type="hidden" name="patientId" value={patientId} />
+                    <input type="hidden" name="problemId" value={problem.id} />
+                    <input type="hidden" name="direction" value="down" />
+                    <button
+                      type="submit"
+                      disabled={index === active.length - 1}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-35"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </form>
+                </>
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-4 grid gap-3 xl:grid-cols-3">
             <InfoBlock label="Plan" value={problem.plan ?? "-"} />
             <InfoBlock label="Pending" value={problem.pending ?? "-"} />
             <InfoBlock label="Watch out" value={problem.watchOut ?? "-"} />
           </div>
+
+          {canEdit ? (
+            <details className="mt-4 rounded-[20px] bg-mint-50/70 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-mint-700">
+                <span className="inline-flex items-center gap-2">
+                  <Pencil className="h-4 w-4" />
+                  Edit problem detail
+                </span>
+              </summary>
+              <form action={saveProblemAction} className="mt-4 space-y-3">
+                <input type="hidden" name="id" value={problem.id} />
+                <input type="hidden" name="patientId" value={patientId} />
+                <Field label="Title">
+                  <TextInput name="title" defaultValue={problem.title} required />
+                </Field>
+                <Field label="Status">
+                  <SelectBox name="status" defaultValue={problem.status}>
+                    <option value="active">active</option>
+                    <option value="improving">improving</option>
+                    <option value="worsening">worsening</option>
+                    <option value="resolved">resolved</option>
+                  </SelectBox>
+                </Field>
+                <Field label="Key data">
+                  <TextArea name="keyData" defaultValue={problem.keyData ?? ""} />
+                </Field>
+                <Field label="Plan">
+                  <TextArea name="plan" defaultValue={problem.plan ?? ""} />
+                </Field>
+                <Field label="Pending">
+                  <TextArea name="pending" defaultValue={problem.pending ?? ""} />
+                </Field>
+                <Field label="Watch out">
+                  <TextArea name="watchOut" defaultValue={problem.watchOut ?? ""} />
+                </Field>
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input type="checkbox" name="includeInHandover" defaultChecked={problem.includeInHandover} />
+                  Include in handover
+                </label>
+                <SubmitButton>Update problem</SubmitButton>
+              </form>
+            </details>
+          ) : null}
         </div>
       ))}
 
@@ -235,85 +293,235 @@ export function TaskCards({
   tasks,
   patient,
   updateStatusAction,
+  saveTaskAction,
+  profiles,
+  canEdit,
 }: {
   tasks: WardTask[];
   patient: Patient;
   updateStatusAction: (formData: FormData) => Promise<void>;
+  saveTaskAction: (formData: FormData) => Promise<void>;
+  profiles: UserProfile[];
+  canEdit: boolean;
 }) {
+  const active = tasks.filter((task) => task.status !== "done");
+  const archived = tasks.filter((task) => task.status === "done");
+
   return (
     <div className="space-y-3">
-      {tasks.map((task) => (
-        <div key={task.id} className="rounded-[24px] border border-white/70 bg-white/74 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-base font-semibold text-foreground">{task.title}</p>
-                <Pill tone={statusTone(task.status)}>{task.status}</Pill>
-                <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
-                <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
-              </div>
-              <p className="mt-2 text-sm text-muted">{task.note ?? "No note"}</p>
-            </div>
-            <div className="text-right text-sm text-muted">
-              <p>{task.ownerName ?? "Unassigned"}</p>
-              <p>{task.dueAt ? `Due ${formatShortTime(task.dueAt)}` : "No due time"}</p>
-            </div>
-          </div>
+      {active.map((task) => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          patient={patient}
+          updateStatusAction={updateStatusAction}
+          saveTaskAction={saveTaskAction}
+          profiles={profiles}
+          canEdit={canEdit}
+        />
+      ))}
 
-          {task.blockedReason ? (
-            <div className="mt-3 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              <AlertCircle className="h-4 w-4" />
-              {task.blockedReason}
-            </div>
-          ) : null}
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {["not_started", "in_progress", "waiting", "done", "blocked"].map((status) => (
-              <form action={updateStatusAction} key={status}>
-                <input type="hidden" name="patientId" value={patient.id} />
-                <input type="hidden" name="taskId" value={task.id} />
-                <input type="hidden" name="status" value={status} />
-                <button
-                  type="submit"
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                    task.status === status
-                      ? "bg-mint-500 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-                  )}
-                >
-                  {status.replace("_", " ")}
-                </button>
-              </form>
+      {archived.length > 0 ? (
+        <details className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+            Archived done task ({archived.length})
+          </summary>
+          <div className="mt-3 space-y-3">
+            {archived.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                patient={patient}
+                updateStatusAction={updateStatusAction}
+                saveTaskAction={saveTaskAction}
+                profiles={profiles}
+                canEdit={canEdit}
+                compact
+              />
             ))}
           </div>
+        </details>
+      ) : null}
+    </div>
+  );
+}
 
-          <p className="mt-4 text-xs text-muted">
-            Updated by {task.updatedByName ?? "Unknown"} · {formatRelative(task.updatedAt)}
-          </p>
+function TaskCard({
+  task,
+  patient,
+  updateStatusAction,
+  saveTaskAction,
+  profiles,
+  canEdit,
+  compact = false,
+}: {
+  task: WardTask;
+  patient: Patient;
+  updateStatusAction: (formData: FormData) => Promise<void>;
+  saveTaskAction: (formData: FormData) => Promise<void>;
+  profiles: UserProfile[];
+  canEdit: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className="rounded-[24px] border border-white/70 bg-white/74 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-semibold text-foreground">{task.title}</p>
+            <Pill tone={statusTone(task.status)}>{task.status}</Pill>
+            <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
+            <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
+          </div>
+          <p className="mt-2 text-sm text-muted">{task.note ?? "No note"}</p>
         </div>
-      ))}
+        <div className="text-right text-sm text-muted">
+          <p>{task.ownerName ?? "Unassigned"}</p>
+          <p>{task.dueAt ? `Due ${formatShortTime(task.dueAt)}` : "No due time"}</p>
+        </div>
+      </div>
+
+      {task.blockedReason ? (
+        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <AlertCircle className="h-4 w-4" />
+          {task.blockedReason}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {["not_started", "in_progress", "waiting", "done", "blocked"].map((status) => (
+          <form action={updateStatusAction} key={status}>
+            <input type="hidden" name="patientId" value={patient.id} />
+            <input type="hidden" name="taskId" value={task.id} />
+            <input type="hidden" name="status" value={status} />
+            <button
+              type="submit"
+              className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                task.status === status
+                  ? "bg-mint-500 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+              )}
+            >
+              {status.replace("_", " ")}
+            </button>
+          </form>
+        ))}
+      </div>
+
+      {canEdit ? (
+        <details className="mt-4 rounded-[20px] bg-mint-50/70 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-mint-700">
+            <span className="inline-flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit task detail
+            </span>
+          </summary>
+          <form action={saveTaskAction} className="mt-4 space-y-3">
+            <input type="hidden" name="id" value={task.id} />
+            <input type="hidden" name="patientId" value={patient.id} />
+            <Field label="Title">
+              <TextInput name="title" defaultValue={task.title} required />
+            </Field>
+            <Field label="Owner">
+              <SelectBox name="ownerId" defaultValue={task.ownerId ?? ""}>
+                <StaffOptions profiles={profiles} />
+              </SelectBox>
+            </Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Status">
+                <SelectBox name="status" defaultValue={task.status}>
+                  <option value="not_started">not_started</option>
+                  <option value="in_progress">in_progress</option>
+                  <option value="waiting">waiting</option>
+                  <option value="done">done</option>
+                  <option value="blocked">blocked</option>
+                </SelectBox>
+              </Field>
+              <Field label="Priority">
+                <SelectBox name="priority" defaultValue={task.priority}>
+                  <option value="low">low</option>
+                  <option value="normal">normal</option>
+                  <option value="high">high</option>
+                  <option value="urgent">urgent</option>
+                </SelectBox>
+              </Field>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Type">
+                <SelectBox name="type" defaultValue={task.type}>
+                  <option value="lab">lab</option>
+                  <option value="imaging">imaging</option>
+                  <option value="consult">consult</option>
+                  <option value="procedure">procedure</option>
+                  <option value="family_talk">family_talk</option>
+                  <option value="discharge">discharge</option>
+                  <option value="medication">medication</option>
+                  <option value="other">other</option>
+                </SelectBox>
+              </Field>
+              <Field label="Due time">
+                <TextInput name="dueAt" type="datetime-local" defaultValue={toDatetimeLocal(task.dueAt)} />
+              </Field>
+            </div>
+            <Field label="Note">
+              <TextArea name="note" defaultValue={task.note ?? ""} />
+            </Field>
+            <Field label="Blocked reason">
+              <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
+            </Field>
+            <SubmitButton>Update task</SubmitButton>
+          </form>
+        </details>
+      ) : null}
+
+      {!compact ? (
+        <p className="mt-4 text-xs text-muted">
+          Updated by {task.updatedByName ?? "Unknown"} · {formatRelative(task.updatedAt)}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 export function Timeline({ items }: { items: ActivityLog[] }) {
+  const initialItems = items.slice(0, 4);
+  const remainingItems = items.slice(4);
+
   return (
     <div className="space-y-4">
-      {items.map((item) => (
-        <div key={item.id} className="flex gap-3 rounded-[24px] bg-white/74 p-4">
-          <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-mint-500/12 text-sm font-semibold text-mint-700">
-            {getInitials(item.actorName)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-semibold text-foreground">{item.actorName}</p>
-              <p className="text-xs text-muted">{formatDateTime(item.createdAt)}</p>
-            </div>
-            <p className="mt-1 text-sm text-muted">{item.action}</p>
-          </div>
-        </div>
+      {initialItems.map((item) => (
+        <TimelineRow key={item.id} item={item} />
       ))}
+      {remainingItems.length > 0 ? (
+        <details className="rounded-[24px] bg-slate-50/70 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+            Expand timeline ({remainingItems.length} more)
+          </summary>
+          <div className="mt-3 space-y-3">
+            {remainingItems.map((item) => (
+              <TimelineRow key={item.id} item={item} compact />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function TimelineRow({ item, compact = false }: { item: ActivityLog; compact?: boolean }) {
+  return (
+    <div className={cn("flex gap-3 rounded-[24px] bg-white/74 p-4", compact && "p-3")}>
+      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-mint-500/12 text-sm font-semibold text-mint-700">
+        {getInitials(item.actorName)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-foreground">{item.actorName}</p>
+          <p className="text-[11px] text-muted">{formatDateTime(item.createdAt)}</p>
+        </div>
+        <p className="mt-1 text-sm text-muted">{item.action}</p>
+      </div>
     </div>
   );
 }
@@ -340,9 +548,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
-                      <h3 className="mt-1 text-lg font-semibold text-foreground">
-                        {patient.diagnosis}
-                      </h3>
+                      <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.diagnosis}</h3>
                     </div>
                     <Pill tone={statusTone(patient.status)}>{patient.status}</Pill>
                   </div>
@@ -365,9 +571,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                     />
                     <MiniList
                       title="Escalation"
-                      items={[
-                        patient.handover?.escalationInstruction ?? "No manual escalation note yet.",
-                      ]}
+                      items={[patient.handover?.escalationInstruction ?? "No manual escalation note yet."]}
                     />
                   </div>
                 </div>
@@ -505,7 +709,7 @@ export function StaffOptions({ profiles }: { profiles: UserProfile[] }) {
       <option value="">Unassigned</option>
       {profiles.map((profile) => (
         <option key={profile.id} value={profile.id}>
-          {profile.name} ({profile.role})
+          {profile.name} ({labelForRole(profile.role)})
         </option>
       ))}
     </>
@@ -522,6 +726,36 @@ export function TemplateCards({ templates }: { templates: TaskTemplate[] }) {
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(template.type)}</Pill>
           </div>
           <p className="mt-3 text-sm text-muted">Default priority: {template.defaultPriority}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function StaffRoleCards({
+  profiles,
+  updateUserRoleAction,
+}: {
+  profiles: UserProfile[];
+  updateUserRoleAction: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <div className="grid gap-3 xl:grid-cols-2">
+      {profiles.map((profile) => (
+        <div key={profile.id} className="rounded-[24px] bg-white/74 p-4">
+          <p className="font-semibold text-foreground">{profile.name}</p>
+          <p className="mt-1 text-sm text-muted">{profile.email}</p>
+          <form action={updateUserRoleAction} className="mt-4 flex flex-wrap items-end gap-3">
+            <input type="hidden" name="userId" value={profile.id} />
+            <Field label="Role">
+              <SelectBox name="role" defaultValue={profile.role} className="min-w-44">
+                <option value="admin">Admin</option>
+                <option value="resident">Residence</option>
+                <option value="student">Student</option>
+              </SelectBox>
+            </Field>
+            <SubmitButton>Update role</SubmitButton>
+          </form>
         </div>
       ))}
     </div>
@@ -554,4 +788,11 @@ function MiniList({ title, items }: { title: string; items: string[] }) {
       </div>
     </div>
   );
+}
+
+function toDatetimeLocal(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
 }
