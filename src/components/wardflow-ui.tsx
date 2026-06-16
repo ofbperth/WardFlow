@@ -29,7 +29,6 @@ import {
   AdminEditor,
   CopyTextButton,
   DangerZone,
-  ConfirmDeleteWard,
   PendingGhostButton,
   PendingIconButton,
   PendingSubmitButton,
@@ -891,7 +890,7 @@ export function StaffRoleCards({
   );
 }
 
-export { DangerZone, ConfirmDeleteWard };
+export { DangerZone };
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (

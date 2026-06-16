@@ -78,14 +78,32 @@ export async function saveWardAction(formData: FormData) {
   await saveWard(formData, session);
 }
 
+export async function saveWardAdminAction(formData: FormData) {
+  const session = await requireAppSession();
+  await saveWard(formData, session);
+  redirect("/admin/wards?toast=ward-saved");
+}
+
 export async function deleteWardAction(formData: FormData) {
   const session = await requireAppSession();
   await deleteWard(formData, session);
 }
 
+export async function deleteWardAdminAction(formData: FormData) {
+  const session = await requireAppSession();
+  await deleteWard(formData, session);
+  redirect("/admin/wards?toast=ward-deleted");
+}
+
 export async function updateUserRoleAction(formData: FormData) {
   const session = await requireAppSession();
   await updateUserRole(formData, session);
+}
+
+export async function updateUserRoleAdminAction(formData: FormData) {
+  const session = await requireAppSession();
+  await updateUserRole(formData, session);
+  redirect("/admin/wards?toast=role-saved");
 }
 
 export async function savePatientAction(formData: FormData) {

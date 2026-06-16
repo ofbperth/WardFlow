@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { deleteWardAction, saveWardAction, updateUserRoleAction } from "@/app/actions";
+import {
+  deleteWardAdminAction,
+  saveWardAdminAction,
+  updateUserRoleAdminAction,
+} from "@/app/actions";
+import { AdminFeedbackToast } from "@/components/admin-feedback-toast";
 import { AdminCreator, AdminEditor } from "@/components/form-feedback";
 import {
-  ConfirmDeleteWard,
   DangerZone,
   Field,
   GlassPanel,
@@ -15,12 +19,18 @@ import {
 import { requireAdminSession } from "@/lib/auth";
 import { getProfiles, getWardSummaries } from "@/lib/wardflow";
 
-export default async function AdminWardsPage() {
+export default async function AdminWardsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ toast?: string }>;
+}) {
   const session = await requireAdminSession();
+  const params = (await searchParams) ?? {};
   const [summaries, profiles] = await Promise.all([getWardSummaries(session), getProfiles(session)]);
 
   return (
     <div className="space-y-6">
+      <AdminFeedbackToast toastKey={params.toast} />
       <GlassPanel
         title="Admin | Ward management"
         subtitle="Safer layout with collapsed edit actions and a separated danger zone."
@@ -35,7 +45,9 @@ export default async function AdminWardsPage() {
       >
         <div className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
-            <SectionLabel>Ward management</SectionLabel>
+            <div className="sticky top-4 z-20 rounded-full bg-white/75 px-4 py-3 backdrop-blur-xl">
+              <SectionLabel>Ward management</SectionLabel>
+            </div>
             <div className="grid gap-3 xl:grid-cols-2">
               {summaries.map((summary) => (
                 <div key={summary.ward.id} className="rounded-[28px] bg-white/75 p-5">
@@ -50,7 +62,7 @@ export default async function AdminWardsPage() {
                   </div>
 
                   <AdminEditor buttonLabel="Edit ward" panelTitle={`Edit ward | ${summary.ward.name}`}>
-                    <form action={saveWardAction} className="space-y-3">
+                    <form action={saveWardAdminAction} className="space-y-3">
                       <input type="hidden" name="id" value={summary.ward.id} />
                       <Field label="Ward name">
                         <TextInput name="name" defaultValue={summary.ward.name} required />
@@ -66,9 +78,11 @@ export default async function AdminWardsPage() {
               title="Create ward"
               subtitle="Create stays hidden until you intentionally open the form."
             >
-              <SectionLabel>New ward</SectionLabel>
+              <div className="sticky top-20 z-10 rounded-full bg-white/70 px-4 py-3 backdrop-blur-xl">
+                <SectionLabel>New ward</SectionLabel>
+              </div>
               <AdminCreator buttonLabel="Create new ward" panelTitle="Create ward">
-                <form action={saveWardAction} className="space-y-3">
+                <form action={saveWardAdminAction} className="space-y-3">
                   <Field label="Ward name">
                     <TextInput name="name" placeholder="Medical B" required />
                   </Field>
@@ -79,7 +93,7 @@ export default async function AdminWardsPage() {
 
             <DangerZone
               title="Danger zone"
-              description="Ward deletion is hidden by default and requires ward-name confirmation before the delete button becomes active."
+              description="Ward deletion stays hidden until you open this panel, but no extra typing is required."
             >
               <div className="space-y-3">
                 {summaries.map((summary) => (
@@ -104,12 +118,10 @@ export default async function AdminWardsPage() {
                     </div>
 
                     <div className="mt-3">
-                      <ConfirmDeleteWard wardName={summary.ward.name}>
-                        <form action={deleteWardAction}>
-                          <input type="hidden" name="wardId" value={summary.ward.id} />
-                          <SubmitButton pendingLabel="Deleting...">Delete ward</SubmitButton>
-                        </form>
-                      </ConfirmDeleteWard>
+                      <form action={deleteWardAdminAction}>
+                        <input type="hidden" name="wardId" value={summary.ward.id} />
+                        <SubmitButton pendingLabel="Deleting...">Delete ward</SubmitButton>
+                      </form>
                     </div>
                   </div>
                 ))}
@@ -118,11 +130,17 @@ export default async function AdminWardsPage() {
           </div>
 
           <div className="space-y-4">
+            <div className="sticky top-4 z-20 rounded-full bg-white/75 px-4 py-3 backdrop-blur-xl">
+              <SectionLabel>User roles</SectionLabel>
+            </div>
             <GlassPanel
               title="User roles"
               subtitle="Role changes are collapsed too, so the page stays calmer and safer to use."
             >
-              <StaffRoleCards profiles={profiles} updateUserRoleAction={updateUserRoleAction} />
+              <StaffRoleCards
+                profiles={profiles}
+                updateUserRoleAction={updateUserRoleAdminAction}
+              />
             </GlassPanel>
           </div>
         </div>

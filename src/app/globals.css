@@ -106,3 +106,14 @@ textarea {
     radial-gradient(circle at 10% 0%, rgba(103, 220, 184, 0.3), transparent 26%),
     radial-gradient(circle at 92% 10%, rgba(108, 219, 217, 0.16), transparent 24%);
 }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

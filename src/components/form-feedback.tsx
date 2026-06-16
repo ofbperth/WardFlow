@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertTriangle, Pencil, Plus, ShieldAlert } from "lucide-react";
+import { Pencil, Plus, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
@@ -279,35 +279,6 @@ export function DangerZone({
         </button>
       </div>
       {open ? <div className="mt-4">{children}</div> : null}
-    </div>
-  );
-}
-
-export function ConfirmDeleteWard({
-  wardName,
-  children,
-}: {
-  wardName: string;
-  children: React.ReactNode;
-}) {
-  const [value, setValue] = useState("");
-  const confirmed = value.trim() === wardName;
-
-  return (
-    <div className="space-y-3 rounded-[20px] border border-rose-200 bg-white/80 p-4">
-      <div className="flex items-start gap-2 text-sm text-rose-800">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>Type the ward name to enable delete. This reduces accidental clicks.</p>
-      </div>
-      <input
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder={wardName}
-        className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-500/12"
-      />
-      <div className={cn("transition", !confirmed && "pointer-events-none opacity-45")}>
-        {children}
-      </div>
     </div>
   );
 }
