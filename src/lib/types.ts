@@ -110,6 +110,26 @@ export type HandoverNote = {
   updatedAt: string;
 };
 
+export type DischargeSummary = {
+  id: string;
+  patientId: string;
+  wardId: string;
+  createdById: string | null;
+  createdByName: string;
+  createdAt: string;
+  dischargeDate: string;
+  diagnosis: string;
+  precaution: Precaution;
+  conditionAtDischarge: string;
+  hospitalCourse: string;
+  activeProblems: string;
+  completedTasks: string;
+  pendingItems: string;
+  medicationChanges: string;
+  followUpPlan: string;
+  dischargeInstructions: string;
+};
+
 export type ActivityLog = {
   id: string;
   patientId: string;
@@ -147,6 +167,12 @@ export type PatientBundle = {
   tasks: WardTask[];
   handover: HandoverNote | null;
   activity: ActivityLog[];
+};
+
+export type DischargedDirectoryItem = {
+  patient: Patient;
+  ward: Ward | null;
+  summary: DischargeSummary | null;
 };
 
 export type HandoverBundle = {

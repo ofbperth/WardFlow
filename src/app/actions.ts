@@ -6,7 +6,9 @@ import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
 import { hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
+  deleteWard,
   dischargePatient,
+  dischargePatientWithSummary,
   moveProblem,
   saveHandover,
   savePatient,
@@ -76,6 +78,11 @@ export async function saveWardAction(formData: FormData) {
   await saveWard(formData, session);
 }
 
+export async function deleteWardAction(formData: FormData) {
+  const session = await requireAppSession();
+  await deleteWard(formData, session);
+}
+
 export async function updateUserRoleAction(formData: FormData) {
   const session = await requireAppSession();
   await updateUserRole(formData, session);
@@ -129,4 +136,9 @@ export async function saveTemplateAction(formData: FormData) {
 export async function dischargePatientAction(formData: FormData) {
   const session = await requireAppSession();
   await dischargePatient(String(formData.get("patientId")), session);
+}
+
+export async function dischargePatientWithSummaryAction(formData: FormData) {
+  const session = await requireAppSession();
+  await dischargePatientWithSummary(formData, session);
 }

@@ -1,5 +1,6 @@
 import type {
   ActivityLog,
+  DischargeSummary,
   HandoverNote,
   Patient,
   Problem,
@@ -218,6 +219,28 @@ export const demoHandoverSeed: HandoverNote[] = [
     note: "High risk for respiratory deterioration overnight.",
     escalationInstruction: "Call IM resident if sat < 92% despite 5L O2",
     updatedAt: new Date().toISOString(),
+  },
+];
+
+export const demoDischargeSummarySeed: DischargeSummary[] = [
+  {
+    id: "discharge-summary-1",
+    patientId: "patient-4",
+    wardId: "ward-med-a",
+    createdById: "demo-user-2",
+    createdByName: "Dr. Pakorn R.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    dischargeDate: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    diagnosis: "Cellulitis improved",
+    precaution: "none",
+    conditionAtDischarge: "Stable for discharge",
+    hospitalCourse: "Improved with IV antibiotics and step-down monitoring.",
+    activeProblems: "No unresolved acute problems at discharge.",
+    completedTasks: "Completed antibiotic course review and discharge counseling.",
+    pendingItems: "",
+    medicationChanges: "",
+    followUpPlan: "",
+    dischargeInstructions: "",
   },
 ];
 

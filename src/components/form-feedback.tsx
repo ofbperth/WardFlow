@@ -198,3 +198,46 @@ export function TaskCreator({
     </InlineEditor>
   );
 }
+
+export function DischargeSummaryEditor({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor
+      buttonLabel="Discharge patient"
+      panelTitle="Discharge summary"
+      buttonIcon="edit"
+    >
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function CopyTextButton({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className={cn(
+        "rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100",
+        className,
+      )}
+    >
+      {copied ? "Copied" : "Copy text"}
+    </button>
+  );
+}

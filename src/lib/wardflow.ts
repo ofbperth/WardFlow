@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   demoActivitySeed,
+  demoDischargeSummarySeed,
   demoHandoverSeed,
   demoPatientsSeed,
   demoProblemsSeed,
@@ -12,6 +13,8 @@ import {
 } from "@/lib/demo-data";
 import type {
   ActivityLog,
+  DischargeSummary,
+  DischargedDirectoryItem,
   HandoverBundle,
   HandoverNote,
   Patient,
@@ -32,6 +35,7 @@ type DemoStore = {
   problems: Problem[];
   tasks: WardTask[];
   handovers: HandoverNote[];
+  dischargeSummaries: DischargeSummary[];
   activity: ActivityLog[];
   templates: TaskTemplate[];
   profiles: UserProfile[];
@@ -43,6 +47,7 @@ const store: DemoStore = {
   problems: structuredClone(demoProblemsSeed),
   tasks: structuredClone(demoTasksSeed),
   handovers: structuredClone(demoHandoverSeed),
+  dischargeSummaries: structuredClone(demoDischargeSummarySeed),
   activity: structuredClone(demoActivitySeed),
   templates: structuredClone(demoTemplatesSeed),
   profiles: structuredClone(demoProfiles),
@@ -104,6 +109,10 @@ const wardSchema = z.object({
   name: z.string().min(1),
 });
 
+const deleteWardSchema = z.object({
+  wardId: z.string().min(1),
+});
+
 const templateSchema = z.object({
   title: z.string().min(1),
   type: z.enum([
@@ -122,6 +131,20 @@ const templateSchema = z.object({
 const userRoleSchema = z.object({
   userId: z.string().min(1),
   role: z.enum(["admin", "resident", "student"]),
+});
+
+const dischargeSummarySchema = z.object({
+  patientId: z.string().min(1),
+  diagnosis: z.string().min(1),
+  precaution: z.enum(["none", "contact", "droplet", "airborne"]),
+  conditionAtDischarge: z.string().default(""),
+  hospitalCourse: z.string().default(""),
+  activeProblems: z.string().default(""),
+  completedTasks: z.string().default(""),
+  pendingItems: z.string().default(""),
+  medicationChanges: z.string().default(""),
+  followUpPlan: z.string().default(""),
+  dischargeInstructions: z.string().default(""),
 });
 
 function now() {
@@ -226,12 +249,123 @@ function getPatientDirectoryName(profileId: string | null, fallback: string | nu
   return store.profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
 }
 
+function summaryByPatientId(patientId: string) {
+  return store.dischargeSummaries.find((summary) => summary.patientId === patientId) ?? null;
+}
+
+function buildDischargeDraft(patientId: string) {
+  const patient = patientById(patientId);
+  if (!patient) return null;
+
+  const activeProblems = store.problems
+    .filter((problem) => problem.patientId === patientId)
+    .map((problem) => `${problem.title}${problem.plan ? ` - ${problem.plan}` : ""}`)
+    .join("\n");
+
+  const completedTasks = store.tasks
+    .filter((task) => task.patientId === patientId && task.status === "done")
+    .map((task) => task.title)
+    .join("\n");
+
+  const pendingItems = [
+    ...store.problems
+      .filter((problem) => problem.patientId === patientId)
+      .map((problem) => problem.pending)
+      .filter(Boolean),
+    ...store.tasks
+      .filter((task) => task.patientId === patientId && task.status !== "done")
+      .map((task) => task.title),
+  ].join("\n");
+
+  const latestHandover = store.handovers.find((handover) => handover.patientId === patientId);
+
+  return {
+    diagnosis: patient.diagnosis,
+    precaution: patient.precaution,
+    conditionAtDischarge:
+      patient.status === "critical"
+        ? "Critical"
+        : patient.status === "watch"
+          ? "Watch"
+          : "Stable",
+    hospitalCourse: latestHandover?.note ?? "",
+    activeProblems,
+    completedTasks,
+    pendingItems,
+    medicationChanges: "",
+    followUpPlan: "",
+    dischargeInstructions: latestHandover?.escalationInstruction ?? "",
+  };
+}
+
 export async function getWardSummaries(session: SessionContext): Promise<WardSummary[]> {
   return buildWardSummary(session, "active");
 }
 
 export async function getDischargedSummaries(session: SessionContext): Promise<WardSummary[]> {
   return buildWardSummary(session, "discharged");
+}
+
+export async function getDischargedDirectory(
+  session: SessionContext,
+  options: { wardId?: string | null; query?: string | null; page?: number; pageSize?: number } = {},
+) {
+  const wardId = options.wardId?.trim() || null;
+  const query = options.query?.trim().toLowerCase() || "";
+  const pageSize = options.pageSize ?? 10;
+  const page = Math.max(1, options.page ?? 1);
+  const wardIds = visibleWardIds(session);
+
+  const filtered = store.patients
+    .filter((patient) => patient.lifecycle === "discharged" && wardIds.includes(patient.wardId))
+    .filter((patient) => (wardId ? patient.wardId === wardId : true))
+    .filter((patient) =>
+      query
+        ? patient.displayName.toLowerCase().includes(query) ||
+          patient.diagnosis.toLowerCase().includes(query) ||
+          patient.bed.toLowerCase().includes(query)
+        : true,
+    )
+    .sort((left, right) => (right.dischargedAt ?? "").localeCompare(left.dischargedAt ?? ""));
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = (Math.min(page, totalPages) - 1) * pageSize;
+  const items: DischargedDirectoryItem[] = filtered.slice(start, start + pageSize).map((patient) => ({
+    patient,
+    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
+    summary: summaryByPatientId(patient.id),
+  }));
+
+  return {
+    items,
+    wards: store.wards.filter((ward) => wardIds.includes(ward.id)),
+    total,
+    page: Math.min(page, totalPages),
+    totalPages,
+    pageSize,
+  };
+}
+
+export async function getDischargeSummaryById(session: SessionContext, summaryId: string) {
+  const summary = store.dischargeSummaries.find((entry) => entry.id === summaryId) ?? null;
+  if (!summary) return null;
+  const patient = patientById(summary.patientId);
+  if (!patient) return null;
+  requireWardAccess(session, patient.wardId);
+
+  return {
+    summary,
+    patient,
+    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
+  };
+}
+
+export async function getDischargeDraft(session: SessionContext, patientId: string) {
+  const patient = patientById(patientId);
+  if (!patient) return null;
+  requireWardAccess(session, patient.wardId);
+  return buildDischargeDraft(patientId);
 }
 
 export async function getWardDetail(session: SessionContext, wardId: string) {
@@ -314,6 +448,50 @@ export async function getHandoverBundles(session: SessionContext): Promise<Hando
   }));
 }
 
+export async function getHandoverStructuredText(session: SessionContext, wardId?: string | null) {
+  const bundles = await getHandoverBundles(session);
+  const selected = wardId ? bundles.filter((bundle) => bundle.ward.id === wardId) : bundles;
+
+  return selected
+    .map((bundle) => {
+      const patientLines = bundle.patients
+        .filter(
+          (patient) =>
+            patient.status !== "stable" ||
+            patient.tasks.some((task) => task.status !== "done") ||
+            patient.problems.some((problem) => problem.watchOut || problem.pending),
+        )
+        .map((patient) => {
+          const watchItems = patient.problems
+            .map((problem) => problem.watchOut)
+            .filter((value): value is string => Boolean(value));
+          const pendingItems = [
+            ...patient.problems
+              .map((problem) => problem.pending)
+              .filter((value): value is string => Boolean(value)),
+            ...patient.tasks
+              .filter((task) => task.status !== "done")
+              .map((task) => task.title),
+          ];
+          return [
+            `${patient.displayName} (Bed ${patient.bed}) - ${patient.diagnosis}`,
+            `Status: ${patient.status}`,
+            watchItems.length ? `Watch: ${watchItems.join("; ")}` : "",
+            pendingItems.length ? `Pending: ${pendingItems.join("; ")}` : "",
+            patient.handover?.note ? `Note: ${patient.handover.note}` : "",
+            patient.handover?.escalationInstruction
+              ? `Escalation: ${patient.handover.escalationInstruction}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n");
+        });
+
+      return [`Ward: ${bundle.ward.name}`, ...patientLines].join("\n\n");
+    })
+    .join("\n\n--------------------\n\n");
+}
+
 export async function saveWard(formData: FormData, session: SessionContext) {
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
@@ -331,6 +509,30 @@ export async function saveWard(formData: FormData, session: SessionContext) {
   } else {
     store.wards.push({ id: nextId("ward"), name: parsed.name });
   }
+
+  revalidatePath("/wards");
+  revalidatePath("/admin/wards");
+  revalidatePath("/discharged");
+}
+
+export async function deleteWard(formData: FormData, session: SessionContext) {
+  if (!canManageAdmin(session)) {
+    throw new Error("Admin only");
+  }
+
+  const parsed = deleteWardSchema.parse({
+    wardId: formData.get("wardId"),
+  });
+
+  const hasPatients = store.patients.some((patient) => patient.wardId === parsed.wardId);
+  if (hasPatients) {
+    throw new Error("Ward with patients cannot be deleted");
+  }
+
+  store.wards = store.wards.filter((ward) => ward.id !== parsed.wardId);
+  store.profiles = store.profiles.map((profile) =>
+    profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
+  );
 
   revalidatePath("/wards");
   revalidatePath("/admin/wards");
@@ -436,6 +638,56 @@ export async function dischargePatient(patientId: string, session: SessionContex
   revalidatePath(`/patients/${patientId}`);
   revalidatePath("/handover");
   revalidatePath("/my-tasks");
+}
+
+export async function dischargePatientWithSummary(formData: FormData, session: SessionContext) {
+  if (!canManagePatients(session)) {
+    throw new Error("Only admin or resident can discharge patient");
+  }
+
+  const parsed = dischargeSummarySchema.parse({
+    patientId: formData.get("patientId"),
+    diagnosis: formData.get("diagnosis"),
+    precaution: formData.get("precaution"),
+    conditionAtDischarge: String(formData.get("conditionAtDischarge") ?? ""),
+    hospitalCourse: String(formData.get("hospitalCourse") ?? ""),
+    activeProblems: String(formData.get("activeProblems") ?? ""),
+    completedTasks: String(formData.get("completedTasks") ?? ""),
+    pendingItems: String(formData.get("pendingItems") ?? ""),
+    medicationChanges: String(formData.get("medicationChanges") ?? ""),
+    followUpPlan: String(formData.get("followUpPlan") ?? ""),
+    dischargeInstructions: String(formData.get("dischargeInstructions") ?? ""),
+  });
+
+  const patient = patientById(parsed.patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardAccess(session, patient.wardId);
+
+  const summary: DischargeSummary = {
+    id: nextId("discharge-summary"),
+    patientId: patient.id,
+    wardId: patient.wardId,
+    createdById: session.profile.id,
+    createdByName: session.profile.name,
+    createdAt: now(),
+    dischargeDate: now(),
+    diagnosis: parsed.diagnosis,
+    precaution: parsed.precaution,
+    conditionAtDischarge: parsed.conditionAtDischarge,
+    hospitalCourse: parsed.hospitalCourse,
+    activeProblems: parsed.activeProblems,
+    completedTasks: parsed.completedTasks,
+    pendingItems: parsed.pendingItems,
+    medicationChanges: parsed.medicationChanges,
+    followUpPlan: parsed.followUpPlan,
+    dischargeInstructions: parsed.dischargeInstructions,
+  };
+
+  store.dischargeSummaries = store.dischargeSummaries.filter((entry) => entry.patientId !== patient.id);
+  store.dischargeSummaries.unshift(summary);
+  addActivity(session, patient.id, "discharge.summary_created", "discharge_summary", summary.id, null, summary);
+
+  await dischargePatient(patient.id, session);
 }
 
 export async function saveProblem(formData: FormData, session: SessionContext) {

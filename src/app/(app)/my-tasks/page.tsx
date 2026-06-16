@@ -13,7 +13,7 @@ export default async function MyTasksPage() {
         subtitle="รวมงานที่ assign ให้คุณ พร้อมบริบทผู้ป่วย เพื่อปิดงานได้เร็วขึ้น"
       >
         {items.length ? (
-          <TaskInbox items={items} />
+          <TaskInbox items={items} linkToPatient />
         ) : (
           <EmptyState
             title="No assigned tasks"
