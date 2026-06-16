@@ -12,6 +12,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
+import { PendingSubmitButton } from "@/components/form-feedback";
 import { cn, getInitials, labelForRole } from "@/lib/utils";
 import type { UserProfile } from "@/lib/types";
 
@@ -47,13 +48,13 @@ export function AppShell({
             </div>
           </div>
           <form action={logoutAction}>
-            <button
-              type="submit"
-              className="flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-white"
+            <PendingSubmitButton
+              pendingLabel="Logging out..."
+              className="flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium text-foreground shadow-none hover:bg-white"
             >
               <LogOut className="h-4 w-4" />
               Logout
-            </button>
+            </PendingSubmitButton>
           </form>
         </header>
 

@@ -7,6 +7,7 @@ import {
   updateTaskStatusAction,
 } from "@/app/actions";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
+import { PendingSubmitButton } from "@/components/form-feedback";
 import {
   EmptyState,
   Field,
@@ -69,12 +70,12 @@ export default async function PatientPage({
           canManagePatient && bundle.patient.lifecycle === "active" ? (
             <form action={dischargePatientAction}>
               <input type="hidden" name="patientId" value={bundle.patient.id} />
-              <button
-                type="submit"
-                className="rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white"
+              <PendingSubmitButton
+                pendingLabel="Discharging..."
+                className="rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600"
               >
                 Discharge patient
-              </button>
+              </PendingSubmitButton>
             </form>
           ) : null
         }

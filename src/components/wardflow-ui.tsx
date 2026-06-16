@@ -19,6 +19,12 @@ import {
   priorityTone,
   statusTone,
 } from "@/lib/utils";
+import {
+  PendingGhostButton,
+  PendingIconButton,
+  PendingSubmitButton,
+  ProblemEditor,
+} from "@/components/form-feedback";
 import type {
   ActivityLog,
   HandoverBundle,
@@ -192,25 +198,23 @@ export function ProblemCards({
                     <input type="hidden" name="patientId" value={patientId} />
                     <input type="hidden" name="problemId" value={problem.id} />
                     <input type="hidden" name="direction" value="up" />
-                    <button
-                      type="submit"
+                    <PendingIconButton
                       disabled={index === 0}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-35"
+                      pendingLabel="Moving..."
                     >
                       <ChevronUp className="h-4 w-4" />
-                    </button>
+                    </PendingIconButton>
                   </form>
                   <form action={reorderAction}>
                     <input type="hidden" name="patientId" value={patientId} />
                     <input type="hidden" name="problemId" value={problem.id} />
                     <input type="hidden" name="direction" value="down" />
-                    <button
-                      type="submit"
+                    <PendingIconButton
                       disabled={index === active.length - 1}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-35"
+                      pendingLabel="Moving..."
                     >
                       <ChevronDown className="h-4 w-4" />
-                    </button>
+                    </PendingIconButton>
                   </form>
                 </>
               ) : null}
@@ -224,13 +228,7 @@ export function ProblemCards({
           </div>
 
           {canEdit ? (
-            <details className="mt-4 rounded-[20px] bg-mint-50/70 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-mint-700">
-                <span className="inline-flex items-center gap-2">
-                  <Pencil className="h-4 w-4" />
-                  Edit problem detail
-                </span>
-              </summary>
+            <ProblemEditor>
               <form action={saveProblemAction} className="mt-4 space-y-3">
                 <input type="hidden" name="id" value={problem.id} />
                 <input type="hidden" name="patientId" value={patientId} />
@@ -261,9 +259,9 @@ export function ProblemCards({
                   <input type="checkbox" name="includeInHandover" defaultChecked={problem.includeInHandover} />
                   Include in handover
                 </label>
-                <SubmitButton>Update problem</SubmitButton>
+                <SubmitButton pendingLabel="Updating problem...">Update problem</SubmitButton>
               </form>
-            </details>
+            </ProblemEditor>
           ) : null}
         </div>
       ))}
@@ -394,17 +392,12 @@ function TaskCard({
             <input type="hidden" name="patientId" value={patient.id} />
             <input type="hidden" name="taskId" value={task.id} />
             <input type="hidden" name="status" value={status} />
-            <button
-              type="submit"
-              className={cn(
-                "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                task.status === status
-                  ? "bg-mint-500 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-              )}
+            <PendingGhostButton
+              active={task.status === status}
+              pendingLabel="Updating..."
             >
               {status.replace("_", " ")}
-            </button>
+            </PendingGhostButton>
           </form>
         ))}
       </div>
@@ -470,7 +463,7 @@ function TaskCard({
             <Field label="Blocked reason">
               <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
             </Field>
-            <SubmitButton>Update task</SubmitButton>
+            <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
           </form>
         </details>
       ) : null}
@@ -661,15 +654,14 @@ export function SelectBox(props: React.SelectHTMLAttributes<HTMLSelectElement>) 
   );
 }
 
-export function SubmitButton({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      type="submit"
-      className="inline-flex items-center justify-center rounded-full bg-mint-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600"
-    >
-      {children}
-    </button>
-  );
+export function SubmitButton({
+  children,
+  pendingLabel,
+}: {
+  children: React.ReactNode;
+  pendingLabel?: string;
+}) {
+  return <PendingSubmitButton pendingLabel={pendingLabel}>{children}</PendingSubmitButton>;
 }
 
 export function EmptyState({

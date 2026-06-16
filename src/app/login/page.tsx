@@ -1,4 +1,5 @@
 import { signInWithGoogle, startDemoSession } from "@/app/actions";
+import { PendingSubmitButton } from "@/components/form-feedback";
 import { getLoginModeInfo } from "@/lib/auth";
 import { SetupNotice } from "@/components/wardflow-ui";
 
@@ -38,23 +39,23 @@ export default function LoginPage() {
 
                 {state.supportsGoogleLogin ? (
                   <form action={signInWithGoogle}>
-                    <button
-                      type="submit"
+                    <PendingSubmitButton
+                      pendingLabel="Redirecting..."
                       className="flex w-full items-center justify-center rounded-full bg-mint-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600"
                     >
                       Continue with Google
-                    </button>
+                    </PendingSubmitButton>
                   </form>
                 ) : null}
 
                 {state.supportsDemoLogin ? (
                   <form action={startDemoSession}>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center justify-center rounded-full border border-white/70 bg-white px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-mint-50"
+                    <PendingSubmitButton
+                      pendingLabel="Entering demo..."
+                      className="flex w-full items-center justify-center rounded-full border border-white/70 bg-white px-4 py-3 text-sm font-semibold text-foreground shadow-none transition hover:bg-mint-50"
                     >
                       Enter demo ward
-                    </button>
+                    </PendingSubmitButton>
                   </form>
                 ) : null}
 
