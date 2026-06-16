@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+.wardflow-demo/
 
 # debug
 npm-debug.log*
