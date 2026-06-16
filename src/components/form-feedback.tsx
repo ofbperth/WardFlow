@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Pencil, Plus } from "lucide-react";
+import { AlertTriangle, Pencil, Plus, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
@@ -212,6 +212,103 @@ export function DischargeSummaryEditor({
     >
       {children}
     </InlineEditor>
+  );
+}
+
+export function AdminEditor({
+  children,
+  buttonLabel,
+  panelTitle,
+}: {
+  children: React.ReactNode;
+  buttonLabel: string;
+  panelTitle: string;
+}) {
+  return (
+    <InlineEditor buttonLabel={buttonLabel} panelTitle={panelTitle} buttonIcon="edit">
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function AdminCreator({
+  children,
+  buttonLabel,
+  panelTitle,
+}: {
+  children: React.ReactNode;
+  buttonLabel: string;
+  panelTitle: string;
+}) {
+  return (
+    <InlineEditor buttonLabel={buttonLabel} panelTitle={panelTitle} buttonIcon="create">
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function DangerZone({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-[28px] border border-rose-200/80 bg-rose-50/70 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-rose-100 p-2 text-rose-700">
+            <ShieldAlert className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="font-semibold text-rose-900">{title}</p>
+            <p className="mt-1 text-sm text-rose-800/80">{description}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+        >
+          {open ? "Hide danger actions" : "Open danger actions"}
+        </button>
+      </div>
+      {open ? <div className="mt-4">{children}</div> : null}
+    </div>
+  );
+}
+
+export function ConfirmDeleteWard({
+  wardName,
+  children,
+}: {
+  wardName: string;
+  children: React.ReactNode;
+}) {
+  const [value, setValue] = useState("");
+  const confirmed = value.trim() === wardName;
+
+  return (
+    <div className="space-y-3 rounded-[20px] border border-rose-200 bg-white/80 p-4">
+      <div className="flex items-start gap-2 text-sm text-rose-800">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>Type the ward name to enable delete. This reduces accidental clicks.</p>
+      </div>
+      <input
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder={wardName}
+        className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-500/12"
+      />
+      <div className={cn("transition", !confirmed && "pointer-events-none opacity-45")}>
+        {children}
+      </div>
+    </div>
   );
 }
 

@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { deleteWardAction, saveWardAction, updateUserRoleAction } from "@/app/actions";
+import { AdminCreator, AdminEditor } from "@/components/form-feedback";
 import {
+  ConfirmDeleteWard,
+  DangerZone,
   Field,
   GlassPanel,
+  Pill,
   SectionLabel,
   StaffRoleCards,
   SubmitButton,
@@ -19,7 +23,7 @@ export default async function AdminWardsPage() {
     <div className="space-y-6">
       <GlassPanel
         title="Admin | Ward management"
-        subtitle="แก้ชื่อวอร์ด สร้างวอร์ดใหม่ ลบวอร์ดที่ว่าง และจัดการ role ของผู้ใช้"
+        subtitle="Safer layout with collapsed edit actions and a separated danger zone."
         action={
           <Link
             href="/admin/task-templates"
@@ -35,55 +39,89 @@ export default async function AdminWardsPage() {
             <div className="grid gap-3 xl:grid-cols-2">
               {summaries.map((summary) => (
                 <div key={summary.ward.id} className="rounded-[28px] bg-white/75 p-5">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted">Ward</p>
-                  <form action={saveWardAction} className="mt-3 space-y-3">
-                    <input type="hidden" name="id" value={summary.ward.id} />
-                    <TextInput name="name" defaultValue={summary.ward.name} required />
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-muted">{summary.patients.length} active patients</p>
-                      <SubmitButton>Update ward</SubmitButton>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted">Ward</p>
+                      <p className="mt-2 text-lg font-semibold text-foreground">{summary.ward.name}</p>
                     </div>
-                  </form>
+                    <Pill tone="bg-white text-slate-700">
+                      {summary.patients.length} active patients
+                    </Pill>
+                  </div>
+
+                  <AdminEditor buttonLabel="Edit ward" panelTitle={`Edit ward | ${summary.ward.name}`}>
+                    <form action={saveWardAction} className="space-y-3">
+                      <input type="hidden" name="id" value={summary.ward.id} />
+                      <Field label="Ward name">
+                        <TextInput name="name" defaultValue={summary.ward.name} required />
+                      </Field>
+                      <SubmitButton>Save ward</SubmitButton>
+                    </form>
+                  </AdminEditor>
                 </div>
               ))}
             </div>
 
-            <GlassPanel title="Create ward" subtitle="ตั้งชื่อให้สั้น อ่านง่าย และใช้หน้างานจริง">
+            <GlassPanel
+              title="Create ward"
+              subtitle="Create stays hidden until you intentionally open the form."
+            >
               <SectionLabel>New ward</SectionLabel>
-              <form action={saveWardAction} className="space-y-3">
-                <Field label="Ward name">
-                  <TextInput name="name" placeholder="Medical B" required />
-                </Field>
-                <SubmitButton>Create ward</SubmitButton>
-              </form>
+              <AdminCreator buttonLabel="Create new ward" panelTitle="Create ward">
+                <form action={saveWardAction} className="space-y-3">
+                  <Field label="Ward name">
+                    <TextInput name="name" placeholder="Medical B" required />
+                  </Field>
+                  <SubmitButton>Create ward</SubmitButton>
+                </form>
+              </AdminCreator>
             </GlassPanel>
 
-            <GlassPanel
-              title="Delete empty ward"
-              subtitle="ลบได้เฉพาะวอร์ดที่ไม่มีผู้ป่วยค้างอยู่ เพื่อกันข้อมูลย้อนหลังหาย"
+            <DangerZone
+              title="Danger zone"
+              description="Ward deletion is hidden by default and requires ward-name confirmation before the delete button becomes active."
             >
               <div className="space-y-3">
                 {summaries.map((summary) => (
                   <div
                     key={`delete-${summary.ward.id}`}
-                    className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 p-4"
+                    className="rounded-2xl bg-rose-100/40 p-4"
                   >
-                    <div>
-                      <p className="font-semibold text-foreground">{summary.ward.name}</p>
-                      <p className="text-sm text-muted">{summary.patients.length} active patients</p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-foreground">{summary.ward.name}</p>
+                        <p className="text-sm text-muted">{summary.patients.length} active patients</p>
+                      </div>
+                      <Pill
+                        tone={
+                          summary.patients.length === 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }
+                      >
+                        {summary.patients.length === 0 ? "Empty ward" : "Cannot delete yet"}
+                      </Pill>
                     </div>
-                    <form action={deleteWardAction}>
-                      <input type="hidden" name="wardId" value={summary.ward.id} />
-                      <SubmitButton pendingLabel="Deleting...">Delete ward</SubmitButton>
-                    </form>
+
+                    <div className="mt-3">
+                      <ConfirmDeleteWard wardName={summary.ward.name}>
+                        <form action={deleteWardAction}>
+                          <input type="hidden" name="wardId" value={summary.ward.id} />
+                          <SubmitButton pendingLabel="Deleting...">Delete ward</SubmitButton>
+                        </form>
+                      </ConfirmDeleteWard>
+                    </div>
                   </div>
                 ))}
               </div>
-            </GlassPanel>
+            </DangerZone>
           </div>
 
           <div className="space-y-4">
-            <GlassPanel title="User roles" subtitle="แอดมินเปลี่ยนสิทธิ์ผู้ใช้ได้จากหน้านี้ทันที">
+            <GlassPanel
+              title="User roles"
+              subtitle="Role changes are collapsed too, so the page stays calmer and safer to use."
+            >
               <StaffRoleCards profiles={profiles} updateUserRoleAction={updateUserRoleAction} />
             </GlassPanel>
           </div>

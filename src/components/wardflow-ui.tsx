@@ -26,7 +26,10 @@ import {
   statusTone,
 } from "@/lib/utils";
 import {
+  AdminEditor,
   CopyTextButton,
+  DangerZone,
+  ConfirmDeleteWard,
   PendingGhostButton,
   PendingIconButton,
   PendingSubmitButton,
@@ -860,24 +863,35 @@ export function StaffRoleCards({
     <div className="grid gap-3 xl:grid-cols-2">
       {profiles.map((profile) => (
         <div key={profile.id} className="rounded-[24px] bg-white/74 p-4">
-          <p className="font-semibold text-foreground">{profile.name}</p>
-          <p className="mt-1 text-sm text-muted">{profile.email}</p>
-          <form action={updateUserRoleAction} className="mt-4 flex flex-wrap items-end gap-3">
-            <input type="hidden" name="userId" value={profile.id} />
-            <Field label="Role">
-              <SelectBox name="role" defaultValue={profile.role} className="min-w-44">
-                <option value="admin">Admin</option>
-                <option value="resident">Resident</option>
-                <option value="student">Student</option>
-              </SelectBox>
-            </Field>
-            <SubmitButton>Update role</SubmitButton>
-          </form>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-foreground">{profile.name}</p>
+              <p className="mt-1 text-sm text-muted">{profile.email}</p>
+              <div className="mt-3">
+                <Pill tone="bg-white text-slate-700">{labelForRole(profile.role)}</Pill>
+              </div>
+            </div>
+          </div>
+          <AdminEditor buttonLabel="Edit role" panelTitle={`Edit role | ${profile.name}`}>
+            <form action={updateUserRoleAction} className="mt-4 flex flex-wrap items-end gap-3">
+              <input type="hidden" name="userId" value={profile.id} />
+              <Field label="Role">
+                <SelectBox name="role" defaultValue={profile.role} className="min-w-44">
+                  <option value="admin">Admin</option>
+                  <option value="resident">Resident</option>
+                  <option value="student">Student</option>
+                </SelectBox>
+              </Field>
+              <SubmitButton>Save role</SubmitButton>
+            </form>
+          </AdminEditor>
         </div>
       ))}
     </div>
   );
 }
+
+export { DangerZone, ConfirmDeleteWard };
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
