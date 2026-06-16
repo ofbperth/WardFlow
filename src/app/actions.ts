@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
-import { hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
+import { getAppUrl, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   deleteWard,
@@ -30,7 +30,11 @@ export async function signInWithGoogle() {
     throw new Error("Supabase unavailable");
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const origin = getAppUrl();
+  if (!origin) {
+    throw new Error("NEXT_PUBLIC_APP_URL is not configured");
+  }
+
   const result = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

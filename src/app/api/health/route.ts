@@ -1,9 +1,23 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
-import { getSupabasePublicEnv, getSupabaseServiceRoleKey, hasLiveSupabase } from "@/lib/env";
+import { getAppUrl, getSupabasePublicEnv, getSupabaseServiceRoleKey, hasLiveSupabase } from "@/lib/env";
 
 export async function GET() {
   const timestamp = new Date().toISOString();
+  const appUrl = getAppUrl();
+
+  if (!appUrl) {
+    return NextResponse.json(
+      {
+        ok: false,
+        service: "wardflow",
+        timestamp,
+        mode: "partial",
+        reason: "NEXT_PUBLIC_APP_URL is missing",
+      },
+      { status: 503 },
+    );
+  }
 
   if (!getSupabasePublicEnv()) {
     return NextResponse.json(

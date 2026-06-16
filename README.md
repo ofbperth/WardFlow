@@ -71,6 +71,7 @@ If Supabase env is missing in local development, WardFlow falls back to demo mod
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - keep `NEXT_PUBLIC_APP_URL` as the exact production origin, for example `https://wardflow.example.com`
 6. Run the release gate locally:
 
 ```bash
