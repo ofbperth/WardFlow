@@ -127,48 +127,43 @@ export default async function PatientPage({
           <DischargeSummaryEditor>
             <form action={dischargePatientWithSummaryAction} className="space-y-3">
               <input type="hidden" name="patientId" value={bundle.patient.id} />
-              <Field label="Diagnosis">
-                <TextInput name="diagnosis" defaultValue={dischargeDraft.diagnosis} required />
-              </Field>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Precaution">
-                  <SelectBox name="precaution" defaultValue={dischargeDraft.precaution}>
-                    <option value="none">None</option>
-                    <option value="contact">Contact</option>
-                    <option value="droplet">Droplet</option>
-                    <option value="airborne">Airborne</option>
-                  </SelectBox>
-                </Field>
-                <Field label="Condition at discharge">
-                  <TextInput
-                    name="conditionAtDischarge"
-                    defaultValue={dischargeDraft.conditionAtDischarge}
-                  />
-                </Field>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl bg-white/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Admit date</p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {formatDateTime(dischargeDraft.admitDate)}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Discharge date</p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {formatDateTime(dischargeDraft.dischargeDate)}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                    Length of stay
+                  </p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {dischargeDraft.lengthOfStay || "-"}
+                  </p>
+                </div>
               </div>
+              <Field label="Primary diagnosis">
+                <TextInput
+                  name="primaryDiagnosis"
+                  defaultValue={dischargeDraft.primaryDiagnosis}
+                  required
+                />
+              </Field>
               <Field label="Hospital course">
                 <TextArea name="hospitalCourse" defaultValue={dischargeDraft.hospitalCourse} />
               </Field>
-              <Field label="Active problems">
-                <TextArea name="activeProblems" defaultValue={dischargeDraft.activeProblems} />
+              <Field label="Plan">
+                <TextArea name="plan" defaultValue={dischargeDraft.plan} />
               </Field>
-              <Field label="Completed tasks">
-                <TextArea name="completedTasks" defaultValue={dischargeDraft.completedTasks} />
-              </Field>
-              <Field label="Pending items">
-                <TextArea name="pendingItems" defaultValue={dischargeDraft.pendingItems} />
-              </Field>
-              <Field label="Medication changes">
-                <TextArea name="medicationChanges" defaultValue={dischargeDraft.medicationChanges} />
-              </Field>
-              <Field label="Follow-up plan">
-                <TextArea name="followUpPlan" defaultValue={dischargeDraft.followUpPlan} />
-              </Field>
-              <Field label="Discharge instructions">
-                <TextArea
-                  name="dischargeInstructions"
-                  defaultValue={dischargeDraft.dischargeInstructions}
-                />
+              <Field label="Home medication">
+                <TextArea name="homeMedication" defaultValue={dischargeDraft.homeMedication} />
               </Field>
               <SubmitButton pendingLabel="Discharging patient...">
                 Confirm discharge

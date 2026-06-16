@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { requireAppSession } from "@/lib/auth";
+import { formatDateTime } from "@/lib/utils";
 import { getDischargeSummaryById } from "@/lib/wardflow";
 
 export async function GET(
@@ -25,18 +26,14 @@ export async function GET(
           line(`Patient: ${patient.displayName}`),
           line(`Ward: ${ward?.name ?? "-"}`),
           line(`Bed: ${patient.bed}`),
-          line(`Discharge date: ${summary.dischargeDate}`),
+          line(`Admit date: ${formatDateTime(summary.admitDate)}`),
+          line(`Discharge date: ${formatDateTime(summary.dischargeDate)}`),
+          line(`Length of stay: ${summary.lengthOfStay || "-"}`),
           blank(),
-          section("Diagnosis", summary.diagnosis),
-          section("Precaution", summary.precaution),
-          section("Condition at discharge", summary.conditionAtDischarge),
+          section("Primary diagnosis", summary.primaryDiagnosis),
           section("Hospital course", summary.hospitalCourse),
-          section("Active problems", summary.activeProblems),
-          section("Completed tasks", summary.completedTasks),
-          section("Pending items", summary.pendingItems),
-          section("Medication changes", summary.medicationChanges),
-          section("Follow-up plan", summary.followUpPlan),
-          section("Discharge instructions", summary.dischargeInstructions),
+          section("Plan", summary.plan),
+          section("Home medication", summary.homeMedication),
         ],
       },
     ],

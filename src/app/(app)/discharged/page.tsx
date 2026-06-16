@@ -9,6 +9,7 @@ import {
   TextInput,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
+import { formatDateTime } from "@/lib/utils";
 import { getDischargeSummaryById, getDischargedDirectory } from "@/lib/wardflow";
 
 export default async function DischargedPage({
@@ -118,24 +119,30 @@ export default async function DischargedPage({
                 <div className="space-y-4 text-sm text-foreground">
                   <SummaryRow label="Ward" value={selectedSummary.ward?.name ?? "-"} />
                   <SummaryRow label="Bed" value={selectedSummary.patient.bed} />
-                  <SummaryRow label="Diagnosis" value={selectedSummary.summary.diagnosis} />
-                  <SummaryRow label="Precaution" value={selectedSummary.summary.precaution} />
                   <SummaryRow
-                    label="Condition at discharge"
-                    value={selectedSummary.summary.conditionAtDischarge || "-"}
+                    label="Admit date"
+                    value={formatDateTime(selectedSummary.summary.admitDate)}
                   />
-                  <SummaryRow label="Hospital course" value={selectedSummary.summary.hospitalCourse || "-"} />
-                  <SummaryRow label="Active problems" value={selectedSummary.summary.activeProblems || "-"} />
-                  <SummaryRow label="Completed tasks" value={selectedSummary.summary.completedTasks || "-"} />
-                  <SummaryRow label="Pending items" value={selectedSummary.summary.pendingItems || "-"} />
                   <SummaryRow
-                    label="Medication changes"
-                    value={selectedSummary.summary.medicationChanges || "-"}
+                    label="Discharge date"
+                    value={formatDateTime(selectedSummary.summary.dischargeDate)}
                   />
-                  <SummaryRow label="Follow-up plan" value={selectedSummary.summary.followUpPlan || "-"} />
                   <SummaryRow
-                    label="Discharge instructions"
-                    value={selectedSummary.summary.dischargeInstructions || "-"}
+                    label="Length of stay"
+                    value={selectedSummary.summary.lengthOfStay || "-"}
+                  />
+                  <SummaryRow
+                    label="Primary diagnosis"
+                    value={selectedSummary.summary.primaryDiagnosis}
+                  />
+                  <SummaryRow
+                    label="Hospital course"
+                    value={selectedSummary.summary.hospitalCourse || "-"}
+                  />
+                  <SummaryRow label="Plan" value={selectedSummary.summary.plan || "-"} />
+                  <SummaryRow
+                    label="Home medication"
+                    value={selectedSummary.summary.homeMedication || "-"}
                   />
                 </div>
               </GlassPanel>

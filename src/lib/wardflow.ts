@@ -135,16 +135,10 @@ const userRoleSchema = z.object({
 
 const dischargeSummarySchema = z.object({
   patientId: z.string().min(1),
-  diagnosis: z.string().min(1),
-  precaution: z.enum(["none", "contact", "droplet", "airborne"]),
-  conditionAtDischarge: z.string().default(""),
+  primaryDiagnosis: z.string().min(1),
   hospitalCourse: z.string().default(""),
-  activeProblems: z.string().default(""),
-  completedTasks: z.string().default(""),
-  pendingItems: z.string().default(""),
-  medicationChanges: z.string().default(""),
-  followUpPlan: z.string().default(""),
-  dischargeInstructions: z.string().default(""),
+  plan: z.string().default(""),
+  homeMedication: z.string().default(""),
 });
 
 function now() {
@@ -253,21 +247,36 @@ function summaryByPatientId(patientId: string) {
   return store.dischargeSummaries.find((summary) => summary.patientId === patientId) ?? null;
 }
 
+function getPatientAdmitDate(patientId: string) {
+  const patientActivities = store.activity
+    .filter((activity) => activity.patientId === patientId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
+  return (
+    patientActivities.find((activity) => activity.action === "patient.created")?.createdAt ??
+    patientActivities[0]?.createdAt ??
+    null
+  );
+}
+
+function getLengthOfStay(admitDate: string | null, dischargeDate: string) {
+  if (!admitDate) return "";
+  const diffMs = new Date(dischargeDate).getTime() - new Date(admitDate).getTime();
+  if (Number.isNaN(diffMs)) return "";
+  const dayCount = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  return `${dayCount} day${dayCount > 1 ? "s" : ""}`;
+}
+
 function buildDischargeDraft(patientId: string) {
   const patient = patientById(patientId);
   if (!patient) return null;
 
-  const activeProblems = store.problems
+  const problemPlans = store.problems
     .filter((problem) => problem.patientId === patientId)
     .map((problem) => `${problem.title}${problem.plan ? ` - ${problem.plan}` : ""}`)
     .join("\n");
 
-  const completedTasks = store.tasks
-    .filter((task) => task.patientId === patientId && task.status === "done")
-    .map((task) => task.title)
-    .join("\n");
-
-  const pendingItems = [
+  const planItems = [
     ...store.problems
       .filter((problem) => problem.patientId === patientId)
       .map((problem) => problem.pending)
@@ -278,23 +287,19 @@ function buildDischargeDraft(patientId: string) {
   ].join("\n");
 
   const latestHandover = store.handovers.find((handover) => handover.patientId === patientId);
+  const admitDate = getPatientAdmitDate(patientId);
+  const dischargeDate = now();
 
   return {
-    diagnosis: patient.diagnosis,
-    precaution: patient.precaution,
-    conditionAtDischarge:
-      patient.status === "critical"
-        ? "Critical"
-        : patient.status === "watch"
-          ? "Watch"
-          : "Stable",
+    admitDate,
+    dischargeDate,
+    lengthOfStay: getLengthOfStay(admitDate, dischargeDate),
+    primaryDiagnosis: patient.diagnosis,
     hospitalCourse: latestHandover?.note ?? "",
-    activeProblems,
-    completedTasks,
-    pendingItems,
-    medicationChanges: "",
-    followUpPlan: "",
-    dischargeInstructions: latestHandover?.escalationInstruction ?? "",
+    plan: [problemPlans, planItems, latestHandover?.escalationInstruction ?? ""]
+      .filter(Boolean)
+      .join("\n"),
+    homeMedication: "",
   };
 }
 
@@ -647,21 +652,18 @@ export async function dischargePatientWithSummary(formData: FormData, session: S
 
   const parsed = dischargeSummarySchema.parse({
     patientId: formData.get("patientId"),
-    diagnosis: formData.get("diagnosis"),
-    precaution: formData.get("precaution"),
-    conditionAtDischarge: String(formData.get("conditionAtDischarge") ?? ""),
+    primaryDiagnosis: formData.get("primaryDiagnosis"),
     hospitalCourse: String(formData.get("hospitalCourse") ?? ""),
-    activeProblems: String(formData.get("activeProblems") ?? ""),
-    completedTasks: String(formData.get("completedTasks") ?? ""),
-    pendingItems: String(formData.get("pendingItems") ?? ""),
-    medicationChanges: String(formData.get("medicationChanges") ?? ""),
-    followUpPlan: String(formData.get("followUpPlan") ?? ""),
-    dischargeInstructions: String(formData.get("dischargeInstructions") ?? ""),
+    plan: String(formData.get("plan") ?? ""),
+    homeMedication: String(formData.get("homeMedication") ?? ""),
   });
 
   const patient = patientById(parsed.patientId);
   if (!patient) throw new Error("Patient not found");
   requireWardAccess(session, patient.wardId);
+
+  const dischargeDate = now();
+  const admitDate = getPatientAdmitDate(patient.id) ?? "";
 
   const summary: DischargeSummary = {
     id: nextId("discharge-summary"),
@@ -669,18 +671,14 @@ export async function dischargePatientWithSummary(formData: FormData, session: S
     wardId: patient.wardId,
     createdById: session.profile.id,
     createdByName: session.profile.name,
-    createdAt: now(),
-    dischargeDate: now(),
-    diagnosis: parsed.diagnosis,
-    precaution: parsed.precaution,
-    conditionAtDischarge: parsed.conditionAtDischarge,
+    createdAt: dischargeDate,
+    admitDate,
+    dischargeDate,
+    lengthOfStay: getLengthOfStay(admitDate, dischargeDate),
+    primaryDiagnosis: parsed.primaryDiagnosis,
     hospitalCourse: parsed.hospitalCourse,
-    activeProblems: parsed.activeProblems,
-    completedTasks: parsed.completedTasks,
-    pendingItems: parsed.pendingItems,
-    medicationChanges: parsed.medicationChanges,
-    followUpPlan: parsed.followUpPlan,
-    dischargeInstructions: parsed.dischargeInstructions,
+    plan: parsed.plan,
+    homeMedication: parsed.homeMedication,
   };
 
   store.dischargeSummaries = store.dischargeSummaries.filter((entry) => entry.patientId !== patient.id);

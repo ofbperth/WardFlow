@@ -117,17 +117,13 @@ export type DischargeSummary = {
   createdById: string | null;
   createdByName: string;
   createdAt: string;
+  admitDate: string;
   dischargeDate: string;
-  diagnosis: string;
-  precaution: Precaution;
-  conditionAtDischarge: string;
+  lengthOfStay: string;
+  primaryDiagnosis: string;
   hospitalCourse: string;
-  activeProblems: string;
-  completedTasks: string;
-  pendingItems: string;
-  medicationChanges: string;
-  followUpPlan: string;
-  dischargeInstructions: string;
+  plan: string;
+  homeMedication: string;
 };
 
 export type ActivityLog = {
