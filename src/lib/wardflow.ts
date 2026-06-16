@@ -267,26 +267,36 @@ function getLengthOfStay(admitDate: string | null, dischargeDate: string) {
   return `${dayCount} day${dayCount > 1 ? "s" : ""}`;
 }
 
+function toNumberedLines(items: string[]) {
+  return items.map((item, index) => `${index + 1}. ${item}`).join("\n");
+}
+
 function buildDischargeDraft(patientId: string) {
   const patient = patientById(patientId);
   if (!patient) return null;
 
-  const problemPlans = store.problems
+  const hospitalCourseItems = store.problems
     .filter((problem) => problem.patientId === patientId)
-    .map((problem) => `${problem.title}${problem.plan ? ` - ${problem.plan}` : ""}`)
-    .join("\n");
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .map((problem) =>
+      [
+        problem.title,
+        problem.keyData,
+        problem.plan ? `Plan: ${problem.plan}` : null,
+        problem.pending ? `Pending: ${problem.pending}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    );
 
-  const planItems = [
-    ...store.problems
-      .filter((problem) => problem.patientId === patientId)
-      .map((problem) => problem.pending)
-      .filter(Boolean),
-    ...store.tasks
-      .filter((task) => task.patientId === patientId && task.status !== "done")
-      .map((task) => task.title),
-  ].join("\n");
+  const planItems = store.tasks
+    .filter((task) => task.patientId === patientId && task.status !== "done")
+    .map((task) =>
+      [task.title, task.note, task.blockedReason ? `Blocked: ${task.blockedReason}` : null]
+        .filter(Boolean)
+        .join(" | "),
+    );
 
-  const latestHandover = store.handovers.find((handover) => handover.patientId === patientId);
   const admitDate = getPatientAdmitDate(patientId);
   const dischargeDate = now();
 
@@ -295,10 +305,8 @@ function buildDischargeDraft(patientId: string) {
     dischargeDate,
     lengthOfStay: getLengthOfStay(admitDate, dischargeDate),
     primaryDiagnosis: patient.diagnosis,
-    hospitalCourse: latestHandover?.note ?? "",
-    plan: [problemPlans, planItems, latestHandover?.escalationInstruction ?? ""]
-      .filter(Boolean)
-      .join("\n"),
+    hospitalCourse: hospitalCourseItems.length ? toNumberedLines(hospitalCourseItems) : "",
+    plan: planItems.length ? toNumberedLines(planItems) : "",
     homeMedication: "",
   };
 }
@@ -358,6 +366,21 @@ export async function getDischargeSummaryById(session: SessionContext, summaryId
   const patient = patientById(summary.patientId);
   if (!patient) return null;
   requireWardAccess(session, patient.wardId);
+
+  return {
+    summary,
+    patient,
+    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
+  };
+}
+
+export async function getDischargeSummaryByPatientId(session: SessionContext, patientId: string) {
+  const patient = patientById(patientId);
+  if (!patient) return null;
+  requireWardAccess(session, patient.wardId);
+
+  const summary = summaryByPatientId(patientId);
+  if (!summary) return null;
 
   return {
     summary,
