@@ -55,6 +55,10 @@ export function getSupabaseServiceRoleKey(): string | null {
 }
 
 export function hasLiveSupabase(): boolean {
+  return canUseBrowserSupabase();
+}
+
+export function hasAdminSupabase(): boolean {
   return Boolean(getSupabasePublicEnv() && getSupabaseServiceRoleKey());
 }
 

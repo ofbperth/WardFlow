@@ -38,6 +38,12 @@ export default async function LoginPage({
                 body={params.error}
               />
             ) : null}
+            {state.hasIncompleteSupabaseSetup ? (
+              <SetupNotice
+                title="Partial Supabase setup"
+                body="Google login should work, but server-side admin checks are still unavailable until SUPABASE_SERVICE_ROLE_KEY is added."
+              />
+            ) : null}
 
             {state.supportsGoogleLogin ? (
               <form action={signInWithGoogle}>
