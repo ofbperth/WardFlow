@@ -120,12 +120,6 @@ begin
       and column_name = 'status'
       and udt_name = 'task_status'
   ) then
-    update public.ward_tasks
-    set status = case
-      when status::text = 'waiting' then 'blocked'::public.task_status
-      else status
-    end;
-
     alter table public.ward_tasks
       alter column status drop default,
       alter column status type public.task_status_v2
@@ -150,13 +144,6 @@ begin
       and column_name = 'priority'
       and udt_name = 'task_priority'
   ) then
-    update public.ward_tasks
-    set priority = case
-      when priority::text = 'low' then 'normal'::public.task_priority
-      when priority::text = 'high' then 'emergency'::public.task_priority
-      else priority
-    end;
-
     alter table public.ward_tasks
       alter column priority drop default,
       alter column priority type public.task_priority_v2
@@ -166,13 +153,6 @@ begin
         else priority::text::public.task_priority_v2
       end,
       alter column priority set default 'normal';
-
-    update public.task_templates
-    set default_priority = case
-      when default_priority::text = 'low' then 'normal'::public.task_priority
-      when default_priority::text = 'high' then 'emergency'::public.task_priority
-      else default_priority
-    end;
 
     alter table public.task_templates
       alter column default_priority drop default,
