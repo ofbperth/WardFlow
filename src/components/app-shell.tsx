@@ -44,7 +44,7 @@ export function AppShell({
           <div className="flex min-w-0 items-center gap-4">
             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] ring-1 ring-white/70 shadow-lg shadow-mint-500/15">
               <Image
-                src="/wardflow-app-logo.png"
+                src="/icon.png"
                 alt="WardFlow"
                 fill
                 sizes="56px"
