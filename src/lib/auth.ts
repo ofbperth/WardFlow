@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { demoUser } from "@/lib/demo-data";
 import {
   canUseBrowserSupabase,
+  hasAdminSupabase,
   hasIncompleteSupabaseSetup,
   hasLiveSupabase,
   isDemoModeEnabled,
@@ -25,18 +26,9 @@ function mapProfileRow(row: Record<string, unknown>): UserProfile {
 
 async function ensureLiveProfile() {
   const supabase = await createServerSupabaseClient();
-  const admin = createAdminSupabaseClient() as {
-    from: (table: string) => {
-      upsert: (...args: unknown[]) => Promise<unknown>;
-      select: (...args: unknown[]) => {
-        eq: (...eqArgs: unknown[]) => {
-          single: () => Promise<{ error: unknown; data: Record<string, unknown> | null }>;
-        };
-      };
-    };
-  } | null;
+  const admin = hasAdminSupabase() ? createAdminSupabaseClient() : null;
 
-  if (!supabase || !admin) {
+  if (!supabase) {
     return null;
   }
 
@@ -56,7 +48,25 @@ async function ensureLiveProfile() {
     user?.email?.split("@")[0] ??
     "WardFlow User";
 
-  await admin.from("profiles").upsert(
+  const profileClient =
+    (admin ?? supabase) as unknown as {
+      from: (table: string) => {
+        upsert: (
+          values: Record<string, unknown>,
+          options?: { onConflict?: string },
+        ) => Promise<{ error?: { message?: string } | null }>;
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            single: () => Promise<{
+              error?: { message?: string } | null;
+              data: Record<string, unknown> | null;
+            }>;
+          };
+        };
+      };
+    };
+
+  const upsertResult = await profileClient.from("profiles").upsert(
     {
       id: claims.sub,
       name: fallbackName,
@@ -65,8 +75,15 @@ async function ensureLiveProfile() {
     },
     { onConflict: "id" },
   );
+  if (upsertResult.error) {
+    return null;
+  }
 
-  const profileResult = await admin.from("profiles").select("*").eq("id", claims.sub).single();
+  const profileResult = await profileClient
+    .from("profiles")
+    .select("*")
+    .eq("id", claims.sub)
+    .single();
 
   if (profileResult.error || !profileResult.data) {
     return null;

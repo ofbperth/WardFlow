@@ -9,7 +9,7 @@ export const taskStatusValues = [
   "done",
   "blocked",
 ] as const;
-export const taskPriorityValues = ["normal", "urgency", "emergency"] as const;
+export const taskPriorityValues = ["normal", "urgent", "emergency"] as const;
 export const taskTypeValues = [
   "lab",
   "imaging",

@@ -1,10 +1,17 @@
 import Image from "next/image";
-import { signInWithGoogle, startDemoSession } from "@/app/actions";
+import { startDemoSession } from "@/app/actions";
+import { SetupNotice } from "@/components/wardflow-ui";
 import { PendingSubmitButton } from "@/components/form-feedback";
+import { GoogleLoginButton } from "@/components/google-login-button";
 import { getLoginModeInfo } from "@/lib/auth";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
   const state = getLoginModeInfo();
+  const params = (await searchParams) ?? {};
 
   return (
     <main className="page-shell flex min-h-screen items-center justify-center px-4 py-8">
@@ -26,15 +33,21 @@ export default function LoginPage() {
           </h1>
 
           <div className="mt-8 w-full">
+            {params.error ? (
+              <SetupNotice
+                title="Login failed"
+                body={params.error}
+              />
+            ) : null}
+            {state.hasIncompleteSupabaseSetup ? (
+              <SetupNotice
+                title="Partial Supabase setup"
+                body="Google login should work, but server-side admin checks are still unavailable until SUPABASE_SERVICE_ROLE_KEY is added."
+              />
+            ) : null}
+
             {state.supportsGoogleLogin ? (
-              <form action={signInWithGoogle}>
-                <PendingSubmitButton
-                  pendingLabel="Opening Google..."
-                  className="flex w-full items-center justify-center rounded-full bg-mint-500 px-5 py-3.5 text-base font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600"
-                >
-                  Log in with Google
-                </PendingSubmitButton>
-              </form>
+              <GoogleLoginButton className="flex w-full items-center justify-center rounded-full bg-mint-500 px-5 py-3.5 text-base font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600" />
             ) : state.supportsDemoLogin ? (
               <form action={startDemoSession}>
                 <PendingSubmitButton

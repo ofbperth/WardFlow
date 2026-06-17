@@ -3,7 +3,7 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { hasLiveSupabase } from "@/lib/env";
-import { createAdminSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   demoActivitySeed,
   demoDischargeSummarySeed,
@@ -45,154 +45,133 @@ type DemoStore = {
   profiles: UserProfile[];
 };
 
-const DEMO_STORE_PATH = path.join(process.cwd(), ".wardflow-demo", "store.json");
-const LIVE_STORE_ID = "primary";
-
-type StoreEnvelope = {
-  data: DemoStore;
+type WardRow = {
+  id: string;
+  name: string;
 };
 
 type ProfileRow = {
   id: string;
   name: string | null;
-  email: string | null;
+  email?: string | null;
   avatar_url: string | null;
   role: Role | null;
   ward_assignment: string | null;
 };
 
-function createSeedStore(): DemoStore {
-  return {
-    wards: structuredClone(demoWards),
-    patients: structuredClone(demoPatientsSeed),
-    problems: structuredClone(demoProblemsSeed),
-    tasks: structuredClone(demoTasksSeed),
-    handovers: structuredClone(demoHandoverSeed),
-    dischargeSummaries: structuredClone(demoDischargeSummarySeed),
-    activity: structuredClone(demoActivitySeed),
-    templates: structuredClone(demoTemplatesSeed),
-    profiles: structuredClone(demoProfiles),
-  };
-}
+type PatientRow = {
+  id: string;
+  ward_id: string | null;
+  bed: string;
+  display_name: string;
+  age: number | null;
+  sex: string | null;
+  diagnosis: string;
+  status: Patient["status"];
+  responsible_doctor_id: string | null;
+  allergy: string | null;
+  precaution: Patient["precaution"];
+  code_status: string | null;
+  lifecycle: Patient["lifecycle"];
+  discharged_at: string | null;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-let store: DemoStore = createSeedStore();
+type ProblemRow = {
+  id: string;
+  patient_id: string;
+  title: string;
+  status: Problem["status"];
+  key_data: string | null;
+  plan: string | null;
+  pending: string | null;
+  watch_out: string | null;
+  include_in_handover: boolean;
+  sort_order: number;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-function mapProfileRow(row: ProfileRow): UserProfile {
-  return {
-    id: row.id,
-    name: row.name ?? "Unknown User",
-    email: row.email ?? "",
-    avatarUrl: row.avatar_url ?? null,
-    role: row.role ?? "student",
-    wardAssignment: row.ward_assignment ?? null,
-  };
-}
+type TaskRow = {
+  id: string;
+  patient_id: string;
+  title: string;
+  note: string | null;
+  owner_id: string | null;
+  status: WardTask["status"];
+  priority: WardTask["priority"];
+  type: WardTask["type"];
+  due_at: string | null;
+  blocked_reason: string | null;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
-  const seed = createSeedStore();
+type HandoverRow = {
+  id: string;
+  patient_id: string;
+  note: string;
+  escalation_instruction: string | null;
+  updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-  return {
-    wards: input?.wards ?? seed.wards,
-    patients: input?.patients ?? seed.patients,
-    problems: input?.problems ?? seed.problems,
-    tasks: input?.tasks ?? seed.tasks,
-    handovers: input?.handovers ?? seed.handovers,
-    dischargeSummaries: input?.dischargeSummaries ?? seed.dischargeSummaries,
-    activity: input?.activity ?? seed.activity,
-    templates: input?.templates ?? seed.templates,
-    profiles: input?.profiles ?? seed.profiles,
-  };
-}
+type ActivityRow = {
+  id: string;
+  patient_id: string;
+  actor_id: string | null;
+  actor_name: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  before_json: ActivityLog["beforeJson"];
+  after_json: ActivityLog["afterJson"];
+  created_at: string;
+};
 
-async function ensureStoreLoaded() {
-  if (hasLiveSupabase()) {
-    await ensureLiveStoreLoaded();
-    return;
-  }
+type TemplateRow = {
+  id: string;
+  title: string;
+  type: TaskTemplate["type"];
+  default_priority: TaskTemplate["defaultPriority"];
+};
 
-  const directory = path.dirname(DEMO_STORE_PATH);
-  fs.mkdirSync(directory, { recursive: true });
+type DischargeSummaryRow = {
+  id: string;
+  patient_id: string;
+  ward_id: string | null;
+  created_by_id: string | null;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+  admit_date: string;
+  discharge_date: string;
+  length_of_stay: string;
+  primary_diagnosis: string;
+  hospital_course: string;
+  plan: string;
+  home_medication: string;
+};
 
-  if (!fs.existsSync(DEMO_STORE_PATH)) {
-    store = createSeedStore();
-    fs.writeFileSync(DEMO_STORE_PATH, JSON.stringify(store, null, 2));
-    return;
-  }
+type ActivityInsert = {
+  patient_id: string;
+  actor_id: string | null;
+  actor_name: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  before_json: ActivityLog["beforeJson"];
+  after_json: ActivityLog["afterJson"];
+};
 
-  store = normalizeStore(JSON.parse(fs.readFileSync(DEMO_STORE_PATH, "utf8")) as DemoStore);
-}
+type LiveClient = NonNullable<Awaited<ReturnType<typeof createServerSupabaseClient>>>;
 
-async function ensureLiveStoreLoaded() {
-  const admin = createAdminSupabaseClient() as {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          maybeSingle: () => Promise<{
-            data: StoreEnvelope | null;
-            error: { code?: string; message: string } | null;
-          }>;
-        };
-      };
-      upsert: (
-        values: Record<string, unknown>,
-        options?: Record<string, unknown>,
-      ) => Promise<{ error: { message: string } | null }>;
-    };
-  } | null;
-
-  if (!admin) {
-    throw new Error("Supabase admin client unavailable");
-  }
-
-  const result = await admin.from("app_state").select("data").eq("id", LIVE_STORE_ID).maybeSingle();
-  if (result.error) {
-    throw new Error(`Failed to load live store: ${result.error.message}`);
-  }
-
-  if (!result.data?.data) {
-    store = createSeedStore();
-    await persistStore();
-    return;
-  }
-
-  store = normalizeStore(result.data.data);
-}
-
-async function persistStore() {
-  if (hasLiveSupabase()) {
-    const admin = createAdminSupabaseClient() as {
-      from: (table: string) => {
-        upsert: (
-          values: Record<string, unknown>,
-          options?: Record<string, unknown>,
-        ) => Promise<{ error: { message: string } | null }>;
-      };
-    } | null;
-
-    if (!admin) {
-      throw new Error("Supabase admin client unavailable");
-    }
-
-    const result = await admin.from("app_state").upsert(
-      {
-        id: LIVE_STORE_ID,
-        data: store,
-        updated_at: now(),
-      },
-      { onConflict: "id" },
-    );
-
-    if (result.error) {
-      throw new Error(`Failed to save live store: ${result.error.message}`);
-    }
-
-    return;
-  }
-
-  const directory = path.dirname(DEMO_STORE_PATH);
-  fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(DEMO_STORE_PATH, JSON.stringify(store, null, 2));
-}
+const DEMO_STORE_PATH = path.join(process.cwd(), ".wardflow-demo", "store.json");
 
 const patientSchema = z.object({
   id: z.string().optional(),
@@ -203,6 +182,7 @@ const patientSchema = z.object({
   status: z.enum(["stable", "watch", "critical"]),
   responsibleDoctorId: z.string().optional().nullable(),
   precaution: z.enum(["none", "contact", "droplet", "airborne"]),
+  updatedAt: z.string().optional().nullable(),
 });
 
 const problemSchema = z.object({
@@ -215,6 +195,7 @@ const problemSchema = z.object({
   pending: z.string().optional().nullable(),
   watchOut: z.string().optional().nullable(),
   includeInHandover: z.coerce.boolean(),
+  updatedAt: z.string().optional().nullable(),
 });
 
 const taskSchema = z.object({
@@ -223,7 +204,7 @@ const taskSchema = z.object({
   title: z.string().min(1),
   ownerId: z.string().optional().nullable(),
   status: z.enum(["not_started", "in_progress", "done", "blocked"]),
-  priority: z.enum(["normal", "urgency", "emergency"]),
+  priority: z.enum(["normal", "urgent", "emergency"]),
   type: z.enum([
     "lab",
     "imaging",
@@ -237,12 +218,14 @@ const taskSchema = z.object({
   note: z.string().optional().nullable(),
   dueAt: z.string().optional().nullable(),
   blockedReason: z.string().optional().nullable(),
+  updatedAt: z.string().optional().nullable(),
 });
 
 const handoverSchema = z.object({
   patientId: z.string().min(1),
   note: z.string().optional().default(""),
   escalationInstruction: z.string().optional().nullable(),
+  updatedAt: z.string().optional().nullable(),
 });
 
 const wardSchema = z.object({
@@ -270,7 +253,7 @@ const templateSchema = z.object({
     "medication",
     "other",
   ]),
-  defaultPriority: z.enum(["normal", "urgency", "emergency"]),
+  defaultPriority: z.enum(["normal", "urgent", "emergency"]),
 });
 
 const userRoleSchema = z.object({
@@ -284,6 +267,7 @@ const deleteUserSchema = z.object({
 
 const dischargeSummarySchema = z.object({
   patientId: z.string().min(1),
+  patientUpdatedAt: z.string().optional().nullable(),
   primaryDiagnosis: z.string().min(1),
   hospitalCourse: z.string().default(""),
   plan: z.string().default(""),
@@ -304,6 +288,57 @@ function textOrNull(value: FormDataEntryValue | null) {
   return trimmed.length ? trimmed : null;
 }
 
+function createSeedStore(): DemoStore {
+  return {
+    wards: structuredClone(demoWards),
+    patients: structuredClone(demoPatientsSeed),
+    problems: structuredClone(demoProblemsSeed),
+    tasks: structuredClone(demoTasksSeed),
+    handovers: structuredClone(demoHandoverSeed),
+    dischargeSummaries: structuredClone(demoDischargeSummarySeed),
+    activity: structuredClone(demoActivitySeed),
+    templates: structuredClone(demoTemplatesSeed),
+    profiles: structuredClone(demoProfiles),
+  };
+}
+
+let store: DemoStore = createSeedStore();
+
+function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
+  const seed = createSeedStore();
+
+  return {
+    wards: input?.wards ?? seed.wards,
+    patients: input?.patients ?? seed.patients,
+    problems: input?.problems ?? seed.problems,
+    tasks: input?.tasks ?? seed.tasks,
+    handovers: input?.handovers ?? seed.handovers,
+    dischargeSummaries: input?.dischargeSummaries ?? seed.dischargeSummaries,
+    activity: input?.activity ?? seed.activity,
+    templates: input?.templates ?? seed.templates,
+    profiles: input?.profiles ?? seed.profiles,
+  };
+}
+
+async function ensureDemoStoreLoaded() {
+  const directory = path.dirname(DEMO_STORE_PATH);
+  fs.mkdirSync(directory, { recursive: true });
+
+  if (!fs.existsSync(DEMO_STORE_PATH)) {
+    store = createSeedStore();
+    fs.writeFileSync(DEMO_STORE_PATH, JSON.stringify(store, null, 2));
+    return;
+  }
+
+  store = normalizeStore(JSON.parse(fs.readFileSync(DEMO_STORE_PATH, "utf8")) as DemoStore);
+}
+
+async function persistDemoStore() {
+  const directory = path.dirname(DEMO_STORE_PATH);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(DEMO_STORE_PATH, JSON.stringify(store, null, 2));
+}
+
 function canManageAdmin(session: SessionContext) {
   return session.profile.role === "admin";
 }
@@ -321,28 +356,65 @@ function canManageClinicalEntries(session: SessionContext) {
 }
 
 function canViewAllWards(session: SessionContext) {
-  return session.profile.role === "admin" || session.profile.role === "student";
+  return session.profile.role === "admin";
 }
 
-function requireWardReadAccess(session: SessionContext, wardId: string) {
+function requireWardReadAccess(session: SessionContext, wardId: string | null) {
+  if (!wardId) {
+    if (!canManageAdmin(session)) {
+      throw new Error("Missing ward assignment");
+    }
+    return;
+  }
+
   if (canViewAllWards(session)) return;
   if (session.profile.wardAssignment !== wardId) {
     throw new Error("Ward access denied");
   }
 }
 
-function requireWardWriteAccess(session: SessionContext, wardId: string) {
+function requireWardWriteAccess(session: SessionContext, wardId: string | null) {
+  if (!wardId) {
+    throw new Error("Missing ward assignment");
+  }
+
   if (session.profile.role === "admin") return;
   if (session.profile.wardAssignment !== wardId) {
     throw new Error("Ward access denied");
   }
 }
 
-function patientById(patientId: string) {
-  return store.patients.find((patient) => patient.id === patientId) ?? null;
+function requirePatientManager(session: SessionContext) {
+  if (!canManagePatients(session)) {
+    throw new Error("Only admin or resident can manage patient core data");
+  }
 }
 
-function addActivity(
+function requireClinicalEditor(session: SessionContext) {
+  if (!canManageClinicalEntries(session)) {
+    throw new Error("Clinical entries are not allowed");
+  }
+}
+
+function patientById(input: DemoStore, patientId: string) {
+  return input.patients.find((patient) => patient.id === patientId) ?? null;
+}
+
+function visibleWardIds(input: DemoStore, session: SessionContext) {
+  return canViewAllWards(session)
+    ? input.wards.map((ward) => ward.id)
+    : [session.profile.wardAssignment].filter(Boolean) as string[];
+}
+
+function getPatientDirectoryName(
+  input: DemoStore,
+  profileId: string | null,
+  fallback: string | null = null,
+) {
+  return input.profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
+}
+
+function addActivityToDemoStore(
   session: SessionContext,
   patientId: string,
   action: string,
@@ -365,30 +437,28 @@ function addActivity(
   });
 }
 
-function refreshPatient(patientId: string) {
-  const patient = patientById(patientId);
+function refreshDemoPatient(patientId: string) {
+  const patient = patientById(store, patientId);
   if (patient) {
     patient.lastUpdate = now();
   }
 }
 
-function visibleWardIds(session: SessionContext) {
-  return canViewAllWards(session)
-    ? store.wards.map((ward) => ward.id)
-    : [session.profile.wardAssignment].filter(Boolean) as string[];
-}
+function buildWardSummary(
+  input: DemoStore,
+  session: SessionContext,
+  lifecycle: "active" | "discharged",
+): WardSummary[] {
+  const wardIds = visibleWardIds(input, session);
 
-function buildWardSummary(session: SessionContext, lifecycle: "active" | "discharged"): WardSummary[] {
-  const wardIds = visibleWardIds(session);
-
-  return store.wards
+  return input.wards
     .filter((ward) => wardIds.includes(ward.id))
     .map((ward) => ({
       ward,
-      patients: store.patients
+      patients: input.patients
         .filter((patient) => patient.wardId === ward.id && patient.lifecycle === lifecycle)
         .map((patient) => {
-          const tasks = store.tasks.filter((task) => task.patientId === patient.id);
+          const tasks = input.tasks.filter((task) => task.patientId === patient.id);
           return {
             ...patient,
             pendingTaskCount: tasks.filter((task) => task.status !== "done").length,
@@ -399,97 +469,12 @@ function buildWardSummary(session: SessionContext, lifecycle: "active" | "discha
     .filter((summary) => summary.patients.length > 0 || lifecycle === "active");
 }
 
-function getPatientDirectoryName(profileId: string | null, fallback: string | null = null) {
-  return store.profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
+function summaryByPatientId(input: DemoStore, patientId: string) {
+  return input.dischargeSummaries.find((summary) => summary.patientId === patientId) ?? null;
 }
 
-async function getLiveProfiles(): Promise<UserProfile[]> {
-  const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
-  if (!admin) {
-    throw new Error("Supabase admin client unavailable");
-  }
-
-  const result = await admin
-    .from("profiles")
-    .select("id, name, email, avatar_url, role, ward_assignment")
-    .order("name", { ascending: true });
-
-  if (result.error) {
-    throw new Error(`Failed to load profiles: ${result.error.message}`);
-  }
-
-  return ((result.data ?? []) as ProfileRow[]).map(mapProfileRow);
-}
-
-async function getVisibleProfiles(session: SessionContext): Promise<UserProfile[]> {
-  if (!hasLiveSupabase()) {
-    return store.profiles.filter(
-      (profile) =>
-        session.profile.role === "admin" ||
-        profile.wardAssignment === session.profile.wardAssignment ||
-        profile.id === session.profile.id,
-    );
-  }
-
-  const profiles = await getLiveProfiles();
-  return profiles.filter(
-    (profile) =>
-      session.profile.role === "admin" ||
-      profile.wardAssignment === session.profile.wardAssignment ||
-      profile.id === session.profile.id,
-  );
-}
-
-async function getProfileDirectoryName(profileId: string | null, fallback: string | null = null) {
-  if (!profileId) {
-    return fallback ?? null;
-  }
-
-  if (!hasLiveSupabase()) {
-    return getPatientDirectoryName(profileId, fallback);
-  }
-
-  const profiles = await getLiveProfiles();
-  return profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
-}
-
-function scrubDeletedUserReferences(userId: string) {
-  store.patients = store.patients.map((patient) =>
-    patient.responsibleDoctorId === userId
-      ? { ...patient, responsibleDoctorId: null, responsibleDoctorName: null, lastUpdate: now() }
-      : patient,
-  );
-
-  store.tasks = store.tasks.map((task) => {
-    if (task.ownerId !== userId && task.updatedById !== userId) {
-      return task;
-    }
-
-    return {
-      ...task,
-      ownerId: task.ownerId === userId ? null : task.ownerId,
-      ownerName: task.ownerId === userId ? null : task.ownerName,
-      updatedById: task.updatedById === userId ? null : task.updatedById,
-      updatedByName: task.updatedById === userId ? null : task.updatedByName,
-      updatedAt: now(),
-    };
-  });
-
-  store.dischargeSummaries = store.dischargeSummaries.map((summary) =>
-    summary.createdById === userId ? { ...summary, createdById: null } : summary,
-  );
-
-  store.activity = store.activity.map((entry) =>
-    entry.actorId === userId ? { ...entry, actorId: null } : entry,
-  );
-}
-
-function summaryByPatientId(patientId: string) {
-  return store.dischargeSummaries.find((summary) => summary.patientId === patientId) ?? null;
-}
-
-function getPatientAdmitDate(patientId: string) {
-  const patientActivities = store.activity
+function getPatientAdmitDate(input: DemoStore, patientId: string) {
+  const patientActivities = input.activity
     .filter((activity) => activity.patientId === patientId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 
@@ -512,11 +497,11 @@ function toNumberedLines(items: string[]) {
   return items.map((item, index) => `${index + 1}. ${item}`).join("\n");
 }
 
-function buildDischargeDraft(patientId: string) {
-  const patient = patientById(patientId);
+function buildDischargeDraft(input: DemoStore, patientId: string) {
+  const patient = patientById(input, patientId);
   if (!patient) return null;
 
-  const hospitalCourseItems = store.problems
+  const hospitalCourseItems = input.problems
     .filter((problem) => problem.patientId === patientId)
     .sort((left, right) => left.sortOrder - right.sortOrder)
     .map((problem) =>
@@ -530,7 +515,7 @@ function buildDischargeDraft(patientId: string) {
         .join(" | "),
     );
 
-  const planItems = store.tasks
+  const planItems = input.tasks
     .filter((task) => task.patientId === patientId && task.status !== "done")
     .map((task) =>
       [task.title, task.note, task.blockedReason ? `Blocked: ${task.blockedReason}` : null]
@@ -538,7 +523,7 @@ function buildDischargeDraft(patientId: string) {
         .join(" | "),
     );
 
-  const admitDate = getPatientAdmitDate(patientId);
+  const admitDate = getPatientAdmitDate(input, patientId);
   const dischargeDate = now();
 
   return {
@@ -552,32 +537,367 @@ function buildDischargeDraft(patientId: string) {
   };
 }
 
+function mapProfileRow(row: ProfileRow): UserProfile {
+  return {
+    id: row.id,
+    name: row.name ?? "Unknown User",
+    email: row.email ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role ?? "student",
+    wardAssignment: row.ward_assignment ?? null,
+  };
+}
+
+function mapPatientRow(row: PatientRow, profiles: Map<string, UserProfile>): Patient {
+  return {
+    id: row.id,
+    wardId: row.ward_id ?? "",
+    bed: row.bed,
+    displayName: row.display_name,
+    age: row.age,
+    sex: row.sex,
+    diagnosis: row.diagnosis,
+    status: row.status,
+    responsibleDoctorId: row.responsible_doctor_id,
+    responsibleDoctorName: row.responsible_doctor_id
+      ? profiles.get(row.responsible_doctor_id)?.name ?? null
+      : null,
+    allergy: row.allergy,
+    precaution: row.precaution,
+    codeStatus: row.code_status,
+    lifecycle: row.lifecycle,
+    dischargedAt: row.discharged_at,
+    lastUpdate: row.updated_at,
+  };
+}
+
+function mapProblemRow(row: ProblemRow): Problem {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    title: row.title,
+    status: row.status,
+    keyData: row.key_data,
+    plan: row.plan,
+    pending: row.pending,
+    watchOut: row.watch_out,
+    includeInHandover: row.include_in_handover,
+    sortOrder: row.sort_order,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapTaskRow(row: TaskRow, profiles: Map<string, UserProfile>): WardTask {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    title: row.title,
+    note: row.note,
+    ownerId: row.owner_id,
+    ownerName: row.owner_id ? profiles.get(row.owner_id)?.name ?? null : null,
+    status: row.status,
+    priority: row.priority,
+    type: row.type,
+    dueAt: row.due_at,
+    blockedReason: row.blocked_reason,
+    updatedById: row.updated_by_id,
+    updatedByName: row.updated_by_id ? profiles.get(row.updated_by_id)?.name ?? null : null,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapHandoverRow(row: HandoverRow): HandoverNote {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    note: row.note,
+    escalationInstruction: row.escalation_instruction,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapActivityRow(row: ActivityRow): ActivityLog {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    actorId: row.actor_id,
+    actorName: row.actor_name || "Unknown User",
+    action: row.action,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    beforeJson: row.before_json,
+    afterJson: row.after_json,
+    createdAt: row.created_at,
+  };
+}
+
+function mapTemplateRow(row: TemplateRow): TaskTemplate {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    defaultPriority: row.default_priority,
+  };
+}
+
+function mapDischargeSummaryRow(row: DischargeSummaryRow): DischargeSummary {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    wardId: row.ward_id ?? "",
+    createdById: row.created_by_id,
+    createdByName: row.created_by_name || "Unknown User",
+    createdAt: row.created_at,
+    admitDate: row.admit_date,
+    dischargeDate: row.discharge_date,
+    lengthOfStay: row.length_of_stay,
+    primaryDiagnosis: row.primary_diagnosis,
+    hospitalCourse: row.hospital_course,
+    plan: row.plan,
+    homeMedication: row.home_medication,
+  };
+}
+
+async function getLiveClient() {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase client unavailable");
+  }
+
+  return supabase as LiveClient;
+}
+
+function ensureNoError<T extends { error: { message: string } | null }>(result: T, message: string) {
+  if (result.error) {
+    throw new Error(`${message}: ${result.error.message}`);
+  }
+}
+
+async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
+  const supabase = await getLiveClient();
+  const profileColumns =
+    session.profile.role === "admin"
+      ? "id, name, email, avatar_url, role, ward_assignment"
+      : "id, name, avatar_url, role, ward_assignment";
+
+  const [
+    wardsResult,
+    profilesResult,
+    patientsResult,
+    problemsResult,
+    tasksResult,
+    handoversResult,
+    activityResult,
+    templatesResult,
+    summariesResult,
+  ] = await Promise.all([
+    supabase.from("wards").select("id, name").order("name", { ascending: true }),
+    supabase.from("profiles").select(profileColumns).order("name", { ascending: true }),
+    supabase
+      .from("patients")
+      .select(
+        "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, discharged_at, updated_by_id, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("problems")
+      .select(
+        "id, patient_id, title, status, key_data, plan, pending, watch_out, include_in_handover, sort_order, updated_by_id, created_at, updated_at",
+      )
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("ward_tasks")
+      .select(
+        "id, patient_id, title, note, owner_id, status, priority, type, due_at, blocked_reason, updated_by_id, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("handover_notes")
+      .select("id, patient_id, note, escalation_instruction, updated_by_id, created_at, updated_at"),
+    supabase
+      .from("activity_logs")
+      .select(
+        "id, patient_id, actor_id, actor_name, action, entity_type, entity_id, before_json, after_json, created_at",
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("task_templates")
+      .select("id, title, type, default_priority")
+      .order("title", { ascending: true }),
+    supabase
+      .from("discharge_summaries")
+      .select(
+        "id, patient_id, ward_id, created_by_id, created_by_name, created_at, updated_at, admit_date, discharge_date, length_of_stay, primary_diagnosis, hospital_course, plan, home_medication",
+      )
+      .order("created_at", { ascending: false }),
+  ]);
+
+  ensureNoError(wardsResult, "Failed to load wards");
+  ensureNoError(profilesResult, "Failed to load profiles");
+  ensureNoError(patientsResult, "Failed to load patients");
+  ensureNoError(problemsResult, "Failed to load problems");
+  ensureNoError(tasksResult, "Failed to load tasks");
+  ensureNoError(handoversResult, "Failed to load handover notes");
+  ensureNoError(activityResult, "Failed to load activity logs");
+  ensureNoError(templatesResult, "Failed to load task templates");
+  ensureNoError(summariesResult, "Failed to load discharge summaries");
+
+  const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return {
+    wards: ((wardsResult.data ?? []) as WardRow[]).map((row) => ({ id: row.id, name: row.name })),
+    profiles,
+    patients: ((patientsResult.data ?? []) as PatientRow[]).map((row) =>
+      mapPatientRow(row, profileMap),
+    ),
+    problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
+    tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
+    handovers: ((handoversResult.data ?? []) as HandoverRow[]).map(mapHandoverRow),
+    activity: ((activityResult.data ?? []) as ActivityRow[]).map(mapActivityRow),
+    templates: ((templatesResult.data ?? []) as TemplateRow[]).map(mapTemplateRow),
+    dischargeSummaries: ((summariesResult.data ?? []) as DischargeSummaryRow[]).map(
+      mapDischargeSummaryRow,
+    ),
+  };
+}
+
+async function getStoreForSession(session: SessionContext) {
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    return store;
+  }
+
+  return loadLiveStore(session);
+}
+
+function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProfile[] {
+  return input.profiles.filter(
+    (profile) =>
+      session.profile.role === "admin" ||
+      profile.wardAssignment === session.profile.wardAssignment ||
+      profile.id === session.profile.id,
+  );
+}
+
+async function insertActivityLog(supabase: LiveClient, entry: ActivityInsert) {
+  const result = await supabase.from("activity_logs").insert({
+    id: nextId("activity"),
+    ...entry,
+  });
+
+  ensureNoError(result, "Failed to write activity log");
+}
+
+function assertNoConflict(expected: string | null | undefined, actual: string, entity: string) {
+  if (expected && expected !== actual) {
+    throw new Error(`Conflict error: ${entity} was updated by another session. Refresh and retry.`);
+  }
+}
+
+async function fetchLivePatient(supabase: LiveClient, patientId: string) {
+  const result = await supabase
+    .from("patients")
+    .select(
+      "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, updated_by_id, discharged_at, created_at, updated_at",
+    )
+    .eq("id", patientId)
+    .maybeSingle();
+
+  ensureNoError(result, "Failed to load patient");
+  return (result.data as PatientRow | null) ?? null;
+}
+
+async function fetchLiveProblem(supabase: LiveClient, problemId: string) {
+  const result = await supabase
+    .from("problems")
+    .select(
+      "id, patient_id, title, status, key_data, plan, pending, watch_out, include_in_handover, sort_order, updated_by_id, created_at, updated_at",
+    )
+    .eq("id", problemId)
+    .maybeSingle();
+
+  ensureNoError(result, "Failed to load problem");
+  return (result.data as ProblemRow | null) ?? null;
+}
+
+async function fetchLiveTask(supabase: LiveClient, taskId: string) {
+  const result = await supabase
+    .from("ward_tasks")
+    .select(
+      "id, patient_id, title, note, owner_id, status, priority, type, due_at, blocked_reason, updated_by_id, created_at, updated_at",
+    )
+    .eq("id", taskId)
+    .maybeSingle();
+
+  ensureNoError(result, "Failed to load task");
+  return (result.data as TaskRow | null) ?? null;
+}
+
+async function fetchLiveHandover(supabase: LiveClient, patientId: string) {
+  const result = await supabase
+    .from("handover_notes")
+    .select("id, patient_id, note, escalation_instruction, updated_by_id, created_at, updated_at")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+
+  ensureNoError(result, "Failed to load handover");
+  return (result.data as HandoverRow | null) ?? null;
+}
+
+async function getLivePatientDirectoryName(
+  supabase: LiveClient,
+  session: SessionContext,
+  profileId: string | null,
+  fallback: string | null = null,
+) {
+  if (!profileId) {
+    return fallback ?? null;
+  }
+
+  const store = await loadLiveStore(session);
+  return getPatientDirectoryName(store, profileId, fallback);
+}
+
+function revalidateWardflowPaths(patientId?: string) {
+  revalidatePath("/wards");
+  revalidatePath("/discharged");
+  revalidatePath("/handover");
+  revalidatePath("/my-tasks");
+  revalidatePath("/admin/wards");
+  revalidatePath("/admin/task-templates");
+  if (patientId) {
+    revalidatePath(`/patients/${patientId}`);
+    revalidatePath(`/discharged/${patientId}`);
+  }
+}
+
 export async function getWardSummaries(session: SessionContext): Promise<WardSummary[]> {
-  await ensureStoreLoaded();
-  return buildWardSummary(session, "active");
+  const input = await getStoreForSession(session);
+  return buildWardSummary(input, session, "active");
 }
 
 export async function getDischargedSummaries(session: SessionContext): Promise<WardSummary[]> {
-  await ensureStoreLoaded();
-  return buildWardSummary(session, "discharged");
+  const input = await getStoreForSession(session);
+  return buildWardSummary(input, session, "discharged");
 }
 
 export async function getDischargedDirectory(
   session: SessionContext,
   options: { wardId?: string | null; query?: string | null; page?: number; pageSize?: number } = {},
 ) {
-  await ensureStoreLoaded();
+  const input = await getStoreForSession(session);
   const wardId = options.wardId?.trim() || null;
   const query = options.query?.trim().toLowerCase() || "";
   const pageSize = options.pageSize ?? 10;
   const page = Math.max(1, options.page ?? 1);
-  const wardIds = visibleWardIds(session);
+  const wardIds = visibleWardIds(input, session);
 
-  const filtered = store.patients
-    .filter((patient) =>
-      canViewAllWards(session)
-        ? patient.lifecycle === "discharged"
-        : patient.lifecycle === "discharged" && wardIds.includes(patient.wardId),
+  const filtered = input.patients
+    .filter(
+      (patient) =>
+        patient.lifecycle === "discharged" &&
+        (canViewAllWards(session) || wardIds.includes(patient.wardId)),
     )
     .filter((patient) => (wardId ? patient.wardId === wardId : true))
     .filter((patient) =>
@@ -594,13 +914,13 @@ export async function getDischargedDirectory(
   const start = (Math.min(page, totalPages) - 1) * pageSize;
   const items: DischargedDirectoryItem[] = filtered.slice(start, start + pageSize).map((patient) => ({
     patient,
-    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
-    summary: summaryByPatientId(patient.id),
+    ward: input.wards.find((ward) => ward.id === patient.wardId) ?? null,
+    summary: summaryByPatientId(input, patient.id),
   }));
 
   return {
     items,
-    wards: store.wards.filter((ward) => wardIds.includes(ward.id)),
+    wards: input.wards.filter((ward) => wardIds.includes(ward.id)),
     total,
     page: Math.min(page, totalPages),
     totalPages,
@@ -609,83 +929,116 @@ export async function getDischargedDirectory(
 }
 
 export async function hardDeletePatient(patientId: string, session: SessionContext) {
-  await ensureStoreLoaded();
-  if (!canManagePatients(session)) {
-    throw new Error("Only admin or resident can hard delete patient");
+  requirePatientManager(session);
+  const parsed = deletePatientSchema.parse({ patientId });
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) {
+      throw new Error("Patient not found");
+    }
+
+    requireWardWriteAccess(session, patient.wardId);
+
+    if (patient.lifecycle !== "discharged") {
+      throw new Error("Only discharged patients can be hard deleted");
+    }
+
+    addActivityToDemoStore(
+      session,
+      patient.id,
+      "patient.hard_deleted",
+      "patient",
+      patient.id,
+      patient,
+      null,
+    );
+
+    store.patients = store.patients.filter((entry) => entry.id !== parsed.patientId);
+    store.problems = store.problems.filter((entry) => entry.patientId !== parsed.patientId);
+    store.tasks = store.tasks.filter((entry) => entry.patientId !== parsed.patientId);
+    store.handovers = store.handovers.filter((entry) => entry.patientId !== parsed.patientId);
+    store.dischargeSummaries = store.dischargeSummaries.filter(
+      (entry) => entry.patientId !== parsed.patientId,
+    );
+
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.patientId);
+    return;
   }
 
-  const parsed = deletePatientSchema.parse({ patientId });
-  const patient = patientById(parsed.patientId);
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
   if (!patient) {
     throw new Error("Patient not found");
   }
 
-  requireWardWriteAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.ward_id);
 
   if (patient.lifecycle !== "discharged") {
     throw new Error("Only discharged patients can be hard deleted");
   }
 
-  store.patients = store.patients.filter((entry) => entry.id !== parsed.patientId);
-  store.problems = store.problems.filter((entry) => entry.patientId !== parsed.patientId);
-  store.tasks = store.tasks.filter((entry) => entry.patientId !== parsed.patientId);
-  store.handovers = store.handovers.filter((entry) => entry.patientId !== parsed.patientId);
-  store.dischargeSummaries = store.dischargeSummaries.filter(
-    (entry) => entry.patientId !== parsed.patientId,
-  );
-  store.activity = store.activity.filter((entry) => entry.patientId !== parsed.patientId);
+  await insertActivityLog(supabase, {
+    patient_id: patient.id,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "patient.hard_deleted",
+    entity_type: "patient",
+    entity_id: patient.id,
+    before_json: patient,
+    after_json: null,
+  });
 
-  await persistStore();
-  revalidatePath("/wards");
-  revalidatePath("/discharged");
-  revalidatePath("/handover");
-  revalidatePath("/my-tasks");
-  revalidatePath(`/patients/${parsed.patientId}`);
+  const result = await supabase.from("patients").delete().eq("id", parsed.patientId);
+  ensureNoError(result, "Failed to delete patient");
+  revalidateWardflowPaths(parsed.patientId);
 }
 
 export async function getDischargeSummaryById(session: SessionContext, summaryId: string) {
-  await ensureStoreLoaded();
-  const summary = store.dischargeSummaries.find((entry) => entry.id === summaryId) ?? null;
+  const input = await getStoreForSession(session);
+  const summary = input.dischargeSummaries.find((entry) => entry.id === summaryId) ?? null;
   if (!summary) return null;
-  const patient = patientById(summary.patientId);
+  const patient = patientById(input, summary.patientId);
   if (!patient) return null;
   requireWardReadAccess(session, patient.wardId);
 
   return {
     summary,
     patient,
-    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
+    ward: input.wards.find((ward) => ward.id === patient.wardId) ?? null,
   };
 }
 
 export async function getDischargeSummaryByPatientId(session: SessionContext, patientId: string) {
-  await ensureStoreLoaded();
-  const patient = patientById(patientId);
+  const input = await getStoreForSession(session);
+  const patient = patientById(input, patientId);
   if (!patient) return null;
   requireWardReadAccess(session, patient.wardId);
 
-  const summary = summaryByPatientId(patientId);
+  const summary = summaryByPatientId(input, patientId);
   if (!summary) return null;
 
   return {
     summary,
     patient,
-    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
+    ward: input.wards.find((ward) => ward.id === patient.wardId) ?? null,
   };
 }
 
 export async function getDischargeDraft(session: SessionContext, patientId: string) {
-  await ensureStoreLoaded();
-  const patient = patientById(patientId);
+  const input = await getStoreForSession(session);
+  const patient = patientById(input, patientId);
   if (!patient) return null;
   requireWardReadAccess(session, patient.wardId);
-  return buildDischargeDraft(patientId);
+  return buildDischargeDraft(input, patientId);
 }
 
 export async function getWardDetail(session: SessionContext, wardId: string) {
-  await ensureStoreLoaded();
+  const input = await getStoreForSession(session);
   requireWardReadAccess(session, wardId);
-  const summaries = await getWardSummaries(session);
+  const summaries = buildWardSummary(input, session, "active");
   return summaries.find((summary) => summary.ward.id === wardId) ?? null;
 }
 
@@ -693,46 +1046,51 @@ export async function getPatientBundle(
   session: SessionContext,
   patientId: string,
 ): Promise<PatientBundle | null> {
-  await ensureStoreLoaded();
-  const patient = patientById(patientId);
+  const input = await getStoreForSession(session);
+  const patient = patientById(input, patientId);
   if (!patient) return null;
   requireWardReadAccess(session, patient.wardId);
 
   return {
     patient,
-    ward: store.wards.find((ward) => ward.id === patient.wardId) ?? null,
-    problems: store.problems
+    ward: input.wards.find((ward) => ward.id === patient.wardId) ?? null,
+    problems: input.problems
       .filter((problem) => problem.patientId === patientId)
       .sort((left, right) => left.sortOrder - right.sortOrder),
-    tasks: store.tasks
+    tasks: input.tasks
       .filter((task) => task.patientId === patientId)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
-    handover: store.handovers.find((handover) => handover.patientId === patientId) ?? null,
-    activity: store.activity
+    handover: input.handovers.find((handover) => handover.patientId === patientId) ?? null,
+    activity: input.activity
       .filter((activity) => activity.patientId === patientId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
   };
 }
 
 export async function getProfiles(session: SessionContext) {
-  await ensureStoreLoaded();
-  return getVisibleProfiles(session);
+  const input = await getStoreForSession(session);
+  return getVisibleProfiles(input, session);
 }
 
-export async function getTaskTemplates() {
-  await ensureStoreLoaded();
-  return [...store.templates].sort((left, right) => left.title.localeCompare(right.title));
+export async function getTaskTemplates(session?: SessionContext) {
+  if (!session || session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    return [...store.templates].sort((left, right) => left.title.localeCompare(right.title));
+  }
+
+  const input = await getStoreForSession(session);
+  return [...input.templates].sort((left, right) => left.title.localeCompare(right.title));
 }
 
 export async function getMyTasks(session: SessionContext) {
-  await ensureStoreLoaded();
+  const input = await getStoreForSession(session);
   const patientMap = new Map(
-    store.patients
+    input.patients
       .filter((patient) => patient.lifecycle === "active")
       .map((patient) => [patient.id, patient]),
   );
 
-  return store.tasks
+  return input.tasks
     .filter(
       (task) =>
         patientMap.has(task.patientId) &&
@@ -742,18 +1100,19 @@ export async function getMyTasks(session: SessionContext) {
 }
 
 export async function getHandoverBundles(session: SessionContext): Promise<HandoverBundle[]> {
-  await ensureStoreLoaded();
-  const summaries = await getWardSummaries(session);
+  const input = await getStoreForSession(session);
+  const summaries = buildWardSummary(input, session, "active");
+
   return summaries.map((summary) => ({
     ward: summary.ward,
     patients: summary.patients
       .map((patient) => ({
         ...patient,
-        problems: store.problems.filter(
+        problems: input.problems.filter(
           (problem) => problem.patientId === patient.id && problem.status !== "resolved",
         ),
-        tasks: store.tasks.filter((task) => task.patientId === patient.id && task.status !== "done"),
-        handover: store.handovers.find((handover) => handover.patientId === patient.id) ?? null,
+        tasks: input.tasks.filter((task) => task.patientId === patient.id && task.status !== "done"),
+        handover: input.handovers.find((handover) => handover.patientId === patient.id) ?? null,
       }))
       .sort((left, right) => {
         const weight = (status: Patient["status"]) =>
@@ -764,7 +1123,6 @@ export async function getHandoverBundles(session: SessionContext): Promise<Hando
 }
 
 export async function getHandoverStructuredText(session: SessionContext, wardId?: string | null) {
-  await ensureStoreLoaded();
   const bundles = await getHandoverBundles(session);
   const selected = wardId ? bundles.filter((bundle) => bundle.ward.id === wardId) : bundles;
 
@@ -789,6 +1147,7 @@ export async function getHandoverStructuredText(session: SessionContext, wardId?
               .filter((task) => task.status !== "done")
               .map((task) => task.title),
           ];
+
           return [
             `${patient.displayName} (Bed ${patient.bed}) - ${patient.diagnosis}`,
             `Status: ${patient.status}`,
@@ -809,7 +1168,6 @@ export async function getHandoverStructuredText(session: SessionContext, wardId?
 }
 
 export async function saveWard(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -819,22 +1177,38 @@ export async function saveWard(formData: FormData, session: SessionContext) {
     name: formData.get("name"),
   });
 
-  if (parsed.id) {
-    const ward = store.wards.find((entry) => entry.id === parsed.id);
-    if (!ward) throw new Error("Ward not found");
-    ward.name = parsed.name;
-  } else {
-    store.wards.push({ id: nextId("ward"), name: parsed.name });
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+
+    if (parsed.id) {
+      const ward = store.wards.find((entry) => entry.id === parsed.id);
+      if (!ward) throw new Error("Ward not found");
+      ward.name = parsed.name;
+    } else {
+      store.wards.push({ id: nextId("ward"), name: parsed.name });
+    }
+
+    await persistDemoStore();
+    revalidateWardflowPaths();
+    return;
   }
 
-  await persistStore();
-  revalidatePath("/wards");
-  revalidatePath("/admin/wards");
-  revalidatePath("/discharged");
+  const supabase = await getLiveClient();
+  if (parsed.id) {
+    const result = await supabase.from("wards").update({ name: parsed.name }).eq("id", parsed.id);
+    ensureNoError(result, "Failed to update ward");
+  } else {
+    const result = await supabase.from("wards").insert({
+      id: nextId("ward"),
+      name: parsed.name,
+    });
+    ensureNoError(result, "Failed to create ward");
+  }
+
+  revalidateWardflowPaths();
 }
 
 export async function deleteWard(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -843,54 +1217,89 @@ export async function deleteWard(formData: FormData, session: SessionContext) {
     wardId: formData.get("wardId"),
   });
 
-  const patientsInWard = store.patients.filter((patient) => patient.wardId === parsed.wardId);
-  const dischargeTimestamp = now();
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patientsInWard = store.patients.filter((patient) => patient.wardId === parsed.wardId);
+    const dischargeTimestamp = now();
 
-  patientsInWard.forEach((patient) => {
-    const before = structuredClone(patient);
-    patient.lifecycle = "discharged";
-    patient.dischargedAt = patient.dischargedAt ?? dischargeTimestamp;
-    patient.lastUpdate = dischargeTimestamp;
-    addActivity(
-      session,
-      patient.id,
-      "patient.auto_discharged_on_ward_delete",
-      "patient",
-      patient.id,
-      before,
-      patient,
-    );
-  });
+    patientsInWard.forEach((patient) => {
+      const before = structuredClone(patient);
+      patient.lifecycle = "discharged";
+      patient.dischargedAt = patient.dischargedAt ?? dischargeTimestamp;
+      patient.lastUpdate = dischargeTimestamp;
+      addActivityToDemoStore(
+        session,
+        patient.id,
+        "patient.auto_discharged_on_ward_delete",
+        "patient",
+        patient.id,
+        before,
+        patient,
+      );
+    });
 
-  store.wards = store.wards.filter((ward) => ward.id !== parsed.wardId);
-  if (hasLiveSupabase()) {
-    const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
-    if (!admin) {
-      throw new Error("Supabase admin client unavailable");
-    }
-
-    const result = await admin
-      .from("profiles")
-      .update({ ward_assignment: null } as never)
-      .eq("ward_assignment", parsed.wardId);
-
-    if (result.error) {
-      throw new Error(`Failed to clear ward assignment: ${result.error.message}`);
-    }
-  } else {
+    store.wards = store.wards.filter((ward) => ward.id !== parsed.wardId);
     store.profiles = store.profiles.map((profile) =>
       profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
     );
+
+    await persistDemoStore();
+    revalidateWardflowPaths();
+    return;
   }
 
-  await persistStore();
-  revalidatePath("/wards");
-  revalidatePath("/admin/wards");
-  revalidatePath("/discharged");
+  const supabase = await getLiveClient();
+  const patientsResult = await supabase
+    .from("patients")
+    .select(
+      "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, updated_by_id, discharged_at, created_at, updated_at",
+    )
+    .eq("ward_id", parsed.wardId);
+  ensureNoError(patientsResult, "Failed to load ward patients");
+
+  const patients = (patientsResult.data ?? []) as PatientRow[];
+  const dischargeTimestamp = now();
+
+  for (const patient of patients) {
+    await insertActivityLog(supabase, {
+      patient_id: patient.id,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "patient.auto_discharged_on_ward_delete",
+      entity_type: "patient",
+      entity_id: patient.id,
+      before_json: patient,
+      after_json: {
+        ...patient,
+        lifecycle: "discharged",
+        discharged_at: patient.discharged_at ?? dischargeTimestamp,
+      },
+    });
+  }
+
+  const dischargeResult = await supabase
+    .from("patients")
+    .update({
+      lifecycle: "discharged",
+      discharged_at: dischargeTimestamp,
+      updated_by_id: session.profile.id,
+    })
+    .eq("ward_id", parsed.wardId)
+    .eq("lifecycle", "active");
+  ensureNoError(dischargeResult, "Failed to auto-discharge ward patients");
+
+  const clearAssignmentsResult = await supabase
+    .from("profiles")
+    .update({ ward_assignment: null })
+    .eq("ward_assignment", parsed.wardId);
+  ensureNoError(clearAssignmentsResult, "Failed to clear ward assignment");
+
+  const deleteResult = await supabase.from("wards").delete().eq("id", parsed.wardId);
+  ensureNoError(deleteResult, "Failed to delete ward");
+  revalidateWardflowPaths();
 }
 
 export async function updateUserRole(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -900,31 +1309,26 @@ export async function updateUserRole(formData: FormData, session: SessionContext
     role: formData.get("role"),
   });
 
-  if (hasLiveSupabase()) {
-    const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
-    if (!admin) {
-      throw new Error("Supabase admin client unavailable");
-    }
-
-    const result = await admin
-      .from("profiles")
-      .update({ role: parsed.role } as never)
-      .eq("id", parsed.userId);
-    if (result.error) {
-      throw new Error(`Failed to update user role: ${result.error.message}`);
-    }
-  } else {
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
     const profile = store.profiles.find((entry) => entry.id === parsed.userId);
     if (!profile) throw new Error("User not found");
-    profile.role = parsed.role as Role;
+    profile.role = parsed.role;
+    await persistDemoStore();
+    revalidateWardflowPaths();
+    return;
   }
 
-  await persistStore();
-  revalidatePath("/admin/wards");
+  const supabase = await getLiveClient();
+  const result = await supabase
+    .from("profiles")
+    .update({ role: parsed.role })
+    .eq("id", parsed.userId);
+  ensureNoError(result, "Failed to update user role");
+  revalidateWardflowPaths();
 }
 
 export async function deleteUser(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -933,8 +1337,55 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
     userId: formData.get("userId"),
   });
 
-  const profiles = hasLiveSupabase() ? await getLiveProfiles() : store.profiles;
-  const profile = profiles.find((entry) => entry.id === parsed.userId);
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const profile = store.profiles.find((entry) => entry.id === parsed.userId);
+    if (!profile) {
+      throw new Error("User not found");
+    }
+
+    if (profile.role === "admin") {
+      throw new Error("Admin user cannot be deleted");
+    }
+
+    store.patients = store.patients.map((patient) =>
+      patient.responsibleDoctorId === parsed.userId
+        ? { ...patient, responsibleDoctorId: null, responsibleDoctorName: null, lastUpdate: now() }
+        : patient,
+    );
+
+    store.tasks = store.tasks.map((task) => ({
+      ...task,
+      ownerId: task.ownerId === parsed.userId ? null : task.ownerId,
+      ownerName: task.ownerId === parsed.userId ? null : task.ownerName,
+      updatedById: task.updatedById === parsed.userId ? null : task.updatedById,
+      updatedByName: task.updatedById === parsed.userId ? null : task.updatedByName,
+      updatedAt: now(),
+    }));
+
+    store.dischargeSummaries = store.dischargeSummaries.map((summary) =>
+      summary.createdById === parsed.userId ? { ...summary, createdById: null } : summary,
+    );
+
+    store.activity = store.activity.map((entry) =>
+      entry.actorId === parsed.userId ? { ...entry, actorId: null } : entry,
+    );
+
+    store.profiles = store.profiles.filter((entry) => entry.id !== parsed.userId);
+    await persistDemoStore();
+    revalidateWardflowPaths();
+    return;
+  }
+
+  const supabase = await getLiveClient();
+  const profileResult = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("id", parsed.userId)
+    .maybeSingle();
+  ensureNoError(profileResult, "Failed to load user profile");
+
+  const profile = profileResult.data as { id: string; role: Role } | null;
   if (!profile) {
     throw new Error("User not found");
   }
@@ -943,31 +1394,49 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
     throw new Error("Admin user cannot be deleted");
   }
 
-  scrubDeletedUserReferences(parsed.userId);
-  store.profiles = store.profiles.filter((entry) => entry.id !== parsed.userId);
+  ensureNoError(
+    await supabase
+      .from("patients")
+      .update({ responsible_doctor_id: null, updated_by_id: session.profile.id })
+      .eq("responsible_doctor_id", parsed.userId),
+    "Failed to clear patient owner",
+  );
 
-  if (hasLiveSupabase()) {
-    const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
-    if (!admin) {
-      throw new Error("Supabase admin client unavailable");
-    }
+  ensureNoError(
+    await supabase
+      .from("ward_tasks")
+      .update({ owner_id: null, updated_by_id: session.profile.id })
+      .eq("owner_id", parsed.userId),
+    "Failed to clear task owner",
+  );
 
-    const result = await admin.auth.admin.deleteUser(parsed.userId);
-    if (result.error) {
-      throw new Error(`Failed to delete user: ${result.error.message}`);
-    }
+  ensureNoError(
+    await supabase
+      .from("discharge_summaries")
+      .update({ created_by_id: null })
+      .eq("created_by_id", parsed.userId),
+    "Failed to clear discharge summary author",
+  );
+
+  ensureNoError(
+    await supabase.from("activity_logs").update({ actor_id: null }).eq("actor_id", parsed.userId),
+    "Failed to clear activity actor",
+  );
+
+  const admin = createAdminSupabaseClient();
+  if (!admin) {
+    throw new Error("Supabase admin client unavailable");
   }
 
-  await persistStore();
-  revalidatePath("/admin/wards");
-  revalidatePath("/wards");
-  revalidatePath("/discharged");
-  revalidatePath("/handover");
-  revalidatePath("/my-tasks");
+  const result = await admin.auth.admin.deleteUser(parsed.userId);
+  if (result.error) {
+    throw new Error(`Failed to delete user: ${result.error.message}`);
+  }
+
+  revalidateWardflowPaths();
 }
 
 export async function savePatient(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
   const parsed = patientSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
@@ -977,138 +1446,365 @@ export async function savePatient(formData: FormData, session: SessionContext) {
     status: formData.get("status"),
     responsibleDoctorId: textOrNull(formData.get("responsibleDoctorId")),
     precaution: formData.get("precaution"),
+    updatedAt: textOrNull(formData.get("updatedAt")),
   });
+
   requireWardWriteAccess(session, parsed.wardId);
 
-  const ownerName = await getProfileDirectoryName(
-    parsed.responsibleDoctorId ?? null,
+  if (parsed.id) {
+    requirePatientManager(session);
+  } else {
+    requirePatientManager(session);
+  }
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const ownerName = getPatientDirectoryName(
+      store,
+      parsed.responsibleDoctorId ?? null,
+      session.profile.name,
+    );
+
+    if (parsed.id) {
+      const existing = patientById(store, parsed.id);
+      if (!existing) throw new Error("Patient not found");
+      assertNoConflict(parsed.updatedAt, existing.lastUpdate, "patient");
+
+      const before = structuredClone(existing);
+      existing.wardId = parsed.wardId;
+      existing.bed = parsed.bed;
+      existing.displayName = parsed.displayName;
+      existing.diagnosis = parsed.diagnosis;
+      existing.status = parsed.status;
+      existing.responsibleDoctorId = parsed.responsibleDoctorId ?? session.profile.id;
+      existing.responsibleDoctorName = ownerName;
+      existing.precaution = parsed.precaution;
+      existing.lastUpdate = now();
+      addActivityToDemoStore(
+        session,
+        existing.id,
+        "patient.updated",
+        "patient",
+        existing.id,
+        before,
+        existing,
+      );
+    } else {
+      const patient: Patient = {
+        id: nextId("patient"),
+        wardId: parsed.wardId,
+        bed: parsed.bed,
+        displayName: parsed.displayName,
+        age: null,
+        sex: null,
+        diagnosis: parsed.diagnosis,
+        status: parsed.status,
+        responsibleDoctorId: parsed.responsibleDoctorId ?? session.profile.id,
+        responsibleDoctorName: ownerName,
+        allergy: null,
+        precaution: parsed.precaution,
+        codeStatus: null,
+        lifecycle: "active",
+        dischargedAt: null,
+        lastUpdate: now(),
+      };
+      store.patients.push(patient);
+      addActivityToDemoStore(session, patient.id, "patient.created", "patient", patient.id, null, patient);
+    }
+
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.id);
+    return;
+  }
+
+  const supabase = await getLiveClient();
+  const ownerName = await getLivePatientDirectoryName(
+    supabase,
+    session,
+    parsed.responsibleDoctorId ?? session.profile.id,
     session.profile.name,
   );
 
   if (parsed.id) {
-    if (!canManageClinicalEntries(session)) {
-      throw new Error("Clinical entries are not allowed");
+    const existing = await fetchLivePatient(supabase, parsed.id);
+    if (!existing) {
+      throw new Error("Patient not found");
     }
-    const existing = patientById(parsed.id);
-    if (!existing) throw new Error("Patient not found");
-    const before = structuredClone(existing);
-    existing.wardId = parsed.wardId;
-    existing.bed = parsed.bed;
-    existing.displayName = parsed.displayName;
-    existing.diagnosis = parsed.diagnosis;
-    existing.status = parsed.status;
-    existing.responsibleDoctorId = parsed.responsibleDoctorId ?? session.profile.id;
-    existing.responsibleDoctorName = ownerName;
-    existing.precaution = parsed.precaution;
-    existing.lastUpdate = now();
-    addActivity(session, existing.id, "patient.updated", "patient", existing.id, before, existing);
-  } else {
-    if (!canManagePatients(session)) {
-      throw new Error("Only admin or resident can admit patient");
-    }
-    const patient: Patient = {
-      id: nextId("patient"),
-      wardId: parsed.wardId,
-      bed: parsed.bed,
-      displayName: parsed.displayName,
-      age: null,
-      sex: null,
-      diagnosis: parsed.diagnosis,
-      status: parsed.status,
-      responsibleDoctorId: parsed.responsibleDoctorId ?? session.profile.id,
-      responsibleDoctorName: ownerName,
-      allergy: null,
-      precaution: parsed.precaution,
-      codeStatus: null,
-      lifecycle: "active",
-      dischargedAt: null,
-      lastUpdate: now(),
-    };
-    store.patients.push(patient);
-    addActivity(session, patient.id, "patient.created", "patient", patient.id, null, patient);
+
+    requireWardWriteAccess(session, existing.ward_id);
+    assertNoConflict(parsed.updatedAt, existing.updated_at, "patient");
+
+    const result = await supabase
+      .from("patients")
+      .update({
+        ward_id: parsed.wardId,
+        bed: parsed.bed,
+        display_name: parsed.displayName,
+        diagnosis: parsed.diagnosis,
+        status: parsed.status,
+        responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
+        precaution: parsed.precaution,
+        updated_by_id: session.profile.id,
+      })
+      .eq("id", parsed.id);
+    ensureNoError(result, "Failed to update patient");
+
+    await insertActivityLog(supabase, {
+      patient_id: existing.id,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "patient.updated",
+      entity_type: "patient",
+      entity_id: existing.id,
+      before_json: existing,
+      after_json: {
+        ...existing,
+        ward_id: parsed.wardId,
+        bed: parsed.bed,
+        display_name: parsed.displayName,
+        diagnosis: parsed.diagnosis,
+        status: parsed.status,
+        responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
+        responsibleDoctorName: ownerName,
+        precaution: parsed.precaution,
+      },
+    });
+    revalidateWardflowPaths(parsed.id);
+    return;
   }
 
-  await persistStore();
-  revalidatePath("/wards");
-  revalidatePath("/discharged");
+  const patientId = nextId("patient");
+  const inserted = {
+    id: patientId,
+    ward_id: parsed.wardId,
+    bed: parsed.bed,
+    display_name: parsed.displayName,
+    diagnosis: parsed.diagnosis,
+    status: parsed.status,
+    responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
+    precaution: parsed.precaution,
+    updated_by_id: session.profile.id,
+  };
+
+  ensureNoError(await supabase.from("patients").insert(inserted), "Failed to create patient");
+
+  await insertActivityLog(supabase, {
+    patient_id: patientId,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "patient.created",
+    entity_type: "patient",
+    entity_id: patientId,
+    before_json: null,
+    after_json: {
+      ...inserted,
+      responsibleDoctorName: ownerName,
+      lifecycle: "active",
+      discharged_at: null,
+    },
+  });
+
+  revalidateWardflowPaths(patientId);
 }
 
 export async function dischargePatient(patientId: string, session: SessionContext) {
-  await ensureStoreLoaded();
-  if (!canManagePatients(session)) {
-    throw new Error("Only admin or resident can discharge patient");
+  requirePatientManager(session);
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
+
+    const before = structuredClone(patient);
+    patient.lifecycle = "discharged";
+    patient.dischargedAt = now();
+    patient.lastUpdate = patient.dischargedAt;
+    addActivityToDemoStore(
+      session,
+      patient.id,
+      "patient.discharged",
+      "patient",
+      patient.id,
+      before,
+      patient,
+    );
+
+    await persistDemoStore();
+    revalidateWardflowPaths(patientId);
+    return;
   }
 
-  const patient = patientById(patientId);
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.ward_id);
 
-  const before = structuredClone(patient);
-  patient.lifecycle = "discharged";
-  patient.dischargedAt = now();
-  patient.lastUpdate = patient.dischargedAt;
-  addActivity(session, patient.id, "patient.discharged", "patient", patient.id, before, patient);
+  const dischargeTimestamp = now();
+  ensureNoError(
+    await supabase
+      .from("patients")
+      .update({
+        lifecycle: "discharged",
+        discharged_at: dischargeTimestamp,
+        updated_by_id: session.profile.id,
+      })
+      .eq("id", patientId),
+    "Failed to discharge patient",
+  );
 
-  await persistStore();
-  revalidatePath("/wards");
-  revalidatePath("/discharged");
-  revalidatePath(`/patients/${patientId}`);
-  revalidatePath("/handover");
-  revalidatePath("/my-tasks");
+  await insertActivityLog(supabase, {
+    patient_id: patientId,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "patient.discharged",
+    entity_type: "patient",
+    entity_id: patientId,
+    before_json: patient,
+    after_json: {
+      ...patient,
+      lifecycle: "discharged",
+      discharged_at: dischargeTimestamp,
+    },
+  });
+
+  revalidateWardflowPaths(patientId);
 }
 
 export async function dischargePatientWithSummary(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
-  if (!canManagePatients(session)) {
-    throw new Error("Only admin or resident can discharge patient");
-  }
-
+  requirePatientManager(session);
   const parsed = dischargeSummarySchema.parse({
     patientId: formData.get("patientId"),
+    patientUpdatedAt: textOrNull(formData.get("patientUpdatedAt")),
     primaryDiagnosis: formData.get("primaryDiagnosis"),
     hospitalCourse: String(formData.get("hospitalCourse") ?? ""),
     plan: String(formData.get("plan") ?? ""),
     homeMedication: String(formData.get("homeMedication") ?? ""),
   });
 
-  const patient = patientById(parsed.patientId);
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
+    assertNoConflict(parsed.patientUpdatedAt, patient.lastUpdate, "patient");
+
+    const dischargeDate = now();
+    const admitDate = getPatientAdmitDate(store, patient.id) ?? dischargeDate;
+    const summary: DischargeSummary = {
+      id: nextId("discharge-summary"),
+      patientId: patient.id,
+      wardId: patient.wardId,
+      createdById: session.profile.id,
+      createdByName: session.profile.name,
+      createdAt: dischargeDate,
+      admitDate,
+      dischargeDate,
+      lengthOfStay: getLengthOfStay(admitDate, dischargeDate),
+      primaryDiagnosis: parsed.primaryDiagnosis,
+      hospitalCourse: parsed.hospitalCourse,
+      plan: parsed.plan,
+      homeMedication: parsed.homeMedication,
+    };
+
+    store.dischargeSummaries = store.dischargeSummaries.filter((entry) => entry.patientId !== patient.id);
+    store.dischargeSummaries.unshift(summary);
+    addActivityToDemoStore(
+      session,
+      patient.id,
+      "discharge.summary_created",
+      "discharge_summary",
+      summary.id,
+      null,
+      summary,
+    );
+
+    await persistDemoStore();
+    await dischargePatient(patient.id, session);
+    return summary.id;
+  }
+
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.ward_id);
+  assertNoConflict(parsed.patientUpdatedAt, patient.updated_at, "patient");
 
   const dischargeDate = now();
-  const admitDate = getPatientAdmitDate(patient.id) ?? "";
+  const admitDate = patient.created_at ?? dischargeDate;
+  const summaryId = nextId("discharge-summary");
 
-  const summary: DischargeSummary = {
-    id: nextId("discharge-summary"),
-    patientId: patient.id,
-    wardId: patient.wardId,
-    createdById: session.profile.id,
-    createdByName: session.profile.name,
-    createdAt: dischargeDate,
-    admitDate,
-    dischargeDate,
-    lengthOfStay: getLengthOfStay(admitDate, dischargeDate),
-    primaryDiagnosis: parsed.primaryDiagnosis,
-    hospitalCourse: parsed.hospitalCourse,
-    plan: parsed.plan,
-    homeMedication: parsed.homeMedication,
-  };
+  ensureNoError(
+    await supabase.from("discharge_summaries").upsert(
+      {
+        id: summaryId,
+        patient_id: patient.id,
+        ward_id: patient.ward_id,
+        created_by_id: session.profile.id,
+        created_by_name: session.profile.name,
+        created_at: dischargeDate,
+        admit_date: admitDate,
+        discharge_date: dischargeDate,
+        length_of_stay: getLengthOfStay(admitDate, dischargeDate),
+        primary_diagnosis: parsed.primaryDiagnosis,
+        hospital_course: parsed.hospitalCourse,
+        plan: parsed.plan,
+        home_medication: parsed.homeMedication,
+      },
+      { onConflict: "patient_id" },
+    ),
+    "Failed to save discharge summary",
+  );
 
-  store.dischargeSummaries = store.dischargeSummaries.filter((entry) => entry.patientId !== patient.id);
-  store.dischargeSummaries.unshift(summary);
-  addActivity(session, patient.id, "discharge.summary_created", "discharge_summary", summary.id, null, summary);
+  await insertActivityLog(supabase, {
+    patient_id: patient.id,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "discharge.summary_created",
+    entity_type: "discharge_summary",
+    entity_id: summaryId,
+    before_json: null,
+    after_json: {
+      primaryDiagnosis: parsed.primaryDiagnosis,
+      hospitalCourse: parsed.hospitalCourse,
+      plan: parsed.plan,
+      homeMedication: parsed.homeMedication,
+    },
+  });
 
-  await persistStore();
-  await dischargePatient(patient.id, session);
-  return summary.id;
+  ensureNoError(
+    await supabase
+      .from("patients")
+      .update({
+        lifecycle: "discharged",
+        discharged_at: dischargeDate,
+        updated_by_id: session.profile.id,
+      })
+      .eq("id", patient.id),
+    "Failed to discharge patient",
+  );
+
+  await insertActivityLog(supabase, {
+    patient_id: patient.id,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "patient.discharged",
+    entity_type: "patient",
+    entity_id: patient.id,
+    before_json: patient,
+    after_json: {
+      ...patient,
+      lifecycle: "discharged",
+      discharged_at: dischargeDate,
+    },
+  });
+
+  revalidateWardflowPaths(patient.id);
+  return summaryId;
 }
 
 export async function saveProblem(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
-  if (!canManageClinicalEntries(session)) {
-    throw new Error("Clinical entries are not allowed");
-  }
-
+  requireClinicalEditor(session);
   const parsed = problemSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
@@ -1119,50 +1815,168 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     pending: textOrNull(formData.get("pending")),
     watchOut: textOrNull(formData.get("watchOut")),
     includeInHandover: formData.get("includeInHandover") === "on",
+    updatedAt: textOrNull(formData.get("updatedAt")),
   });
 
-  const patient = patientById(parsed.patientId);
-  if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.wardId);
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
 
-  if (parsed.id) {
-    const existing = store.problems.find((entry) => entry.id === parsed.id);
-    if (!existing) throw new Error("Problem not found");
-    const before = structuredClone(existing);
-    existing.title = parsed.title;
-    existing.status = parsed.status;
-    existing.keyData = parsed.keyData ?? null;
-    existing.plan = parsed.plan ?? null;
-    existing.pending = parsed.pending ?? null;
-    existing.watchOut = parsed.watchOut ?? null;
-    existing.includeInHandover = parsed.includeInHandover;
-    existing.updatedAt = now();
-    addActivity(session, parsed.patientId, "problem.updated", "problem", existing.id, before, existing);
-  } else {
-    const problem: Problem = {
-      id: nextId("problem"),
-      patientId: parsed.patientId,
-      title: parsed.title,
-      status: parsed.status,
-      keyData: parsed.keyData ?? null,
-      plan: parsed.plan ?? null,
-      pending: parsed.pending ?? null,
-      watchOut: parsed.watchOut ?? null,
-      includeInHandover: parsed.includeInHandover,
-      sortOrder:
-        store.problems
-          .filter((entry) => entry.patientId === parsed.patientId)
-          .reduce((max, entry) => Math.max(max, entry.sortOrder), 0) + 1,
-      updatedAt: now(),
-    };
-    store.problems.push(problem);
-    addActivity(session, parsed.patientId, "problem.created", "problem", problem.id, null, problem);
+    if (parsed.id) {
+      const existing = store.problems.find((entry) => entry.id === parsed.id);
+      if (!existing) throw new Error("Problem not found");
+      assertNoConflict(parsed.updatedAt, existing.updatedAt, "problem");
+
+      const before = structuredClone(existing);
+      existing.title = parsed.title;
+      existing.status = parsed.status;
+      existing.keyData = parsed.keyData ?? null;
+      existing.plan = parsed.plan ?? null;
+      existing.pending = parsed.pending ?? null;
+      existing.watchOut = parsed.watchOut ?? null;
+      existing.includeInHandover = parsed.includeInHandover;
+      existing.updatedAt = now();
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "problem.updated",
+        "problem",
+        existing.id,
+        before,
+        existing,
+      );
+    } else {
+      const problem: Problem = {
+        id: nextId("problem"),
+        patientId: parsed.patientId,
+        title: parsed.title,
+        status: parsed.status,
+        keyData: parsed.keyData ?? null,
+        plan: parsed.plan ?? null,
+        pending: parsed.pending ?? null,
+        watchOut: parsed.watchOut ?? null,
+        includeInHandover: parsed.includeInHandover,
+        sortOrder:
+          store.problems
+            .filter((entry) => entry.patientId === parsed.patientId)
+            .reduce((max, entry) => Math.max(max, entry.sortOrder), 0) + 1,
+        updatedAt: now(),
+      };
+      store.problems.push(problem);
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "problem.created",
+        "problem",
+        problem.id,
+        null,
+        problem,
+      );
+    }
+
+    refreshDemoPatient(parsed.patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.patientId);
+    return;
   }
 
-  refreshPatient(parsed.patientId);
-  await persistStore();
-  revalidatePath(`/patients/${parsed.patientId}`);
-  revalidatePath("/handover");
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardWriteAccess(session, patient.ward_id);
+
+  if (parsed.id) {
+    const existing = await fetchLiveProblem(supabase, parsed.id);
+    if (!existing) throw new Error("Problem not found");
+    assertNoConflict(parsed.updatedAt, existing.updated_at, "problem");
+
+    ensureNoError(
+      await supabase
+        .from("problems")
+        .update({
+          title: parsed.title,
+          status: parsed.status,
+          key_data: parsed.keyData ?? null,
+          plan: parsed.plan ?? null,
+          pending: parsed.pending ?? null,
+          watch_out: parsed.watchOut ?? null,
+          include_in_handover: parsed.includeInHandover,
+          updated_by_id: session.profile.id,
+        })
+        .eq("id", parsed.id),
+      "Failed to update problem",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "problem.updated",
+      entity_type: "problem",
+      entity_id: parsed.id,
+      before_json: existing,
+      after_json: {
+        ...existing,
+        title: parsed.title,
+        status: parsed.status,
+        key_data: parsed.keyData ?? null,
+        plan: parsed.plan ?? null,
+        pending: parsed.pending ?? null,
+        watch_out: parsed.watchOut ?? null,
+        include_in_handover: parsed.includeInHandover,
+      },
+    });
+  } else {
+    const sortOrderResult = await supabase
+      .from("problems")
+      .select("sort_order")
+      .eq("patient_id", parsed.patientId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    ensureNoError(sortOrderResult, "Failed to load problem order");
+
+    const problemId = nextId("problem");
+    const sortOrder = ((sortOrderResult.data?.[0] as { sort_order?: number } | undefined)?.sort_order ?? 0) + 1;
+    ensureNoError(
+      await supabase.from("problems").insert({
+        id: problemId,
+        patient_id: parsed.patientId,
+        title: parsed.title,
+        status: parsed.status,
+        key_data: parsed.keyData ?? null,
+        plan: parsed.plan ?? null,
+        pending: parsed.pending ?? null,
+        watch_out: parsed.watchOut ?? null,
+        include_in_handover: parsed.includeInHandover,
+        sort_order: sortOrder,
+        updated_by_id: session.profile.id,
+      }),
+      "Failed to create problem",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "problem.created",
+      entity_type: "problem",
+      entity_id: problemId,
+      before_json: null,
+      after_json: {
+        title: parsed.title,
+        status: parsed.status,
+        sort_order: sortOrder,
+      },
+    });
+  }
+
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", parsed.patientId),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(parsed.patientId);
 }
 
 export async function moveProblem(
@@ -1171,46 +1985,71 @@ export async function moveProblem(
   direction: "up" | "down",
   session: SessionContext,
 ) {
-  await ensureStoreLoaded();
-  if (!canManageClinicalEntries(session)) {
-    throw new Error("Clinical entries are not allowed");
-  }
-
+  requireClinicalEditor(session);
   const bundle = await getPatientBundle(session, patientId);
   if (!bundle) return;
+
   const currentIndex = bundle.problems.findIndex((problem) => problem.id === problemId);
   const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
   if (currentIndex < 0 || swapIndex < 0 || swapIndex >= bundle.problems.length) return;
 
-  const current = store.problems.find((problem) => problem.id === bundle.problems[currentIndex].id);
-  const swap = store.problems.find((problem) => problem.id === bundle.problems[swapIndex].id);
-  if (!current || !swap) return;
+  const current = bundle.problems[currentIndex];
+  const swap = bundle.problems[swapIndex];
 
-  const fromOrder = current.sortOrder;
-  const toOrder = swap.sortOrder;
-  [current.sortOrder, swap.sortOrder] = [swap.sortOrder, current.sortOrder];
-  current.updatedAt = now();
-  swap.updatedAt = now();
-  addActivity(
-    session,
-    patientId,
-    "problem.reordered",
-    "problem",
-    problemId,
-    { from: fromOrder, to: toOrder },
-    { from: toOrder, to: fromOrder },
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const currentProblem = store.problems.find((problem) => problem.id === current.id);
+    const swapProblem = store.problems.find((problem) => problem.id === swap.id);
+    if (!currentProblem || !swapProblem) return;
+
+    const fromOrder = currentProblem.sortOrder;
+    const toOrder = swapProblem.sortOrder;
+    [currentProblem.sortOrder, swapProblem.sortOrder] = [swapProblem.sortOrder, currentProblem.sortOrder];
+    currentProblem.updatedAt = now();
+    swapProblem.updatedAt = now();
+    addActivityToDemoStore(
+      session,
+      patientId,
+      "problem.reordered",
+      "problem",
+      problemId,
+      { from: fromOrder, to: toOrder },
+      { from: toOrder, to: fromOrder },
+    );
+    refreshDemoPatient(patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(patientId);
+    return;
+  }
+
+  const supabase = await getLiveClient();
+  ensureNoError(
+    await supabase.from("problems").update({ sort_order: swap.sortOrder, updated_by_id: session.profile.id }).eq("id", current.id),
+    "Failed to move problem",
   );
-  refreshPatient(patientId);
-  await persistStore();
-  revalidatePath(`/patients/${patientId}`);
+  ensureNoError(
+    await supabase.from("problems").update({ sort_order: current.sortOrder, updated_by_id: session.profile.id }).eq("id", swap.id),
+    "Failed to move problem",
+  );
+  await insertActivityLog(supabase, {
+    patient_id: patientId,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "problem.reordered",
+    entity_type: "problem",
+    entity_id: problemId,
+    before_json: { from: current.sortOrder, to: swap.sortOrder },
+    after_json: { from: swap.sortOrder, to: current.sortOrder },
+  });
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", patientId),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(patientId);
 }
 
 export async function saveTask(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
-  if (!canManageClinicalEntries(session)) {
-    throw new Error("Clinical entries are not allowed");
-  }
-
+  requireClinicalEditor(session);
   const parsed = taskSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
@@ -1222,150 +2061,358 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     note: textOrNull(formData.get("note")),
     dueAt: textOrNull(formData.get("dueAt")),
     blockedReason: textOrNull(formData.get("blockedReason")),
+    updatedAt: textOrNull(formData.get("updatedAt")),
   });
 
-  const patient = patientById(parsed.patientId);
-  if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.wardId);
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
 
-  const profiles = await getProfiles(session);
-  const owner = profiles.find((profile) => profile.id === parsed.ownerId);
-  if (parsed.id) {
-    const existing = store.tasks.find((entry) => entry.id === parsed.id);
-    if (!existing) throw new Error("Task not found");
-    const before = structuredClone(existing);
-    existing.title = parsed.title;
-    existing.note = parsed.note ?? null;
-    existing.ownerId = parsed.ownerId ?? null;
-    existing.ownerName = owner?.name ?? null;
-    existing.status = parsed.status;
-    existing.priority = parsed.priority;
-    existing.type = parsed.type;
-    existing.dueAt = parsed.dueAt ?? null;
-    existing.blockedReason = parsed.blockedReason ?? null;
-    existing.updatedById = session.profile.id;
-    existing.updatedByName = session.profile.name;
-    existing.updatedAt = now();
-    addActivity(session, parsed.patientId, "task.updated", "ward_task", existing.id, before, existing);
-  } else {
-    const task: WardTask = {
-      id: nextId("task"),
-      patientId: parsed.patientId,
-      title: parsed.title,
-      note: parsed.note ?? null,
-      ownerId: parsed.ownerId ?? null,
-      ownerName: owner?.name ?? null,
-      status: parsed.status,
-      priority: parsed.priority,
-      type: parsed.type,
-      dueAt: parsed.dueAt ?? null,
-      blockedReason: parsed.blockedReason ?? null,
-      updatedById: session.profile.id,
-      updatedByName: session.profile.name,
-      updatedAt: now(),
-    };
-    store.tasks.unshift(task);
-    addActivity(session, parsed.patientId, "task.created", "ward_task", task.id, null, task);
+    const profiles = getVisibleProfiles(store, session);
+    const owner = profiles.find((profile) => profile.id === parsed.ownerId);
+
+    if (parsed.id) {
+      const existing = store.tasks.find((entry) => entry.id === parsed.id);
+      if (!existing) throw new Error("Task not found");
+      assertNoConflict(parsed.updatedAt, existing.updatedAt, "task");
+
+      const before = structuredClone(existing);
+      existing.title = parsed.title;
+      existing.note = parsed.note ?? null;
+      existing.ownerId = parsed.ownerId ?? null;
+      existing.ownerName = owner?.name ?? null;
+      existing.status = parsed.status;
+      existing.priority = parsed.priority;
+      existing.type = parsed.type;
+      existing.dueAt = parsed.dueAt ?? null;
+      existing.blockedReason = parsed.blockedReason ?? null;
+      existing.updatedById = session.profile.id;
+      existing.updatedByName = session.profile.name;
+      existing.updatedAt = now();
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "task.updated",
+        "ward_task",
+        existing.id,
+        before,
+        existing,
+      );
+    } else {
+      const task: WardTask = {
+        id: nextId("task"),
+        patientId: parsed.patientId,
+        title: parsed.title,
+        note: parsed.note ?? null,
+        ownerId: parsed.ownerId ?? null,
+        ownerName: owner?.name ?? null,
+        status: parsed.status,
+        priority: parsed.priority,
+        type: parsed.type,
+        dueAt: parsed.dueAt ?? null,
+        blockedReason: parsed.blockedReason ?? null,
+        updatedById: session.profile.id,
+        updatedByName: session.profile.name,
+        updatedAt: now(),
+      };
+      store.tasks.unshift(task);
+      addActivityToDemoStore(session, parsed.patientId, "task.created", "ward_task", task.id, null, task);
+    }
+
+    refreshDemoPatient(parsed.patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.patientId);
+    return;
   }
 
-  refreshPatient(parsed.patientId);
-  await persistStore();
-  revalidatePath(`/patients/${parsed.patientId}`);
-  revalidatePath("/my-tasks");
-  revalidatePath("/handover");
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardWriteAccess(session, patient.ward_id);
+
+  if (parsed.id) {
+    const existing = await fetchLiveTask(supabase, parsed.id);
+    if (!existing) throw new Error("Task not found");
+    assertNoConflict(parsed.updatedAt, existing.updated_at, "task");
+
+    ensureNoError(
+      await supabase
+        .from("ward_tasks")
+        .update({
+          title: parsed.title,
+          note: parsed.note ?? null,
+          owner_id: parsed.ownerId ?? null,
+          status: parsed.status,
+          priority: parsed.priority,
+          type: parsed.type,
+          due_at: parsed.dueAt ?? null,
+          blocked_reason: parsed.blockedReason ?? null,
+          updated_by_id: session.profile.id,
+        })
+        .eq("id", parsed.id),
+      "Failed to update task",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "task.updated",
+      entity_type: "ward_task",
+      entity_id: parsed.id,
+      before_json: existing,
+      after_json: {
+        ...existing,
+        title: parsed.title,
+        note: parsed.note ?? null,
+        owner_id: parsed.ownerId ?? null,
+        status: parsed.status,
+        priority: parsed.priority,
+        type: parsed.type,
+        due_at: parsed.dueAt ?? null,
+        blocked_reason: parsed.blockedReason ?? null,
+      },
+    });
+  } else {
+    const taskId = nextId("task");
+    ensureNoError(
+      await supabase.from("ward_tasks").insert({
+        id: taskId,
+        patient_id: parsed.patientId,
+        title: parsed.title,
+        note: parsed.note ?? null,
+        owner_id: parsed.ownerId ?? null,
+        status: parsed.status,
+        priority: parsed.priority,
+        type: parsed.type,
+        due_at: parsed.dueAt ?? null,
+        blocked_reason: parsed.blockedReason ?? null,
+        updated_by_id: session.profile.id,
+      }),
+      "Failed to create task",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "task.created",
+      entity_type: "ward_task",
+      entity_id: taskId,
+      before_json: null,
+      after_json: {
+        title: parsed.title,
+        status: parsed.status,
+        priority: parsed.priority,
+      },
+    });
+  }
+
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", parsed.patientId),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(parsed.patientId);
 }
 
 export async function updateTaskStatus(
   patientId: string,
   taskId: string,
   status: WardTask["status"],
+  expectedUpdatedAt: string | null,
   session: SessionContext,
 ) {
-  await ensureStoreLoaded();
-  if (!canManageClinicalEntries(session)) {
-    throw new Error("Clinical entries are not allowed");
+  requireClinicalEditor(session);
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
+    const task = store.tasks.find((entry) => entry.id === taskId);
+    if (!task) throw new Error("Task not found");
+    assertNoConflict(expectedUpdatedAt, task.updatedAt, "task");
+
+    const before = { status: task.status };
+    task.status = status;
+    task.updatedAt = now();
+    task.updatedById = session.profile.id;
+    task.updatedByName = session.profile.name;
+    addActivityToDemoStore(session, patientId, "task.status_changed", "ward_task", task.id, before, {
+      status,
+    });
+    refreshDemoPatient(patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(patientId);
+    return;
   }
 
-  const patient = patientById(patientId);
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.wardId);
-  const task = store.tasks.find((entry) => entry.id === taskId);
-  if (!task) throw new Error("Task not found");
+  requireWardWriteAccess(session, patient.ward_id);
 
-  const before = { status: task.status };
-  task.status = status;
-  task.updatedAt = now();
-  task.updatedById = session.profile.id;
-  task.updatedByName = session.profile.name;
-  addActivity(session, patientId, "task.status_changed", "ward_task", task.id, before, {
-    status,
+  const task = await fetchLiveTask(supabase, taskId);
+  if (!task) throw new Error("Task not found");
+  assertNoConflict(expectedUpdatedAt, task.updated_at, "task");
+
+  ensureNoError(
+    await supabase
+      .from("ward_tasks")
+      .update({
+        status,
+        updated_by_id: session.profile.id,
+      })
+      .eq("id", taskId),
+    "Failed to update task status",
+  );
+
+  await insertActivityLog(supabase, {
+    patient_id: patientId,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "task.status_changed",
+    entity_type: "ward_task",
+    entity_id: taskId,
+    before_json: { status: task.status },
+    after_json: { status },
   });
-  refreshPatient(patientId);
-  await persistStore();
-  revalidatePath(`/patients/${patientId}`);
-  revalidatePath("/my-tasks");
-  revalidatePath("/handover");
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", patientId),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(patientId);
 }
 
 export async function saveHandover(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
-  if (!canManageClinicalEntries(session)) {
-    throw new Error("Clinical entries are not allowed");
-  }
-
+  requireClinicalEditor(session);
   const parsed = handoverSchema.parse({
     patientId: formData.get("patientId"),
     note: textOrNull(formData.get("note")) ?? "",
     escalationInstruction: textOrNull(formData.get("escalationInstruction")),
+    updatedAt: textOrNull(formData.get("updatedAt")),
   });
 
-  const patient = patientById(parsed.patientId);
-  if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.wardId);
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
 
-  const existing = store.handovers.find((handover) => handover.patientId === parsed.patientId);
-  if (existing) {
-    const before = structuredClone(existing);
-    existing.note = parsed.note;
-    existing.escalationInstruction = parsed.escalationInstruction ?? null;
-    existing.updatedAt = now();
-    addActivity(
-      session,
-      parsed.patientId,
-      "handover.updated",
-      "handover_note",
-      existing.id,
-      before,
-      existing,
-    );
-  } else {
-    const handover: HandoverNote = {
-      id: nextId("handover"),
-      patientId: parsed.patientId,
-      note: parsed.note,
-      escalationInstruction: parsed.escalationInstruction ?? null,
-      updatedAt: now(),
-    };
-    store.handovers.push(handover);
-    addActivity(
-      session,
-      parsed.patientId,
-      "handover.updated",
-      "handover_note",
-      handover.id,
-      null,
-      handover,
-    );
+    const existing = store.handovers.find((handover) => handover.patientId === parsed.patientId);
+    if (existing) {
+      assertNoConflict(parsed.updatedAt, existing.updatedAt, "handover");
+      const before = structuredClone(existing);
+      existing.note = parsed.note;
+      existing.escalationInstruction = parsed.escalationInstruction ?? null;
+      existing.updatedAt = now();
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "handover.updated",
+        "handover_note",
+        existing.id,
+        before,
+        existing,
+      );
+    } else {
+      const handover: HandoverNote = {
+        id: nextId("handover"),
+        patientId: parsed.patientId,
+        note: parsed.note,
+        escalationInstruction: parsed.escalationInstruction ?? null,
+        updatedAt: now(),
+      };
+      store.handovers.push(handover);
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "handover.updated",
+        "handover_note",
+        handover.id,
+        null,
+        handover,
+      );
+    }
+
+    refreshDemoPatient(parsed.patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.patientId);
+    return;
   }
 
-  refreshPatient(parsed.patientId);
-  await persistStore();
-  revalidatePath(`/patients/${parsed.patientId}`);
-  revalidatePath("/handover");
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardWriteAccess(session, patient.ward_id);
+
+  const existing = await fetchLiveHandover(supabase, parsed.patientId);
+  if (existing) {
+    assertNoConflict(parsed.updatedAt, existing.updated_at, "handover");
+    ensureNoError(
+      await supabase
+        .from("handover_notes")
+        .update({
+          note: parsed.note,
+          escalation_instruction: parsed.escalationInstruction ?? null,
+          updated_by_id: session.profile.id,
+        })
+        .eq("id", existing.id),
+      "Failed to update handover",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "handover.updated",
+      entity_type: "handover_note",
+      entity_id: existing.id,
+      before_json: existing,
+      after_json: {
+        ...existing,
+        note: parsed.note,
+        escalation_instruction: parsed.escalationInstruction ?? null,
+      },
+    });
+  } else {
+    const handoverId = nextId("handover");
+    ensureNoError(
+      await supabase.from("handover_notes").insert({
+        id: handoverId,
+        patient_id: parsed.patientId,
+        note: parsed.note,
+        escalation_instruction: parsed.escalationInstruction ?? null,
+        updated_by_id: session.profile.id,
+      }),
+      "Failed to create handover",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "handover.updated",
+      entity_type: "handover_note",
+      entity_id: handoverId,
+      before_json: null,
+      after_json: {
+        note: parsed.note,
+        escalation_instruction: parsed.escalationInstruction ?? null,
+      },
+    });
+  }
+
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", parsed.patientId),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(parsed.patientId);
 }
 
 export async function saveTemplate(formData: FormData, session: SessionContext) {
-  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -1376,12 +2423,28 @@ export async function saveTemplate(formData: FormData, session: SessionContext) 
     defaultPriority: formData.get("defaultPriority"),
   });
 
-  store.templates.push({
-    id: nextId("template"),
-    title: parsed.title,
-    type: parsed.type,
-    defaultPriority: parsed.defaultPriority,
-  });
-  await persistStore();
-  revalidatePath("/admin/task-templates");
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    store.templates.push({
+      id: nextId("template"),
+      title: parsed.title,
+      type: parsed.type,
+      defaultPriority: parsed.defaultPriority,
+    });
+    await persistDemoStore();
+    revalidateWardflowPaths();
+    return;
+  }
+
+  const supabase = await getLiveClient();
+  ensureNoError(
+    await supabase.from("task_templates").insert({
+      id: nextId("template"),
+      title: parsed.title,
+      type: parsed.type,
+      default_priority: parsed.defaultPriority,
+    }),
+    "Failed to create task template",
+  );
+  revalidateWardflowPaths();
 }

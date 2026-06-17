@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
-import { getAppUrl, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
+import { getRequestOrigin, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   deleteUser,
@@ -32,15 +32,15 @@ export async function signInWithGoogle() {
     throw new Error("Supabase unavailable");
   }
 
-  const origin = getAppUrl();
+  const origin = getRequestOrigin(await headers());
   if (!origin) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not configured");
+    throw new Error("Unable to resolve app origin for OAuth redirect");
   }
 
   const result = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?next=%2Fwards`,
       scopes: "openid email profile",
     },
   });
@@ -145,10 +145,13 @@ export async function saveTaskAction(formData: FormData) {
 
 export async function updateTaskStatusAction(formData: FormData) {
   const session = await requireAppSession();
+  const updatedAt =
+    typeof formData.get("updatedAt") === "string" ? (formData.get("updatedAt") as string) : null;
   await updateTaskStatus(
     String(formData.get("patientId")),
     String(formData.get("taskId")),
     String(formData.get("status")) as Parameters<typeof updateTaskStatus>[2],
+    updatedAt,
     session,
   );
 }

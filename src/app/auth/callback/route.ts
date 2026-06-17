@@ -4,12 +4,26 @@ import { getSupabasePublicEnv } from "@/lib/env";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
+  const nextPath = sanitizeNextPath(requestUrl.searchParams.get("next"));
   const code = requestUrl.searchParams.get("code");
-  const redirectResponse = NextResponse.redirect(new URL("/wards", requestUrl.origin));
+  const authError = requestUrl.searchParams.get("error");
+  const authErrorDescription = requestUrl.searchParams.get("error_description");
+  const redirectResponse = NextResponse.redirect(new URL(nextPath, requestUrl.origin));
 
   const config = getSupabasePublicEnv();
+  if (authError) {
+    return NextResponse.redirect(
+      new URL(
+        `/login?error=${encodeURIComponent(authErrorDescription ?? authError)}`,
+        requestUrl.origin,
+      ),
+    );
+  }
+
   if (!code || !config) {
-    return redirectResponse;
+    return NextResponse.redirect(
+      new URL("/login?error=Missing+OAuth+code+or+Supabase+config", requestUrl.origin),
+    );
   }
 
   const supabase = createServerClient(config.url, config.publishableKey, {
@@ -26,7 +40,20 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  await supabase.auth.exchangeCodeForSession(code);
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(error.message)}`, requestUrl.origin),
+    );
+  }
 
   return redirectResponse;
+}
+
+function sanitizeNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/wards";
+  }
+
+  return value;
 }

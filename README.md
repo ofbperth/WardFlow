@@ -36,6 +36,7 @@ copy .env.example .env.local
 3. Fill env values
 
 ```env
+# Optional fallback when request headers are unavailable.
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
@@ -53,7 +54,7 @@ If Supabase env is missing in local development, WardFlow falls back to demo mod
 
 ## Database
 
-- Migration: `supabase/migrations/20260616130500_create_wardflow.sql`
+- Migrations: `supabase/migrations/*.sql`
 - Realtime tables: `patients`, `problems`, `ward_tasks`, `handover_notes`
 - Seeded task templates are included in the migration
 
@@ -61,17 +62,20 @@ If Supabase env is missing in local development, WardFlow falls back to demo mod
 
 1. Create a Supabase production project.
 2. Enable Google provider in Supabase Auth.
-3. Add the production callback URL:
+3. Add Supabase Auth redirect URLs:
    - `https://<your-domain>/auth/callback`
-4. Apply the production schema before login testing:
-   - run `supabase/migrations/20260616130500_create_wardflow.sql`
-   - confirm the `profiles` table exists because live sign-in depends on it
+   - for Vercel preview, also allow your preview pattern or each preview URL you will test
+   - the app now derives OAuth origin from the incoming request, so preview login will return to the preview domain as long as that domain is allowlisted in Supabase
+4. Apply every migration before login testing:
+   - preferred: `supabase db push`
+   - manual fallback: run each file in `supabase/migrations` in timestamp order
+   - confirm the `profiles` and `discharge_summaries` tables exist because live sign-in and discharge flow depend on them
 5. Set production environment variables:
    - `NEXT_PUBLIC_APP_URL`
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - keep `NEXT_PUBLIC_APP_URL` as the exact production origin, for example `https://wardflow.example.com`
+   - `NEXT_PUBLIC_APP_URL` is now only a fallback when request headers are unavailable; keep it as the production origin, for example `https://wardflow.example.com`
 6. Run the release gate locally:
 
 ```bash
