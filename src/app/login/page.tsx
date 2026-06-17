@@ -1,7 +1,8 @@
 import Image from "next/image";
-import { signInWithGoogle, startDemoSession } from "@/app/actions";
+import { startDemoSession } from "@/app/actions";
 import { SetupNotice } from "@/components/wardflow-ui";
 import { PendingSubmitButton } from "@/components/form-feedback";
+import { GoogleLoginButton } from "@/components/google-login-button";
 import { getLoginModeInfo } from "@/lib/auth";
 
 export default async function LoginPage({
@@ -46,14 +47,7 @@ export default async function LoginPage({
             ) : null}
 
             {state.supportsGoogleLogin ? (
-              <form action={signInWithGoogle}>
-                <PendingSubmitButton
-                  pendingLabel="Opening Google..."
-                  className="flex w-full items-center justify-center rounded-full bg-mint-500 px-5 py-3.5 text-base font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600"
-                >
-                  Log in with Google
-                </PendingSubmitButton>
-              </form>
+              <GoogleLoginButton className="flex w-full items-center justify-center rounded-full bg-mint-500 px-5 py-3.5 text-base font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600" />
             ) : state.supportsDemoLogin ? (
               <form action={startDemoSession}>
                 <PendingSubmitButton
