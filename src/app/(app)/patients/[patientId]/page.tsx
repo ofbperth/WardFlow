@@ -49,7 +49,7 @@ export default async function PatientPage({
   const [bundle, profiles, templates, dischargeDraft] = await Promise.all([
     getPatientBundle(session, patientId),
     getProfiles(session),
-    getTaskTemplates(),
+    getTaskTemplates(session),
     getDischargeDraft(session, patientId),
   ]);
 
@@ -90,11 +90,12 @@ export default async function PatientPage({
       >
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
-        {canEditClinical ? (
+        {canManagePatient ? (
           <PatientEditor>
             <form action={savePatientAction} className="space-y-3">
               <input type="hidden" name="id" value={bundle.patient.id} />
               <input type="hidden" name="wardId" value={bundle.patient.wardId} />
+              <input type="hidden" name="updatedAt" value={bundle.patient.lastUpdate} />
               <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Bed">
                   <TextInput name="bed" defaultValue={bundle.patient.bed} required />
@@ -140,6 +141,7 @@ export default async function PatientPage({
           <DischargeSummaryEditor>
             <form action={dischargePatientWithSummaryAction} className="space-y-3">
               <input type="hidden" name="patientId" value={bundle.patient.id} />
+              <input type="hidden" name="patientUpdatedAt" value={bundle.patient.lastUpdate} />
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl bg-white/70 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted">Admit date</p>
@@ -284,7 +286,7 @@ export default async function PatientPage({
                     <Field label="Priority">
                       <SelectBox name="priority" defaultValue="normal">
                         <option value="normal">Normal</option>
-                        <option value="urgency">Urgency</option>
+                        <option value="urgent">Urgent</option>
                         <option value="emergency">Emergency</option>
                       </SelectBox>
                     </Field>
@@ -322,6 +324,7 @@ export default async function PatientPage({
             <GlassPanel title="Manual handover note" subtitle="เพิ่ม short note และคำสั่ง escalation เพิ่มเติมได้">
               <form action={saveHandoverAction} className="space-y-3">
                 <input type="hidden" name="patientId" value={bundle.patient.id} />
+                <input type="hidden" name="updatedAt" value={bundle.handover?.updatedAt ?? ""} />
                 <Field label="Short note">
                   <TextArea
                     name="note"

@@ -242,6 +242,7 @@ export function ProblemCards({
               <form action={saveProblemAction} className="mt-4 space-y-3">
                 <input type="hidden" name="id" value={problem.id} />
                 <input type="hidden" name="patientId" value={patientId} />
+                <input type="hidden" name="updatedAt" value={problem.updatedAt} />
                 <Field label="Title">
                   <TextInput name="title" defaultValue={problem.title} required />
                 </Field>
@@ -402,6 +403,7 @@ function TaskCard({
             <input type="hidden" name="patientId" value={patient.id} />
             <input type="hidden" name="taskId" value={task.id} />
             <input type="hidden" name="status" value={status} />
+            <input type="hidden" name="updatedAt" value={task.updatedAt} />
             <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
               {labelForTaskStatus(status)}
             </PendingGhostButton>
@@ -414,6 +416,7 @@ function TaskCard({
           <form action={saveTaskAction} className="mt-4 space-y-3">
             <input type="hidden" name="id" value={task.id} />
             <input type="hidden" name="patientId" value={patient.id} />
+            <input type="hidden" name="updatedAt" value={task.updatedAt} />
             <Field label="Title">
               <TextInput name="title" defaultValue={task.title} required />
             </Field>
@@ -434,7 +437,7 @@ function TaskCard({
               <Field label="Priority">
                 <SelectBox name="priority" defaultValue={task.priority}>
                   <option value="normal">Normal</option>
-                  <option value="urgency">Urgency</option>
+                  <option value="urgent">Urgent</option>
                   <option value="emergency">Emergency</option>
                 </SelectBox>
               </Field>

@@ -13,8 +13,8 @@ import { requireAdminSession } from "@/lib/auth";
 import { getTaskTemplates } from "@/lib/wardflow";
 
 export default async function AdminTaskTemplatesPage() {
-  await requireAdminSession();
-  const templates = await getTaskTemplates();
+  const session = await requireAdminSession();
+  const templates = await getTaskTemplates(session);
 
   return (
     <div className="space-y-6">
@@ -54,7 +54,7 @@ export default async function AdminTaskTemplatesPage() {
               <Field label="ความสำคัญเริ่มต้น">
                 <SelectBox name="defaultPriority" defaultValue="normal">
                   <option value="normal">Normal</option>
-                  <option value="urgency">Urgency</option>
+                  <option value="urgent">Urgent</option>
                   <option value="emergency">Emergency</option>
                 </SelectBox>
               </Field>

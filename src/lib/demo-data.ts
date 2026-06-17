@@ -186,7 +186,7 @@ export const demoTasksSeed: WardTask[] = [
     ownerId: "demo-user-1",
     ownerName: "Dr. Nicha S.",
     status: "in_progress",
-    priority: "urgency",
+    priority: "urgent",
     type: "family_talk",
     dueAt: new Date(Date.now() + 1000 * 60 * 40).toISOString(),
     blockedReason: null,
@@ -281,12 +281,12 @@ export const demoActivitySeed: ActivityLog[] = [
 
 export const demoTemplatesSeed: TaskTemplate[] = [
   { id: "template-1", title: "Follow lab", type: "lab", defaultPriority: "normal" },
-  { id: "template-2", title: "Follow culture", type: "lab", defaultPriority: "urgency" },
+  { id: "template-2", title: "Follow culture", type: "lab", defaultPriority: "urgent" },
   {
     id: "template-3",
     title: "Consult specialist",
     type: "consult",
-    defaultPriority: "urgency",
+    defaultPriority: "urgent",
   },
   {
     id: "template-4",
@@ -306,6 +306,6 @@ export const demoTemplatesSeed: TaskTemplate[] = [
     id: "template-8",
     title: "Procedure prep",
     type: "procedure",
-    defaultPriority: "urgency",
+    defaultPriority: "urgent",
   },
 ];

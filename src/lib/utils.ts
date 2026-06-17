@@ -68,7 +68,7 @@ export function priorityTone(priority: TaskPriority) {
   switch (priority) {
     case "emergency":
       return "bg-rose-100 text-rose-700";
-    case "urgency":
+    case "urgent":
       return "bg-amber-100 text-amber-700";
     case "normal":
     default:
@@ -80,8 +80,8 @@ export function labelForTaskPriority(priority: TaskPriority) {
   switch (priority) {
     case "emergency":
       return "Emergency";
-    case "urgency":
-      return "Urgency";
+    case "urgent":
+      return "Urgent";
     case "normal":
     default:
       return "Normal";

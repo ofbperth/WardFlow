@@ -145,10 +145,13 @@ export async function saveTaskAction(formData: FormData) {
 
 export async function updateTaskStatusAction(formData: FormData) {
   const session = await requireAppSession();
+  const updatedAt =
+    typeof formData.get("updatedAt") === "string" ? (formData.get("updatedAt") as string) : null;
   await updateTaskStatus(
     String(formData.get("patientId")),
     String(formData.get("taskId")),
     String(formData.get("status")) as Parameters<typeof updateTaskStatus>[2],
+    updatedAt,
     session,
   );
 }
