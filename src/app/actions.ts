@@ -6,6 +6,7 @@ import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
 import { getAppUrl, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
+  deleteUser,
   deleteWard,
   dischargePatient,
   dischargePatientWithSummary,
@@ -109,6 +110,12 @@ export async function updateUserRoleAdminAction(formData: FormData) {
   const session = await requireAppSession();
   await updateUserRole(formData, session);
   redirect("/admin/wards?toast=role-saved");
+}
+
+export async function deleteUserAdminAction(formData: FormData) {
+  const session = await requireAppSession();
+  await deleteUser(formData, session);
+  redirect("/admin/wards?toast=user-deleted");
 }
 
 export async function savePatientAction(formData: FormData) {

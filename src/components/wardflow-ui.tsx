@@ -870,9 +870,11 @@ export function TemplateCards({ templates }: { templates: TaskTemplate[] }) {
 export function StaffRoleCards({
   profiles,
   updateUserRoleAction,
+  deleteUserAction,
 }: {
   profiles: UserProfile[];
   updateUserRoleAction: (formData: FormData) => Promise<void>;
+  deleteUserAction: (formData: FormData) => Promise<void>;
 }) {
   return (
     <div className="grid gap-3 xl:grid-cols-2">
@@ -900,6 +902,22 @@ export function StaffRoleCards({
               <SubmitButton>Save role</SubmitButton>
             </form>
           </AdminEditor>
+          <div className="mt-4 border-t border-white/70 pt-4">
+            {profile.role === "admin" ? (
+              <p className="text-sm font-medium text-muted">Admin user cannot be deleted.</p>
+            ) : (
+              <form action={deleteUserAction} className="flex justify-end">
+                <input type="hidden" name="userId" value={profile.id} />
+                <ConfirmingSubmitButton
+                  confirmMessage={`Hard delete ${profile.name}? Patients and tasks assigned to this user will become unassigned.`}
+                  pendingLabel="Deleting user..."
+                  className="px-4 py-2 text-xs"
+                >
+                  Delete user
+                </ConfirmingSubmitButton>
+              </form>
+            )}
+          </div>
         </div>
       ))}
     </div>

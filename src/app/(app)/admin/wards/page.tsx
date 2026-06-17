@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  deleteUserAdminAction,
   deleteWardAdminAction,
   saveWardAdminAction,
   updateUserRoleAdminAction,
@@ -140,6 +141,7 @@ export default async function AdminWardsPage({
               <StaffRoleCards
                 profiles={profiles}
                 updateUserRoleAction={updateUserRoleAdminAction}
+                deleteUserAction={deleteUserAdminAction}
               />
             </GlassPanel>
           </div>

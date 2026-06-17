@@ -8,6 +8,7 @@ const toastCopy: Record<string, string> = {
   "ward-saved": "Ward saved",
   "ward-deleted": "Ward deleted",
   "role-saved": "User role updated",
+  "user-deleted": "User deleted",
 };
 
 export function AdminFeedbackToast({ toastKey }: { toastKey?: string }) {

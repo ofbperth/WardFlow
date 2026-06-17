@@ -278,6 +278,10 @@ const userRoleSchema = z.object({
   role: z.enum(["admin", "resident", "student"]),
 });
 
+const deleteUserSchema = z.object({
+  userId: z.string().min(1),
+});
+
 const dischargeSummarySchema = z.object({
   patientId: z.string().min(1),
   primaryDiagnosis: z.string().min(1),
@@ -447,6 +451,37 @@ async function getProfileDirectoryName(profileId: string | null, fallback: strin
 
   const profiles = await getLiveProfiles();
   return profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
+}
+
+function scrubDeletedUserReferences(userId: string) {
+  store.patients = store.patients.map((patient) =>
+    patient.responsibleDoctorId === userId
+      ? { ...patient, responsibleDoctorId: null, responsibleDoctorName: null, lastUpdate: now() }
+      : patient,
+  );
+
+  store.tasks = store.tasks.map((task) => {
+    if (task.ownerId !== userId && task.updatedById !== userId) {
+      return task;
+    }
+
+    return {
+      ...task,
+      ownerId: task.ownerId === userId ? null : task.ownerId,
+      ownerName: task.ownerId === userId ? null : task.ownerName,
+      updatedById: task.updatedById === userId ? null : task.updatedById,
+      updatedByName: task.updatedById === userId ? null : task.updatedByName,
+      updatedAt: now(),
+    };
+  });
+
+  store.dischargeSummaries = store.dischargeSummaries.map((summary) =>
+    summary.createdById === userId ? { ...summary, createdById: null } : summary,
+  );
+
+  store.activity = store.activity.map((entry) =>
+    entry.actorId === userId ? { ...entry, actorId: null } : entry,
+  );
 }
 
 function summaryByPatientId(patientId: string) {
@@ -886,6 +921,49 @@ export async function updateUserRole(formData: FormData, session: SessionContext
 
   await persistStore();
   revalidatePath("/admin/wards");
+}
+
+export async function deleteUser(formData: FormData, session: SessionContext) {
+  await ensureStoreLoaded();
+  if (!canManageAdmin(session)) {
+    throw new Error("Admin only");
+  }
+
+  const parsed = deleteUserSchema.parse({
+    userId: formData.get("userId"),
+  });
+
+  const profiles = hasLiveSupabase() ? await getLiveProfiles() : store.profiles;
+  const profile = profiles.find((entry) => entry.id === parsed.userId);
+  if (!profile) {
+    throw new Error("User not found");
+  }
+
+  if (profile.role === "admin") {
+    throw new Error("Admin user cannot be deleted");
+  }
+
+  scrubDeletedUserReferences(parsed.userId);
+  store.profiles = store.profiles.filter((entry) => entry.id !== parsed.userId);
+
+  if (hasLiveSupabase()) {
+    const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
+    if (!admin) {
+      throw new Error("Supabase admin client unavailable");
+    }
+
+    const result = await admin.auth.admin.deleteUser(parsed.userId);
+    if (result.error) {
+      throw new Error(`Failed to delete user: ${result.error.message}`);
+    }
+  }
+
+  await persistStore();
+  revalidatePath("/admin/wards");
+  revalidatePath("/wards");
+  revalidatePath("/discharged");
+  revalidatePath("/handover");
+  revalidatePath("/my-tasks");
 }
 
 export async function savePatient(formData: FormData, session: SessionContext) {
