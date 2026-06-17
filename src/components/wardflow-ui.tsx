@@ -646,12 +646,10 @@ export function TaskInbox({
 
 export function DischargedPatientList({
   items,
-  summaryId,
   canHardDelete = false,
   hardDeleteAction,
 }: {
   items: DischargedDirectoryItem[];
-  summaryId?: string | null;
   canHardDelete?: boolean;
   hardDeleteAction?: (formData: FormData) => Promise<void>;
 }) {
@@ -660,13 +658,10 @@ export function DischargedPatientList({
       {items.map(({ patient, ward, summary }) => (
         <div
           key={patient.id}
-          className={cn(
-            "rounded-[28px] border border-white/70 bg-white/74 p-5 transition hover:bg-white",
-            summaryId === summary?.id && "ring-2 ring-mint-400",
-          )}
+          className="rounded-[28px] border border-white/70 bg-white/74 p-5 transition hover:bg-white"
         >
           <Link
-            href={summary ? `/discharged?summaryId=${summary.id}` : `/patients/${patient.id}`}
+            href={`/discharged/${patient.id}`}
             className="block transition hover:-translate-y-0.5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">

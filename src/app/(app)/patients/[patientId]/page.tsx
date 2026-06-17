@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   dischargePatientWithSummaryAction,
   reorderProblemAction,
@@ -34,7 +34,6 @@ import { requireAppSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import {
   getDischargeDraft,
-  getDischargeSummaryByPatientId,
   getPatientBundle,
   getProfiles,
   getTaskTemplates,
@@ -47,12 +46,11 @@ export default async function PatientPage({
 }) {
   const session = await requireAppSession();
   const { patientId } = await params;
-  const [bundle, profiles, templates, dischargeDraft, dischargeSummary] = await Promise.all([
+  const [bundle, profiles, templates, dischargeDraft] = await Promise.all([
     getPatientBundle(session, patientId),
     getProfiles(session),
     getTaskTemplates(),
     getDischargeDraft(session, patientId),
-    getDischargeSummaryByPatientId(session, patientId),
   ]);
 
   if (!bundle) {
@@ -62,6 +60,10 @@ export default async function PatientPage({
         body="ไม่พบข้อมูลผู้ป่วยรายนี้ หรือคุณไม่มีสิทธิ์เข้าถึงวอร์ดนี้"
       />
     );
+  }
+
+  if (bundle.patient.lifecycle === "discharged") {
+    redirect(`/discharged/${patientId}`);
   }
 
   const canManagePatient = session.profile.role === "admin" || session.profile.role === "resident";
@@ -82,16 +84,6 @@ export default async function PatientPage({
       <GlassPanel
         title={`${bundle.patient.displayName} | Bed ${bundle.patient.bed}`}
         subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
-        action={
-          bundle.patient.lifecycle === "discharged" && dischargeSummary ? (
-            <Link
-              href={`/discharged?summaryId=${dischargeSummary.summary.id}`}
-              className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
-            >
-              Open discharge summary
-            </Link>
-          ) : null
-        }
       >
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
