@@ -1,10 +1,16 @@
 import Image from "next/image";
 import { signInWithGoogle, startDemoSession } from "@/app/actions";
+import { SetupNotice } from "@/components/wardflow-ui";
 import { PendingSubmitButton } from "@/components/form-feedback";
 import { getLoginModeInfo } from "@/lib/auth";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
   const state = getLoginModeInfo();
+  const params = (await searchParams) ?? {};
 
   return (
     <main className="page-shell flex min-h-screen items-center justify-center px-4 py-8">
@@ -26,6 +32,13 @@ export default function LoginPage() {
           </h1>
 
           <div className="mt-8 w-full">
+            {params.error ? (
+              <SetupNotice
+                title="Login failed"
+                body={params.error}
+              />
+            ) : null}
+
             {state.supportsGoogleLogin ? (
               <form action={signInWithGoogle}>
                 <PendingSubmitButton

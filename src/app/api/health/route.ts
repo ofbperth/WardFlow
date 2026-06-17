@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
 import {
-  getAppUrl,
+  getRequestOrigin,
   getSupabasePublicEnv,
   getSupabaseServiceRoleKey,
   hasLiveSupabase,
@@ -37,9 +37,9 @@ const requiredPatientColumns = [
   "updated_at",
 ] as const;
 
-export async function GET() {
+export async function GET(request: Request) {
   const timestamp = new Date().toISOString();
-  const appUrl = getAppUrl();
+  const appUrl = getRequestOrigin(request.headers);
 
   if (!appUrl) {
     return NextResponse.json(
@@ -48,7 +48,7 @@ export async function GET() {
         service: "wardflow",
         timestamp,
         mode: "partial",
-        reason: "NEXT_PUBLIC_APP_URL is missing",
+        reason: "Unable to resolve app origin",
       },
       { status: 503 },
     );
@@ -178,6 +178,7 @@ export async function GET() {
     service: "wardflow",
     timestamp,
     mode: "live",
+    appUrl,
     tableChecks,
     structuralChecks,
     realtimeExpectedTables: [

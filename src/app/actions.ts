@@ -40,7 +40,7 @@ export async function signInWithGoogle() {
   const result = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?next=%2Fwards`,
       scopes: "openid email profile",
     },
   });
