@@ -67,7 +67,10 @@ export default async function PatientPage({
   }
 
   const canManagePatient = session.profile.role === "admin" || session.profile.role === "resident";
-  const canEditClinical = canManagePatient || session.profile.role === "student";
+  const canEditClinical =
+    canManagePatient ||
+    (session.profile.role === "student" &&
+      session.profile.wardAssignment === bundle.patient.wardId);
 
   return (
     <div className="space-y-6">

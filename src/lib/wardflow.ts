@@ -296,7 +296,18 @@ function canManageClinicalEntries(session: SessionContext) {
   );
 }
 
-function requireWardAccess(session: SessionContext, wardId: string) {
+function canViewAllWards(session: SessionContext) {
+  return session.profile.role === "admin" || session.profile.role === "student";
+}
+
+function requireWardReadAccess(session: SessionContext, wardId: string) {
+  if (canViewAllWards(session)) return;
+  if (session.profile.wardAssignment !== wardId) {
+    throw new Error("Ward access denied");
+  }
+}
+
+function requireWardWriteAccess(session: SessionContext, wardId: string) {
   if (session.profile.role === "admin") return;
   if (session.profile.wardAssignment !== wardId) {
     throw new Error("Ward access denied");
@@ -338,7 +349,7 @@ function refreshPatient(patientId: string) {
 }
 
 function visibleWardIds(session: SessionContext) {
-  return session.profile.role === "admin"
+  return canViewAllWards(session)
     ? store.wards.map((ward) => ward.id)
     : [session.profile.wardAssignment].filter(Boolean) as string[];
 }
@@ -459,7 +470,7 @@ export async function getDischargedDirectory(
 
   const filtered = store.patients
     .filter((patient) =>
-      session.profile.role === "admin"
+      canViewAllWards(session)
         ? patient.lifecycle === "discharged"
         : patient.lifecycle === "discharged" && wardIds.includes(patient.wardId),
     )
@@ -504,7 +515,7 @@ export async function hardDeletePatient(patientId: string, session: SessionConte
     throw new Error("Patient not found");
   }
 
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
 
   if (patient.lifecycle !== "discharged") {
     throw new Error("Only discharged patients can be hard deleted");
@@ -533,7 +544,7 @@ export async function getDischargeSummaryById(session: SessionContext, summaryId
   if (!summary) return null;
   const patient = patientById(summary.patientId);
   if (!patient) return null;
-  requireWardAccess(session, patient.wardId);
+  requireWardReadAccess(session, patient.wardId);
 
   return {
     summary,
@@ -546,7 +557,7 @@ export async function getDischargeSummaryByPatientId(session: SessionContext, pa
   await ensureStoreLoaded();
   const patient = patientById(patientId);
   if (!patient) return null;
-  requireWardAccess(session, patient.wardId);
+  requireWardReadAccess(session, patient.wardId);
 
   const summary = summaryByPatientId(patientId);
   if (!summary) return null;
@@ -562,13 +573,13 @@ export async function getDischargeDraft(session: SessionContext, patientId: stri
   await ensureStoreLoaded();
   const patient = patientById(patientId);
   if (!patient) return null;
-  requireWardAccess(session, patient.wardId);
+  requireWardReadAccess(session, patient.wardId);
   return buildDischargeDraft(patientId);
 }
 
 export async function getWardDetail(session: SessionContext, wardId: string) {
   await ensureStoreLoaded();
-  requireWardAccess(session, wardId);
+  requireWardReadAccess(session, wardId);
   const summaries = await getWardSummaries(session);
   return summaries.find((summary) => summary.ward.id === wardId) ?? null;
 }
@@ -580,7 +591,7 @@ export async function getPatientBundle(
   await ensureStoreLoaded();
   const patient = patientById(patientId);
   if (!patient) return null;
-  requireWardAccess(session, patient.wardId);
+  requireWardReadAccess(session, patient.wardId);
 
   return {
     patient,
@@ -793,7 +804,7 @@ export async function savePatient(formData: FormData, session: SessionContext) {
     responsibleDoctorId: textOrNull(formData.get("responsibleDoctorId")),
     precaution: formData.get("precaution"),
   });
-  requireWardAccess(session, parsed.wardId);
+  requireWardWriteAccess(session, parsed.wardId);
 
   const ownerName = getPatientDirectoryName(parsed.responsibleDoctorId ?? null, session.profile.name);
 
@@ -853,7 +864,7 @@ export async function dischargePatient(patientId: string, session: SessionContex
 
   const patient = patientById(patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
 
   const before = structuredClone(patient);
   patient.lifecycle = "discharged";
@@ -885,7 +896,7 @@ export async function dischargePatientWithSummary(formData: FormData, session: S
 
   const patient = patientById(parsed.patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
 
   const dischargeDate = now();
   const admitDate = getPatientAdmitDate(patient.id) ?? "";
@@ -935,7 +946,7 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
 
   const patient = patientById(parsed.patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
 
   if (parsed.id) {
     const existing = store.problems.find((entry) => entry.id === parsed.id);
@@ -1038,7 +1049,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
 
   const patient = patientById(parsed.patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
 
   const owner = store.profiles.find((profile) => profile.id === parsed.ownerId);
   if (parsed.id) {
@@ -1099,7 +1110,7 @@ export async function updateTaskStatus(
 
   const patient = patientById(patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
   const task = store.tasks.find((entry) => entry.id === taskId);
   if (!task) throw new Error("Task not found");
 
@@ -1132,7 +1143,7 @@ export async function saveHandover(formData: FormData, session: SessionContext) 
 
   const patient = patientById(parsed.patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardAccess(session, patient.wardId);
+  requireWardWriteAccess(session, patient.wardId);
 
   const existing = store.handovers.find((handover) => handover.patientId === parsed.patientId);
   if (existing) {
