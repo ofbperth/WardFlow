@@ -53,7 +53,7 @@ If Supabase env is missing in local development, WardFlow falls back to demo mod
 
 ## Database
 
-- Migration: `supabase/migrations/20260616130500_create_wardflow.sql`
+- Migrations: `supabase/migrations/*.sql`
 - Realtime tables: `patients`, `problems`, `ward_tasks`, `handover_notes`
 - Seeded task templates are included in the migration
 
@@ -63,9 +63,10 @@ If Supabase env is missing in local development, WardFlow falls back to demo mod
 2. Enable Google provider in Supabase Auth.
 3. Add the production callback URL:
    - `https://<your-domain>/auth/callback`
-4. Apply the production schema before login testing:
-   - run `supabase/migrations/20260616130500_create_wardflow.sql`
-   - confirm the `profiles` table exists because live sign-in depends on it
+4. Apply every migration before login testing:
+   - preferred: `supabase db push`
+   - manual fallback: run each file in `supabase/migrations` in timestamp order
+   - confirm the `profiles` and `discharge_summaries` tables exist because live sign-in and discharge flow depend on them
 5. Set production environment variables:
    - `NEXT_PUBLIC_APP_URL`
    - `NEXT_PUBLIC_SUPABASE_URL`
