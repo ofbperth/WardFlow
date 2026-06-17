@@ -9,6 +9,7 @@ import {
   deleteWard,
   dischargePatient,
   dischargePatientWithSummary,
+  hardDeletePatient,
   moveProblem,
   saveHandover,
   savePatient,
@@ -164,4 +165,10 @@ export async function dischargePatientWithSummaryAction(formData: FormData) {
   const session = await requireAppSession();
   const summaryId = await dischargePatientWithSummary(formData, session);
   redirect(`/discharged?summaryId=${summaryId}`);
+}
+
+export async function hardDeletePatientAction(formData: FormData) {
+  const session = await requireAppSession();
+  await hardDeletePatient(String(formData.get("patientId")), session);
+  redirect("/discharged");
 }

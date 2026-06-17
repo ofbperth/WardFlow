@@ -1,0 +1,13 @@
+create table if not exists public.app_state (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.app_state enable row level security;
+
+drop trigger if exists set_app_state_updated_at on public.app_state;
+create trigger set_app_state_updated_at
+before update on public.app_state
+for each row
+execute function public.set_updated_at();

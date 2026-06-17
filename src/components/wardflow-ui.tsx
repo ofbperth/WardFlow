@@ -27,6 +27,7 @@ import {
 } from "@/lib/utils";
 import {
   AdminEditor,
+  ConfirmingSubmitButton,
   CopyTextButton,
   DangerZone,
   PendingGhostButton,
@@ -646,35 +647,55 @@ export function TaskInbox({
 export function DischargedPatientList({
   items,
   summaryId,
+  canHardDelete = false,
+  hardDeleteAction,
 }: {
   items: DischargedDirectoryItem[];
   summaryId?: string | null;
+  canHardDelete?: boolean;
+  hardDeleteAction?: (formData: FormData) => Promise<void>;
 }) {
   return (
     <div className="space-y-4">
       {items.map(({ patient, ward, summary }) => (
-        <Link
+        <div
           key={patient.id}
-          href={summary ? `/discharged?summaryId=${summary.id}` : `/patients/${patient.id}`}
           className={cn(
-            "block rounded-[28px] border border-white/70 bg-white/74 p-5 transition hover:-translate-y-0.5 hover:bg-white",
+            "rounded-[28px] border border-white/70 bg-white/74 p-5 transition hover:bg-white",
             summaryId === summary?.id && "ring-2 ring-mint-400",
           )}
         >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted">
-                {ward?.name ?? "-"} | Bed {patient.bed}
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.displayName}</h3>
-              <p className="mt-1 text-sm text-muted">{patient.diagnosis}</p>
+          <Link
+            href={summary ? `/discharged?summaryId=${summary.id}` : `/patients/${patient.id}`}
+            className="block transition hover:-translate-y-0.5"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted">
+                  {ward?.name ?? "-"} | Bed {patient.bed}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.displayName}</h3>
+                <p className="mt-1 text-sm text-muted">{patient.diagnosis}</p>
+              </div>
+              <div className="text-right text-xs text-muted">
+                <p>{patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-"}</p>
+                <p>{summary ? "Summary ready" : "No summary yet"}</p>
+              </div>
             </div>
-            <div className="text-right text-xs text-muted">
-              <p>{patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-"}</p>
-              <p>{summary ? "Summary ready" : "No summary yet"}</p>
-            </div>
-          </div>
-        </Link>
+          </Link>
+          {canHardDelete && hardDeleteAction ? (
+            <form action={hardDeleteAction} className="mt-4 flex justify-end">
+              <input type="hidden" name="patientId" value={patient.id} />
+              <ConfirmingSubmitButton
+                confirmMessage={`Hard delete ${patient.displayName}? This cannot be undone.`}
+                pendingLabel="Deleting patient..."
+                className="px-4 py-2 text-xs"
+              >
+                Hard delete
+              </ConfirmingSubmitButton>
+            </form>
+          ) : null}
+        </div>
       ))}
     </div>
   );

@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { hasLiveSupabase } from "@/lib/env";
+import { createAdminSupabaseClient } from "@/lib/supabase/server";
 import {
   demoActivitySeed,
   demoDischargeSummarySeed,
@@ -44,6 +46,11 @@ type DemoStore = {
 };
 
 const DEMO_STORE_PATH = path.join(process.cwd(), ".wardflow-demo", "store.json");
+const LIVE_STORE_ID = "primary";
+
+type StoreEnvelope = {
+  data: DemoStore;
+};
 
 function createSeedStore(): DemoStore {
   return {
@@ -61,7 +68,28 @@ function createSeedStore(): DemoStore {
 
 let store: DemoStore = createSeedStore();
 
-function ensureStoreLoaded() {
+function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
+  const seed = createSeedStore();
+
+  return {
+    wards: input?.wards ?? seed.wards,
+    patients: input?.patients ?? seed.patients,
+    problems: input?.problems ?? seed.problems,
+    tasks: input?.tasks ?? seed.tasks,
+    handovers: input?.handovers ?? seed.handovers,
+    dischargeSummaries: input?.dischargeSummaries ?? seed.dischargeSummaries,
+    activity: input?.activity ?? seed.activity,
+    templates: input?.templates ?? seed.templates,
+    profiles: input?.profiles ?? seed.profiles,
+  };
+}
+
+async function ensureStoreLoaded() {
+  if (hasLiveSupabase()) {
+    await ensureLiveStoreLoaded();
+    return;
+  }
+
   const directory = path.dirname(DEMO_STORE_PATH);
   fs.mkdirSync(directory, { recursive: true });
 
@@ -71,10 +99,76 @@ function ensureStoreLoaded() {
     return;
   }
 
-  store = JSON.parse(fs.readFileSync(DEMO_STORE_PATH, "utf8")) as DemoStore;
+  store = normalizeStore(JSON.parse(fs.readFileSync(DEMO_STORE_PATH, "utf8")) as DemoStore);
 }
 
-function persistStore() {
+async function ensureLiveStoreLoaded() {
+  const admin = createAdminSupabaseClient() as {
+    from: (table: string) => {
+      select: (columns: string) => {
+        eq: (column: string, value: string) => {
+          maybeSingle: () => Promise<{
+            data: StoreEnvelope | null;
+            error: { code?: string; message: string } | null;
+          }>;
+        };
+      };
+      upsert: (
+        values: Record<string, unknown>,
+        options?: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  } | null;
+
+  if (!admin) {
+    throw new Error("Supabase admin client unavailable");
+  }
+
+  const result = await admin.from("app_state").select("data").eq("id", LIVE_STORE_ID).maybeSingle();
+  if (result.error) {
+    throw new Error(`Failed to load live store: ${result.error.message}`);
+  }
+
+  if (!result.data?.data) {
+    store = createSeedStore();
+    await persistStore();
+    return;
+  }
+
+  store = normalizeStore(result.data.data);
+}
+
+async function persistStore() {
+  if (hasLiveSupabase()) {
+    const admin = createAdminSupabaseClient() as {
+      from: (table: string) => {
+        upsert: (
+          values: Record<string, unknown>,
+          options?: Record<string, unknown>,
+        ) => Promise<{ error: { message: string } | null }>;
+      };
+    } | null;
+
+    if (!admin) {
+      throw new Error("Supabase admin client unavailable");
+    }
+
+    const result = await admin.from("app_state").upsert(
+      {
+        id: LIVE_STORE_ID,
+        data: store,
+        updated_at: now(),
+      },
+      { onConflict: "id" },
+    );
+
+    if (result.error) {
+      throw new Error(`Failed to save live store: ${result.error.message}`);
+    }
+
+    return;
+  }
+
   const directory = path.dirname(DEMO_STORE_PATH);
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(DEMO_STORE_PATH, JSON.stringify(store, null, 2));
@@ -138,6 +232,10 @@ const wardSchema = z.object({
 
 const deleteWardSchema = z.object({
   wardId: z.string().min(1),
+});
+
+const deletePatientSchema = z.object({
+  patientId: z.string().min(1),
 });
 
 const templateSchema = z.object({
@@ -339,12 +437,12 @@ function buildDischargeDraft(patientId: string) {
 }
 
 export async function getWardSummaries(session: SessionContext): Promise<WardSummary[]> {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   return buildWardSummary(session, "active");
 }
 
 export async function getDischargedSummaries(session: SessionContext): Promise<WardSummary[]> {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   return buildWardSummary(session, "discharged");
 }
 
@@ -352,7 +450,7 @@ export async function getDischargedDirectory(
   session: SessionContext,
   options: { wardId?: string | null; query?: string | null; page?: number; pageSize?: number } = {},
 ) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const wardId = options.wardId?.trim() || null;
   const query = options.query?.trim().toLowerCase() || "";
   const pageSize = options.pageSize ?? 10;
@@ -360,7 +458,11 @@ export async function getDischargedDirectory(
   const wardIds = visibleWardIds(session);
 
   const filtered = store.patients
-    .filter((patient) => patient.lifecycle === "discharged" && wardIds.includes(patient.wardId))
+    .filter((patient) =>
+      session.profile.role === "admin"
+        ? patient.lifecycle === "discharged"
+        : patient.lifecycle === "discharged" && wardIds.includes(patient.wardId),
+    )
     .filter((patient) => (wardId ? patient.wardId === wardId : true))
     .filter((patient) =>
       query
@@ -390,8 +492,43 @@ export async function getDischargedDirectory(
   };
 }
 
+export async function hardDeletePatient(patientId: string, session: SessionContext) {
+  await ensureStoreLoaded();
+  if (!canManagePatients(session)) {
+    throw new Error("Only admin or resident can hard delete patient");
+  }
+
+  const parsed = deletePatientSchema.parse({ patientId });
+  const patient = patientById(parsed.patientId);
+  if (!patient) {
+    throw new Error("Patient not found");
+  }
+
+  requireWardAccess(session, patient.wardId);
+
+  if (patient.lifecycle !== "discharged") {
+    throw new Error("Only discharged patients can be hard deleted");
+  }
+
+  store.patients = store.patients.filter((entry) => entry.id !== parsed.patientId);
+  store.problems = store.problems.filter((entry) => entry.patientId !== parsed.patientId);
+  store.tasks = store.tasks.filter((entry) => entry.patientId !== parsed.patientId);
+  store.handovers = store.handovers.filter((entry) => entry.patientId !== parsed.patientId);
+  store.dischargeSummaries = store.dischargeSummaries.filter(
+    (entry) => entry.patientId !== parsed.patientId,
+  );
+  store.activity = store.activity.filter((entry) => entry.patientId !== parsed.patientId);
+
+  await persistStore();
+  revalidatePath("/wards");
+  revalidatePath("/discharged");
+  revalidatePath("/handover");
+  revalidatePath("/my-tasks");
+  revalidatePath(`/patients/${parsed.patientId}`);
+}
+
 export async function getDischargeSummaryById(session: SessionContext, summaryId: string) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const summary = store.dischargeSummaries.find((entry) => entry.id === summaryId) ?? null;
   if (!summary) return null;
   const patient = patientById(summary.patientId);
@@ -406,7 +543,7 @@ export async function getDischargeSummaryById(session: SessionContext, summaryId
 }
 
 export async function getDischargeSummaryByPatientId(session: SessionContext, patientId: string) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const patient = patientById(patientId);
   if (!patient) return null;
   requireWardAccess(session, patient.wardId);
@@ -422,7 +559,7 @@ export async function getDischargeSummaryByPatientId(session: SessionContext, pa
 }
 
 export async function getDischargeDraft(session: SessionContext, patientId: string) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const patient = patientById(patientId);
   if (!patient) return null;
   requireWardAccess(session, patient.wardId);
@@ -430,7 +567,7 @@ export async function getDischargeDraft(session: SessionContext, patientId: stri
 }
 
 export async function getWardDetail(session: SessionContext, wardId: string) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   requireWardAccess(session, wardId);
   const summaries = await getWardSummaries(session);
   return summaries.find((summary) => summary.ward.id === wardId) ?? null;
@@ -440,7 +577,7 @@ export async function getPatientBundle(
   session: SessionContext,
   patientId: string,
 ): Promise<PatientBundle | null> {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const patient = patientById(patientId);
   if (!patient) return null;
   requireWardAccess(session, patient.wardId);
@@ -462,7 +599,7 @@ export async function getPatientBundle(
 }
 
 export async function getProfiles(session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   return store.profiles.filter(
     (profile) =>
       session.profile.role === "admin" ||
@@ -472,12 +609,12 @@ export async function getProfiles(session: SessionContext) {
 }
 
 export async function getTaskTemplates() {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   return [...store.templates].sort((left, right) => left.title.localeCompare(right.title));
 }
 
 export async function getMyTasks(session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const patientMap = new Map(
     store.patients
       .filter((patient) => patient.lifecycle === "active")
@@ -494,7 +631,7 @@ export async function getMyTasks(session: SessionContext) {
 }
 
 export async function getHandoverBundles(session: SessionContext): Promise<HandoverBundle[]> {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const summaries = await getWardSummaries(session);
   return summaries.map((summary) => ({
     ward: summary.ward,
@@ -516,7 +653,7 @@ export async function getHandoverBundles(session: SessionContext): Promise<Hando
 }
 
 export async function getHandoverStructuredText(session: SessionContext, wardId?: string | null) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const bundles = await getHandoverBundles(session);
   const selected = wardId ? bundles.filter((bundle) => bundle.ward.id === wardId) : bundles;
 
@@ -561,7 +698,7 @@ export async function getHandoverStructuredText(session: SessionContext, wardId?
 }
 
 export async function saveWard(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -579,14 +716,14 @@ export async function saveWard(formData: FormData, session: SessionContext) {
     store.wards.push({ id: nextId("ward"), name: parsed.name });
   }
 
-  persistStore();
+  await persistStore();
   revalidatePath("/wards");
   revalidatePath("/admin/wards");
   revalidatePath("/discharged");
 }
 
 export async function deleteWard(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -595,24 +732,38 @@ export async function deleteWard(formData: FormData, session: SessionContext) {
     wardId: formData.get("wardId"),
   });
 
-  const hasPatients = store.patients.some((patient) => patient.wardId === parsed.wardId);
-  if (hasPatients) {
-    throw new Error("Ward with patients cannot be deleted");
-  }
+  const patientsInWard = store.patients.filter((patient) => patient.wardId === parsed.wardId);
+  const dischargeTimestamp = now();
+
+  patientsInWard.forEach((patient) => {
+    const before = structuredClone(patient);
+    patient.lifecycle = "discharged";
+    patient.dischargedAt = patient.dischargedAt ?? dischargeTimestamp;
+    patient.lastUpdate = dischargeTimestamp;
+    addActivity(
+      session,
+      patient.id,
+      "patient.auto_discharged_on_ward_delete",
+      "patient",
+      patient.id,
+      before,
+      patient,
+    );
+  });
 
   store.wards = store.wards.filter((ward) => ward.id !== parsed.wardId);
   store.profiles = store.profiles.map((profile) =>
     profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
   );
 
-  persistStore();
+  await persistStore();
   revalidatePath("/wards");
   revalidatePath("/admin/wards");
   revalidatePath("/discharged");
 }
 
 export async function updateUserRole(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -626,12 +777,12 @@ export async function updateUserRole(formData: FormData, session: SessionContext
   if (!profile) throw new Error("User not found");
   profile.role = parsed.role as Role;
 
-  persistStore();
+  await persistStore();
   revalidatePath("/admin/wards");
 }
 
 export async function savePatient(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   const parsed = patientSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
@@ -689,13 +840,13 @@ export async function savePatient(formData: FormData, session: SessionContext) {
     addActivity(session, patient.id, "patient.created", "patient", patient.id, null, patient);
   }
 
-  persistStore();
+  await persistStore();
   revalidatePath("/wards");
   revalidatePath("/discharged");
 }
 
 export async function dischargePatient(patientId: string, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManagePatients(session)) {
     throw new Error("Only admin or resident can discharge patient");
   }
@@ -710,7 +861,7 @@ export async function dischargePatient(patientId: string, session: SessionContex
   patient.lastUpdate = patient.dischargedAt;
   addActivity(session, patient.id, "patient.discharged", "patient", patient.id, before, patient);
 
-  persistStore();
+  await persistStore();
   revalidatePath("/wards");
   revalidatePath("/discharged");
   revalidatePath(`/patients/${patientId}`);
@@ -719,7 +870,7 @@ export async function dischargePatient(patientId: string, session: SessionContex
 }
 
 export async function dischargePatientWithSummary(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManagePatients(session)) {
     throw new Error("Only admin or resident can discharge patient");
   }
@@ -759,13 +910,13 @@ export async function dischargePatientWithSummary(formData: FormData, session: S
   store.dischargeSummaries.unshift(summary);
   addActivity(session, patient.id, "discharge.summary_created", "discharge_summary", summary.id, null, summary);
 
-  persistStore();
+  await persistStore();
   await dischargePatient(patient.id, session);
   return summary.id;
 }
 
 export async function saveProblem(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageClinicalEntries(session)) {
     throw new Error("Clinical entries are not allowed");
   }
@@ -821,7 +972,7 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
   }
 
   refreshPatient(parsed.patientId);
-  persistStore();
+  await persistStore();
   revalidatePath(`/patients/${parsed.patientId}`);
   revalidatePath("/handover");
 }
@@ -832,7 +983,7 @@ export async function moveProblem(
   direction: "up" | "down",
   session: SessionContext,
 ) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageClinicalEntries(session)) {
     throw new Error("Clinical entries are not allowed");
   }
@@ -862,12 +1013,12 @@ export async function moveProblem(
     { from: toOrder, to: fromOrder },
   );
   refreshPatient(patientId);
-  persistStore();
+  await persistStore();
   revalidatePath(`/patients/${patientId}`);
 }
 
 export async function saveTask(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageClinicalEntries(session)) {
     throw new Error("Clinical entries are not allowed");
   }
@@ -929,7 +1080,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
   }
 
   refreshPatient(parsed.patientId);
-  persistStore();
+  await persistStore();
   revalidatePath(`/patients/${parsed.patientId}`);
   revalidatePath("/my-tasks");
   revalidatePath("/handover");
@@ -941,7 +1092,7 @@ export async function updateTaskStatus(
   status: WardTask["status"],
   session: SessionContext,
 ) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageClinicalEntries(session)) {
     throw new Error("Clinical entries are not allowed");
   }
@@ -961,14 +1112,14 @@ export async function updateTaskStatus(
     status,
   });
   refreshPatient(patientId);
-  persistStore();
+  await persistStore();
   revalidatePath(`/patients/${patientId}`);
   revalidatePath("/my-tasks");
   revalidatePath("/handover");
 }
 
 export async function saveHandover(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageClinicalEntries(session)) {
     throw new Error("Clinical entries are not allowed");
   }
@@ -1019,13 +1170,13 @@ export async function saveHandover(formData: FormData, session: SessionContext) 
   }
 
   refreshPatient(parsed.patientId);
-  persistStore();
+  await persistStore();
   revalidatePath(`/patients/${parsed.patientId}`);
   revalidatePath("/handover");
 }
 
 export async function saveTemplate(formData: FormData, session: SessionContext) {
-  ensureStoreLoaded();
+  await ensureStoreLoaded();
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
   }
@@ -1042,6 +1193,6 @@ export async function saveTemplate(formData: FormData, session: SessionContext) 
     type: parsed.type,
     defaultPriority: parsed.defaultPriority,
   });
-  persistStore();
+  await persistStore();
   revalidatePath("/admin/task-templates");
 }

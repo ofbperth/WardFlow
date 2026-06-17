@@ -31,6 +31,43 @@ export function PendingSubmitButton({
   );
 }
 
+export function ConfirmingSubmitButton({
+  children,
+  confirmMessage,
+  pendingLabel = "กำลังดำเนินการ...",
+  className,
+}: {
+  children: React.ReactNode;
+  confirmMessage: string;
+  pendingLabel?: string;
+  className?: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      onClick={(event) => {
+        if (pending) {
+          return;
+        }
+
+        if (!window.confirm(confirmMessage)) {
+          event.preventDefault();
+        }
+      }}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-600/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70",
+        className,
+      )}
+    >
+      {pending ? pendingLabel : children}
+    </button>
+  );
+}
+
 export function PendingGhostButton({
   children,
   pendingLabel = "กำลังดำเนินการ...",

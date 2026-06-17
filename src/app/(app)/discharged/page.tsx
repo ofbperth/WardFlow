@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { hardDeletePatientAction } from "@/app/actions";
 import {
   DischargedPatientList,
   EmptyState,
@@ -23,6 +24,7 @@ export default async function DischargedPage({
   }>;
 }) {
   const session = await requireAppSession();
+  const canHardDelete = session.profile.role === "admin" || session.profile.role === "resident";
   const { wardId, q, page, summaryId } = await searchParams;
   const directory = await getDischargedDirectory(session, {
     wardId,
@@ -60,7 +62,12 @@ export default async function DischargedPage({
           <div className="space-y-4">
             {directory.items.length ? (
               <>
-                <DischargedPatientList items={directory.items} summaryId={summaryId ?? null} />
+                <DischargedPatientList
+                  items={directory.items}
+                  summaryId={summaryId ?? null}
+                  canHardDelete={canHardDelete}
+                  hardDeleteAction={hardDeletePatientAction}
+                />
                 <div className="flex items-center justify-between text-sm text-muted">
                   <span>
                     Showing {directory.items.length} of {directory.total} patients
