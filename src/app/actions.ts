@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
-import { getAppUrl, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
+import { getRequestOrigin, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   deleteUser,
@@ -32,9 +32,9 @@ export async function signInWithGoogle() {
     throw new Error("Supabase unavailable");
   }
 
-  const origin = getAppUrl();
+  const origin = getRequestOrigin(await headers());
   if (!origin) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not configured");
+    throw new Error("Unable to resolve app origin for OAuth redirect");
   }
 
   const result = await supabase.auth.signInWithOAuth({

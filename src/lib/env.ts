@@ -29,6 +29,27 @@ export function getAppUrl(): string | null {
   return appUrl.replace(/\/+$/, "");
 }
 
+function firstHeaderValue(value: string | null): string | null {
+  const normalized = value
+    ?.split(",")[0]
+    ?.trim();
+  return normalized ? normalized : null;
+}
+
+export function getRequestOrigin(headers: Headers): string | null {
+  const forwardedProto = firstHeaderValue(headers.get("x-forwarded-proto"));
+  const forwardedHost = firstHeaderValue(headers.get("x-forwarded-host"));
+  const host = firstHeaderValue(headers.get("host"));
+  const protocol = forwardedProto ?? (host?.includes("localhost") ? "http" : "https");
+  const hostname = forwardedHost ?? host;
+
+  if (!hostname) {
+    return getAppUrl();
+  }
+
+  return `${protocol}://${hostname}`;
+}
+
 export function getSupabaseServiceRoleKey(): string | null {
   return normalizeEnvValue(process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
