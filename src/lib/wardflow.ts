@@ -279,6 +279,10 @@ function now() {
 }
 
 function nextId(prefix: string) {
+  if (hasLiveSupabase()) {
+    return crypto.randomUUID();
+  }
+
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
