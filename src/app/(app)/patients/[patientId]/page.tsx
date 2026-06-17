@@ -258,17 +258,18 @@ export default async function PatientPage({
                 <form action={saveTaskAction} className="space-y-3">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
                   <Field label="Task title">
-                    <SelectBox name="title" defaultValue="" required>
-                      <option value="" disabled>
-                        Select task title
-                      </option>
-                      {templates.map((template) => (
-                        <option key={template.id} value={template.title}>
-                          {template.title}
-                        </option>
-                      ))}
-                    </SelectBox>
+                    <TextInput
+                      name="title"
+                      list="task-template-suggestions"
+                      placeholder="Type task title"
+                      required
+                    />
                   </Field>
+                  <datalist id="task-template-suggestions">
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.title} />
+                    ))}
+                  </datalist>
                   <Field label="Owner">
                     <SelectBox name="ownerId" defaultValue={session.profile.id}>
                       <StaffOptions profiles={profiles} />
