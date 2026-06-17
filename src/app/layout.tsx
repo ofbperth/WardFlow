@@ -15,6 +15,7 @@ const bodyFont = Noto_Sans_Thai({
 export const metadata: Metadata = {
   title: "WardFlow",
   description: "Real-time ward work management for clinical teams.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.png",
     apple: "/apple-icon.png",
