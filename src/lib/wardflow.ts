@@ -52,6 +52,15 @@ type StoreEnvelope = {
   data: DemoStore;
 };
 
+type ProfileRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  role: Role | null;
+  ward_assignment: string | null;
+};
+
 function createSeedStore(): DemoStore {
   return {
     wards: structuredClone(demoWards),
@@ -67,6 +76,17 @@ function createSeedStore(): DemoStore {
 }
 
 let store: DemoStore = createSeedStore();
+
+function mapProfileRow(row: ProfileRow): UserProfile {
+  return {
+    id: row.id,
+    name: row.name ?? "Unknown User",
+    email: row.email ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role ?? "student",
+    wardAssignment: row.ward_assignment ?? null,
+  };
+}
 
 function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
   const seed = createSeedStore();
@@ -379,6 +399,56 @@ function getPatientDirectoryName(profileId: string | null, fallback: string | nu
   return store.profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
 }
 
+async function getLiveProfiles(): Promise<UserProfile[]> {
+  const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
+  if (!admin) {
+    throw new Error("Supabase admin client unavailable");
+  }
+
+  const result = await admin
+    .from("profiles")
+    .select("id, name, email, avatar_url, role, ward_assignment")
+    .order("name", { ascending: true });
+
+  if (result.error) {
+    throw new Error(`Failed to load profiles: ${result.error.message}`);
+  }
+
+  return ((result.data ?? []) as ProfileRow[]).map(mapProfileRow);
+}
+
+async function getVisibleProfiles(session: SessionContext): Promise<UserProfile[]> {
+  if (!hasLiveSupabase()) {
+    return store.profiles.filter(
+      (profile) =>
+        session.profile.role === "admin" ||
+        profile.wardAssignment === session.profile.wardAssignment ||
+        profile.id === session.profile.id,
+    );
+  }
+
+  const profiles = await getLiveProfiles();
+  return profiles.filter(
+    (profile) =>
+      session.profile.role === "admin" ||
+      profile.wardAssignment === session.profile.wardAssignment ||
+      profile.id === session.profile.id,
+  );
+}
+
+async function getProfileDirectoryName(profileId: string | null, fallback: string | null = null) {
+  if (!profileId) {
+    return fallback ?? null;
+  }
+
+  if (!hasLiveSupabase()) {
+    return getPatientDirectoryName(profileId, fallback);
+  }
+
+  const profiles = await getLiveProfiles();
+  return profiles.find((profile) => profile.id === profileId)?.name ?? fallback ?? null;
+}
+
 function summaryByPatientId(patientId: string) {
   return store.dischargeSummaries.find((summary) => summary.patientId === patientId) ?? null;
 }
@@ -611,12 +681,7 @@ export async function getPatientBundle(
 
 export async function getProfiles(session: SessionContext) {
   await ensureStoreLoaded();
-  return store.profiles.filter(
-    (profile) =>
-      session.profile.role === "admin" ||
-      profile.wardAssignment === session.profile.wardAssignment ||
-      profile.id === session.profile.id,
-  );
+  return getVisibleProfiles(session);
 }
 
 export async function getTaskTemplates() {
@@ -763,9 +828,25 @@ export async function deleteWard(formData: FormData, session: SessionContext) {
   });
 
   store.wards = store.wards.filter((ward) => ward.id !== parsed.wardId);
-  store.profiles = store.profiles.map((profile) =>
-    profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
-  );
+  if (hasLiveSupabase()) {
+    const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
+    if (!admin) {
+      throw new Error("Supabase admin client unavailable");
+    }
+
+    const result = await admin
+      .from("profiles")
+      .update({ ward_assignment: null } as never)
+      .eq("ward_assignment", parsed.wardId);
+
+    if (result.error) {
+      throw new Error(`Failed to clear ward assignment: ${result.error.message}`);
+    }
+  } else {
+    store.profiles = store.profiles.map((profile) =>
+      profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
+    );
+  }
 
   await persistStore();
   revalidatePath("/wards");
@@ -784,9 +865,24 @@ export async function updateUserRole(formData: FormData, session: SessionContext
     role: formData.get("role"),
   });
 
-  const profile = store.profiles.find((entry) => entry.id === parsed.userId);
-  if (!profile) throw new Error("User not found");
-  profile.role = parsed.role as Role;
+  if (hasLiveSupabase()) {
+    const admin = createAdminSupabaseClient() as ReturnType<typeof createAdminSupabaseClient>;
+    if (!admin) {
+      throw new Error("Supabase admin client unavailable");
+    }
+
+    const result = await admin
+      .from("profiles")
+      .update({ role: parsed.role } as never)
+      .eq("id", parsed.userId);
+    if (result.error) {
+      throw new Error(`Failed to update user role: ${result.error.message}`);
+    }
+  } else {
+    const profile = store.profiles.find((entry) => entry.id === parsed.userId);
+    if (!profile) throw new Error("User not found");
+    profile.role = parsed.role as Role;
+  }
 
   await persistStore();
   revalidatePath("/admin/wards");
@@ -806,7 +902,10 @@ export async function savePatient(formData: FormData, session: SessionContext) {
   });
   requireWardWriteAccess(session, parsed.wardId);
 
-  const ownerName = getPatientDirectoryName(parsed.responsibleDoctorId ?? null, session.profile.name);
+  const ownerName = await getProfileDirectoryName(
+    parsed.responsibleDoctorId ?? null,
+    session.profile.name,
+  );
 
   if (parsed.id) {
     if (!canManageClinicalEntries(session)) {
@@ -1051,7 +1150,8 @@ export async function saveTask(formData: FormData, session: SessionContext) {
   if (!patient) throw new Error("Patient not found");
   requireWardWriteAccess(session, patient.wardId);
 
-  const owner = store.profiles.find((profile) => profile.id === parsed.ownerId);
+  const profiles = await getProfiles(session);
+  const owner = profiles.find((profile) => profile.id === parsed.ownerId);
   if (parsed.id) {
     const existing = store.tasks.find((entry) => entry.id === parsed.id);
     if (!existing) throw new Error("Task not found");
