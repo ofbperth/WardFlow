@@ -9,7 +9,8 @@ export function PendingSubmitButton({
   children,
   pendingLabel = "กำลังบันทึก...",
   className,
-}: {
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   children: React.ReactNode;
   pendingLabel?: string;
   className?: string;
@@ -18,8 +19,9 @@ export function PendingSubmitButton({
 
   return (
     <button
+      {...props}
       type="submit"
-      disabled={pending}
+      disabled={pending || props.disabled}
       aria-busy={pending}
       className={cn(
         "inline-flex items-center justify-center rounded-full bg-mint-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600 disabled:cursor-not-allowed disabled:opacity-70",

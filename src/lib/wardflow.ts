@@ -823,7 +823,7 @@ function mapActivityRow(row: ActivityRow): ActivityLog {
 function mapTemplateRow(row: TemplateRow): TaskTemplate {
   return {
     id: row.id,
-    title: row.title,
+    title: row.title === "Consult specialist" ? "Consult" : row.title,
     type: row.type,
     defaultPriority: row.default_priority,
   };

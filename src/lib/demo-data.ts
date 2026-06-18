@@ -312,7 +312,7 @@ export const demoTemplatesSeed: TaskTemplate[] = [
   { id: "template-2", title: "Follow culture", type: "lab", defaultPriority: "urgent" },
   {
     id: "template-3",
-    title: "Consult specialist",
+    title: "Consult",
     type: "consult",
     defaultPriority: "urgent",
   },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, Plus, Sparkles, Trash2 } from "lucide-react";
 import { PendingSubmitButton } from "@/components/form-feedback";
 import { Field, SectionLabel, SelectBox, TextArea, TextInput } from "@/components/wardflow-ui";
 import { cn, labelForRole, labelForTaskPriority, labelForTaskType } from "@/lib/utils";
@@ -10,6 +10,8 @@ import type { BulkTaskDraft, TaskTemplate, UserProfile, WardSummary } from "@/li
 type DraftRow = BulkTaskDraft & {
   id: string;
 };
+
+const instantTemplateTitles = ["Follow lab", "Consult", "Procedure prep"] as const;
 
 function makeDraftRow(patientId: string, defaults: Omit<BulkTaskDraft, "patientId" | "title" | "note">): DraftRow {
   return {
@@ -21,6 +23,25 @@ function makeDraftRow(patientId: string, defaults: Omit<BulkTaskDraft, "patientI
     type: defaults.type,
     note: null,
   };
+}
+
+function normalizeTemplateTitle(title: string) {
+  return title === "Consult specialist" ? "Consult" : title;
+}
+
+function serializeRow(row: DraftRow) {
+  return JSON.stringify({
+    rows: [
+      {
+        patientId: row.patientId,
+        title: row.title,
+        ownerId: row.ownerId,
+        priority: row.priority,
+        type: row.type,
+        note: row.note,
+      },
+    ],
+  });
 }
 
 export function BulkTaskEntryBuilder({
@@ -39,25 +60,17 @@ export function BulkTaskEntryBuilder({
   const [defaultType, setDefaultType] = useState<BulkTaskDraft["type"]>("other");
   const [rowsByPatient, setRowsByPatient] = useState<Record<string, DraftRow[]>>({});
 
-  const payload = useMemo(
-    () =>
-      JSON.stringify({
-        rows: Object.values(rowsByPatient).flat().map((row) => ({
-          patientId: row.patientId,
-          title: row.title,
-          ownerId: row.ownerId,
-          priority: row.priority,
-          type: row.type,
-          note: row.note,
-        })),
-      }),
-    [rowsByPatient],
-  );
-
   const totalRows = useMemo(
     () => Object.values(rowsByPatient).reduce((total, rows) => total + rows.length, 0),
     [rowsByPatient],
   );
+
+  const instantTemplates = useMemo(() => {
+    const templateMap = new Map(templates.map((template) => [normalizeTemplateTitle(template.title), template]));
+    return instantTemplateTitles
+      .map((title) => templateMap.get(title))
+      .filter((template): template is TaskTemplate => Boolean(template));
+  }, [templates]);
 
   const defaults = {
     ownerId: defaultOwnerId || null,
@@ -68,7 +81,6 @@ export function BulkTaskEntryBuilder({
   return (
     <form action={submitAction} className="space-y-6">
       <input type="hidden" name="wardId" value={wardSummary.ward.id} />
-      <input type="hidden" name="payload" value={payload} />
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-[28px] bg-white/70 p-4">
@@ -80,8 +92,11 @@ export function BulkTaskEntryBuilder({
 
         <div className="rounded-[28px] bg-white/70 p-4">
           <SectionLabel>Defaults</SectionLabel>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Field label="Responsible doctor">
+          <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <label className="block text-sm font-medium text-foreground">
+              <span className="mb-1.5 flex min-h-10 items-start text-xs uppercase tracking-[0.14em] text-muted">
+                Responsible doctor
+              </span>
               <SelectBox value={defaultOwnerId} onChange={(event) => setDefaultOwnerId(event.target.value)}>
                 <option value="">Unassigned</option>
                 {profiles.map((profile) => (
@@ -90,8 +105,12 @@ export function BulkTaskEntryBuilder({
                   </option>
                 ))}
               </SelectBox>
-            </Field>
-            <Field label="Default priority">
+            </label>
+
+            <label className="block text-sm font-medium text-foreground">
+              <span className="mb-1.5 flex min-h-10 items-start text-xs uppercase tracking-[0.14em] text-muted">
+                Default priority
+              </span>
               <SelectBox
                 value={defaultPriority}
                 onChange={(event) => setDefaultPriority(event.target.value as BulkTaskDraft["priority"])}
@@ -100,8 +119,12 @@ export function BulkTaskEntryBuilder({
                 <option value="urgent">Urgent</option>
                 <option value="emergency">Emergency</option>
               </SelectBox>
-            </Field>
-            <Field label="Default type">
+            </label>
+
+            <label className="block text-sm font-medium text-foreground">
+              <span className="mb-1.5 flex min-h-10 items-start text-xs uppercase tracking-[0.14em] text-muted">
+                Default type
+              </span>
               <SelectBox
                 value={defaultType}
                 onChange={(event) => setDefaultType(event.target.value as BulkTaskDraft["type"])}
@@ -115,7 +138,7 @@ export function BulkTaskEntryBuilder({
                 <option value="medication">Medication</option>
                 <option value="other">Other</option>
               </SelectBox>
-            </Field>
+            </label>
           </div>
         </div>
       </div>
@@ -124,25 +147,9 @@ export function BulkTaskEntryBuilder({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Quick task summary</p>
-            <h3 className="mt-1 text-lg font-semibold text-foreground">{totalRows} rows ready to confirm</h3>
-            <p className="mt-1 text-sm text-muted">
-              {totalRows ? "ตรวจรายการด้านล่างแล้วกด confirm ได้ทันที" : "เพิ่มอย่างน้อย 1 row ก่อนยืนยัน"}
-            </p>
+            <h3 className="mt-1 text-lg font-semibold text-foreground">{totalRows} rows prepared</h3>
+            <p className="mt-1 text-sm text-muted">ยืนยันเป็นราย row ได้จากปุ่มด้านข้างของแต่ละรายการ</p>
           </div>
-
-          {totalRows ? (
-            <PendingSubmitButton pendingLabel="Creating tasks..." className="min-w-[220px]">
-              Confirm quick tasks
-            </PendingSubmitButton>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="inline-flex min-w-[220px] items-center justify-center rounded-full bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500"
-            >
-              Confirm quick tasks
-            </button>
-          )}
         </div>
       </div>
 
@@ -168,7 +175,7 @@ export function BulkTaskEntryBuilder({
                     <p className="mt-1 text-sm text-muted">{patient.diagnosis}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {templates.slice(0, 3).map((template) => (
+                    {instantTemplates.map((template) => (
                       <button
                         key={`${patient.id}-${template.id}`}
                         type="button"
@@ -179,7 +186,7 @@ export function BulkTaskEntryBuilder({
                               ...(current[patient.id] ?? []),
                               {
                                 ...makeDraftRow(patient.id, defaults),
-                                title: template.title,
+                                title: normalizeTemplateTitle(template.title),
                                 priority: template.defaultPriority,
                                 type: template.type,
                               },
@@ -190,7 +197,7 @@ export function BulkTaskEntryBuilder({
                       >
                         <span className="inline-flex items-center gap-1">
                           <Sparkles className="h-3.5 w-3.5" />
-                          {template.title}
+                          {normalizeTemplateTitle(template.title)}
                         </span>
                       </button>
                     ))}
@@ -242,7 +249,7 @@ export function BulkTaskEntryBuilder({
                                   entry.id === row.id
                                     ? {
                                         ...entry,
-                                        title: template.title,
+                                        title: normalizeTemplateTitle(template.title),
                                         type: template.type,
                                         priority: template.defaultPriority,
                                       }
@@ -255,7 +262,7 @@ export function BulkTaskEntryBuilder({
                             <option value="">Use template</option>
                             {templates.map((template) => (
                               <option key={template.id} value={template.id}>
-                                {template.title}
+                                {normalizeTemplateTitle(template.title)}
                               </option>
                             ))}
                           </SelectBox>
@@ -350,7 +357,18 @@ export function BulkTaskEntryBuilder({
                         </Field>
                       </div>
 
-                      <div className="mt-3 flex justify-end">
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <PendingSubmitButton
+                          pendingLabel="Creating..."
+                          className="bg-mint-600 px-3 py-2 text-xs shadow-none hover:bg-mint-700"
+                          name="payload"
+                          value={serializeRow(row)}
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Check className="h-3.5 w-3.5" />
+                            Confirm quick task
+                          </span>
+                        </PendingSubmitButton>
                         <button
                           type="button"
                           onClick={() =>
@@ -381,22 +399,6 @@ export function BulkTaskEntryBuilder({
           })}
         </div>
       </section>
-
-      <div className="flex justify-end">
-        {totalRows ? (
-          <PendingSubmitButton pendingLabel="Creating tasks..." className="min-w-[220px]">
-            Confirm quick tasks
-          </PendingSubmitButton>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="inline-flex min-w-[220px] items-center justify-center rounded-full bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500"
-          >
-            Confirm quick tasks
-          </button>
-        )}
-      </div>
     </form>
   );
 }
