@@ -85,6 +85,26 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function ExpandableFilters({
+  title = "Filters",
+  children,
+  className,
+}: {
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <details className={cn("mb-5 rounded-[24px] border border-white/70 bg-white/58 p-3.5", className)}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[20px] bg-white/80 px-4 py-3 text-sm font-semibold text-foreground marker:content-none">
+        <span>{title}</span>
+        <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
+      </summary>
+      <div className="pt-3">{children}</div>
+    </details>
+  );
+}
+
 export function Pill({ children, tone }: { children: React.ReactNode; tone?: string }) {
   return (
     <span
