@@ -60,11 +60,6 @@ export function BulkTaskEntryBuilder({
   const [defaultType, setDefaultType] = useState<BulkTaskDraft["type"]>("other");
   const [rowsByPatient, setRowsByPatient] = useState<Record<string, DraftRow[]>>({});
 
-  const totalRows = useMemo(
-    () => Object.values(rowsByPatient).reduce((total, rows) => total + rows.length, 0),
-    [rowsByPatient],
-  );
-
   const instantTemplates = useMemo(() => {
     const templateMap = new Map(templates.map((template) => [normalizeTemplateTitle(template.title), template]));
     return instantTemplateTitles
@@ -139,16 +134,6 @@ export function BulkTaskEntryBuilder({
                 <option value="other">Other</option>
               </SelectBox>
             </label>
-          </div>
-        </div>
-      </div>
-
-      <div className="sticky top-4 z-20 rounded-[28px] border border-white/70 bg-white/88 p-4 shadow-xl shadow-mint-950/10 backdrop-blur">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted">Quick task summary</p>
-            <h3 className="mt-1 text-lg font-semibold text-foreground">{totalRows} rows prepared</h3>
-            <p className="mt-1 text-sm text-muted">ยืนยันเป็นราย row ได้จากปุ่มด้านข้างของแต่ละรายการ</p>
           </div>
         </div>
       </div>
