@@ -1,22 +1,16 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AppFeedbackToast } from "@/components/app-feedback-toast";
-import { EmptyState, Field, GlassPanel, SelectBox, SetupNotice, SubmitButton } from "@/components/wardflow-ui";
+import { EmptyState, GlassPanel, SetupNotice } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { getBulkTaskEntryData } from "@/lib/wardflow";
 
 export default async function QuickTaskEntryLandingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ toast?: string; wardId?: string }>;
+  searchParams?: Promise<{ toast?: string }>;
 }) {
   const session = await requireAppSession();
   const params = (await searchParams) ?? {};
-  const selectedWardId = params.wardId?.trim() ?? "";
-
-  if (selectedWardId) {
-    redirect(`/tasks/quick/${selectedWardId}`);
-  }
-
   const data = await getBulkTaskEntryData(session);
 
   return (
@@ -25,7 +19,7 @@ export default async function QuickTaskEntryLandingPage({
 
       <GlassPanel
         title="Quick task entry"
-        subtitle="เลือก ward ก่อน แล้วค่อยเข้า quick task entry ของวอร์ดนั้นเพื่อสร้างหลาย task ได้เร็วขึ้น"
+        subtitle="เลือก ward จาก card ด้านล่าง แล้วเข้า quick task entry ของวอร์ดนั้นได้ทันที"
       >
         {data.blockedByMissingWard ? (
           <SetupNotice
@@ -33,22 +27,27 @@ export default async function QuickTaskEntryLandingPage({
             body="รอ admin assign ward ให้ก่อน จึงจะใช้ quick task entry ได้"
           />
         ) : data.wardSummaries.length ? (
-          <form className="max-w-xl space-y-4">
-            <Field label="Ward">
-              <SelectBox name="wardId" defaultValue={data.defaultWardId}>
-                <option value="">Select ward</option>
-                {data.wardSummaries.map((summary) => (
-                  <option key={summary.ward.id} value={summary.ward.id}>
-                    {summary.ward.name}
-                  </option>
-                ))}
-              </SelectBox>
-            </Field>
-
-            <div className="flex justify-end">
-              <SubmitButton>Open quick task entry</SubmitButton>
-            </div>
-          </form>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {data.wardSummaries.map((summary) => (
+              <Link
+                key={summary.ward.id}
+                href={`/tasks/quick/${summary.ward.id}`}
+                className="group rounded-[28px] border border-white/70 bg-white/72 p-5 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-xl hover:shadow-mint-950/10"
+              >
+                <p className="text-xs uppercase tracking-[0.18em] text-muted">Ward</p>
+                <h3 className="mt-2 text-lg font-semibold text-foreground">{summary.ward.name}</h3>
+                <p className="mt-2 text-sm text-muted">
+                  {summary.patients.length} active patients ready for quick entry
+                </p>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <span className="rounded-full bg-mint-50 px-3 py-1.5 font-semibold text-mint-700">
+                    Open
+                  </span>
+                  <span className="text-muted group-hover:text-foreground">Click to select</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         ) : (
           <EmptyState
             title="No ward available"

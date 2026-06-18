@@ -1042,13 +1042,20 @@ function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProf
   return input.profiles.filter(
     (profile) =>
       canViewAllWards(session) ||
+      profile.role === "admin" ||
+      profile.role === "resident" ||
       profile.wardAssignment === session.profile.wardAssignment ||
       profile.id === session.profile.id,
   );
 }
 
 function getProfilesForWard(input: DemoStore, wardId: string) {
-  return input.profiles.filter((profile) => profile.wardAssignment === wardId);
+  return input.profiles.filter(
+    (profile) =>
+      profile.role === "admin" ||
+      profile.role === "resident" ||
+      profile.wardAssignment === wardId,
+  );
 }
 
 async function insertActivityLog(supabase: LiveClient, entry: ActivityInsert) {
