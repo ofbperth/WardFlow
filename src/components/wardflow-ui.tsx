@@ -100,25 +100,28 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
 
 export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-5">
       {summaries.map((summary) => (
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
           subtitle={`${summary.patients.length} คนในวอร์ด`}
           action={<Pill tone="bg-mint-500/15 text-mint-700">{summary.patients.length} ราย</Pill>}
+          className="rounded-[32px] px-5 py-5 md:px-6 md:py-6"
         >
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:gap-4 2xl:grid-cols-3">
             {summary.patients.map((patient) => (
               <Link
                 key={patient.id}
                 href={`/patients/${patient.id}`}
-                className="group rounded-[28px] border border-white/70 bg-white/72 p-4 shadow-lg shadow-emerald-950/5 transition hover:-translate-y-0.5 hover:bg-white"
+                className="group rounded-[24px] border border-white/70 bg-white/72 p-3.5 shadow-lg shadow-emerald-950/5 transition hover:-translate-y-0.5 hover:bg-white md:rounded-[26px] md:p-4"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
-                    <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.displayName}</h3>
+                    <h3 className="mt-1 line-clamp-2 text-base font-semibold text-foreground md:text-lg">
+                      {patient.displayName}
+                    </h3>
                     <p className="mt-1 line-clamp-2 text-sm text-muted">{patient.diagnosis}</p>
                   </div>
                   <div className="rounded-2xl bg-mint-50 p-2 text-mint-700">
@@ -126,7 +129,7 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                   <Pill tone="bg-amber-100 text-amber-700">{patient.pendingTaskCount} งานค้าง</Pill>
                   {patient.blockedTaskCount > 0 ? (
@@ -139,9 +142,8 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
                   ) : null}
                 </div>
 
-                <div className="mt-4 flex items-center justify-between text-sm text-muted">
-                  <span>{patient.responsibleDoctorName ?? "Unassigned"}</span>
-                  <span>{formatRelative(patient.lastUpdate)}</span>
+                <div className="mt-3 text-sm text-muted">
+                  <span className="line-clamp-2">{patient.responsibleDoctorName ?? "Unassigned"}</span>
                 </div>
               </Link>
             ))}
