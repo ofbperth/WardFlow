@@ -775,13 +775,19 @@ export function DischargedPatientList({
 export function Field({
   label,
   children,
+  className,
+  labelClassName,
 }: {
   label: string;
   children: React.ReactNode;
+  className?: string;
+  labelClassName?: string;
 }) {
   return (
-    <label className="block text-sm font-medium text-foreground">
-      <span className="mb-1.5 block text-xs uppercase tracking-[0.14em] text-muted">{label}</span>
+    <label className={cn("block text-sm font-medium text-foreground", className)}>
+      <span className={cn("mb-1.5 block text-xs uppercase tracking-[0.14em] text-muted", labelClassName)}>
+        {label}
+      </span>
       {children}
     </label>
   );
