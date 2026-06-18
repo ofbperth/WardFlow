@@ -18,6 +18,30 @@ const requiredTables = [
   "activity_logs",
   "task_templates",
   "discharge_summaries",
+  "student_ward_assignments",
+] as const;
+
+const requiredWardColumns = [
+  "id",
+  "name",
+  "location",
+  "is_active",
+  "created_at",
+  "updated_at",
+] as const;
+
+const requiredProfileColumns = [
+  "id",
+  "name",
+  "email",
+  "avatar_url",
+  "role",
+  "ward_assignment",
+  "student_code",
+  "academic_year",
+  "is_active",
+  "created_at",
+  "updated_at",
 ] as const;
 
 const requiredPatientColumns = [
@@ -121,6 +145,11 @@ export async function GET(request: Request) {
     );
   }
 
+  const wardColumnCheck = await admin.from("wards").select(requiredWardColumns.join(",")).limit(1);
+  const profileColumnCheck = await admin
+    .from("profiles")
+    .select(requiredProfileColumns.join(","))
+    .limit(1);
   const patientColumnCheck = await admin.from("patients").select(requiredPatientColumns.join(",")).limit(1);
   const taskUpdatesColumnCheck = await admin
     .from("task_updates")
@@ -134,12 +163,26 @@ export async function GET(request: Request) {
     .from("activity_logs")
     .select("id, patient_id, actor_id, actor_name, action, entity_type, entity_id")
     .limit(1);
+  const studentAssignmentColumnCheck = await admin
+    .from("student_ward_assignments")
+    .select("id, student_id, ward_id, assigned_by_user_id, assigned_at, is_active, created_at, updated_at")
+    .limit(1);
   const templateSeedCheck = await admin
     .from("task_templates")
     .select("id, title, default_priority")
     .limit(1);
 
   const structuralChecks = [
+    {
+      name: "wards_columns",
+      ok: !wardColumnCheck.error,
+      error: wardColumnCheck.error?.message ?? null,
+    },
+    {
+      name: "profiles_columns",
+      ok: !profileColumnCheck.error,
+      error: profileColumnCheck.error?.message ?? null,
+    },
     {
       name: "patients_columns",
       ok: !patientColumnCheck.error,
@@ -159,6 +202,11 @@ export async function GET(request: Request) {
       name: "activity_log_columns",
       ok: !activityColumnCheck.error,
       error: activityColumnCheck.error?.message ?? null,
+    },
+    {
+      name: "student_assignment_columns",
+      ok: !studentAssignmentColumnCheck.error,
+      error: studentAssignmentColumnCheck.error?.message ?? null,
     },
     {
       name: "task_template_seed_read",
