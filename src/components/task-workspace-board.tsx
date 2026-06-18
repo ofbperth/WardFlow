@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowUpRight,
   CheckCircle2,
   ChevronDown,
+  LoaderCircle,
   Shuffle,
   TriangleAlert,
 } from "lucide-react";
@@ -18,6 +23,35 @@ import {
 } from "@/lib/utils";
 import type { TaskWorkspaceGroup, UserProfile } from "@/lib/types";
 
+type NoticeState =
+  | { tone: "working"; message: string }
+  | { tone: "success"; message: string }
+  | null;
+
+type BoardState = {
+  groups: TaskWorkspaceGroup[];
+  archivedGroups: TaskWorkspaceGroup[];
+};
+
+function patchTaskInGroups(
+  groups: TaskWorkspaceGroup[],
+  patientId: string,
+  taskId: string,
+  patch: Partial<TaskWorkspaceGroup["patients"][number]["tasks"][number]>,
+) {
+  return groups.map((group) => ({
+    ...group,
+    patients: group.patients.map((patient) =>
+      patient.id !== patientId
+        ? patient
+        : {
+            ...patient,
+            tasks: patient.tasks.map((task) => (task.id === taskId ? { ...task, ...patch } : task)),
+          },
+    ),
+  }));
+}
+
 export function TaskWorkspaceBoard({
   groups,
   archivedGroups,
@@ -31,9 +65,70 @@ export function TaskWorkspaceBoard({
   saveTaskAction: (formData: FormData) => Promise<void>;
   updateTaskStatusAction: (formData: FormData) => Promise<void>;
 }) {
+  const router = useRouter();
+  const [isRefreshing, startRefreshTransition] = useTransition();
+  const [notice, setNotice] = useState<NoticeState>(null);
+  const [boardState, applyBoardState] = useOptimistic<BoardState, (state: BoardState) => BoardState>(
+    { groups, archivedGroups },
+    (currentState, update) => update(currentState),
+  );
+
+  useEffect(() => {
+    if (!notice || notice.tone === "working") return;
+    const timeout = window.setTimeout(() => setNotice(null), 2400);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  async function runTaskAction({
+    workingMessage,
+    successMessage,
+    optimisticUpdate,
+    action,
+  }: {
+    workingMessage: string;
+    successMessage: string;
+    optimisticUpdate?: () => void;
+    action: () => Promise<void>;
+  }) {
+    setNotice({ tone: "working", message: workingMessage });
+    optimisticUpdate?.();
+
+    try {
+      await action();
+      setNotice({ tone: "success", message: successMessage });
+      startRefreshTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      setNotice(null);
+      startRefreshTransition(() => {
+        router.refresh();
+      });
+      throw error;
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {groups.map((group) => (
+      {notice ? (
+        <div
+          className={
+            notice.tone === "working"
+              ? "sticky top-4 z-20 flex items-center gap-3 rounded-[24px] border border-sky-200 bg-sky-50/95 px-4 py-3 text-sm text-sky-900 shadow-lg shadow-sky-950/5 backdrop-blur"
+              : "sticky top-4 z-20 flex items-center gap-3 rounded-[24px] border border-mint-200 bg-mint-50/95 px-4 py-3 text-sm text-mint-900 shadow-lg shadow-mint-950/5 backdrop-blur"
+          }
+        >
+          {notice.tone === "working" ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4" />
+          )}
+          <span>{notice.message}</span>
+          {isRefreshing ? <span className="text-xs opacity-70">Refreshing view...</span> : null}
+        </div>
+      ) : null}
+
+      {boardState.groups.map((group) => (
         <section key={group.ward.id} className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -67,7 +162,8 @@ export function TaskWorkspaceBoard({
                   {patient.tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="rounded-[24px] border border-white/70 bg-white/90 p-4 shadow-sm"
+                      className="rounded-[24px] border border-white/70 bg-white/90 p-4 shadow-sm transition-opacity data-[busy=true]:opacity-80"
+                      data-busy={notice?.tone === "working" ? "true" : "false"}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
@@ -114,7 +210,41 @@ export function TaskWorkspaceBoard({
                           ) : null}
 
                           <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-                            <form action={saveTaskAction} className="rounded-2xl bg-white/80 p-3">
+                            <form
+                              action={async (formData) => {
+                                const nextOwnerId =
+                                  typeof formData.get("ownerId") === "string" && String(formData.get("ownerId")).trim()
+                                    ? String(formData.get("ownerId")).trim()
+                                    : null;
+                                const nextOwner =
+                                  (profilesByWard[patient.wardId] ?? []).find((profile) => profile.id === nextOwnerId) ??
+                                  null;
+
+                                await runTaskAction({
+                                  workingMessage: `Reassigning ${task.title}...`,
+                                  successMessage: `Updated owner for ${task.title}`,
+                                  optimisticUpdate: () => {
+                                    applyBoardState((current) => ({
+                                      groups: patchTaskInGroups(current.groups, patient.id, task.id, {
+                                        ownerId: nextOwnerId,
+                                        ownerName: nextOwner?.name ?? null,
+                                      }),
+                                      archivedGroups: patchTaskInGroups(
+                                        current.archivedGroups,
+                                        patient.id,
+                                        task.id,
+                                        {
+                                          ownerId: nextOwnerId,
+                                          ownerName: nextOwner?.name ?? null,
+                                        },
+                                      ),
+                                    }));
+                                  },
+                                  action: () => saveTaskAction(formData),
+                                });
+                              }}
+                              className="rounded-2xl bg-white/80 p-3"
+                            >
                               <input type="hidden" name="id" value={task.id} />
                               <input type="hidden" name="patientId" value={patient.id} />
                               <input type="hidden" name="title" value={task.title} />
@@ -144,7 +274,29 @@ export function TaskWorkspaceBoard({
                             </form>
 
                             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
-                              <form action={updateTaskStatusAction} className="rounded-2xl bg-emerald-50/80 p-3">
+                              <form
+                                action={async (formData) => {
+                                  await runTaskAction({
+                                    workingMessage: `Marking ${task.title} as done...`,
+                                    successMessage: `${task.title} marked done`,
+                                    optimisticUpdate: () => {
+                                      applyBoardState((current) => ({
+                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, {
+                                          status: "done",
+                                        }),
+                                        archivedGroups: patchTaskInGroups(
+                                          current.archivedGroups,
+                                          patient.id,
+                                          task.id,
+                                          { status: "done" },
+                                        ),
+                                      }));
+                                    },
+                                    action: () => updateTaskStatusAction(formData),
+                                  });
+                                }}
+                                className="rounded-2xl bg-emerald-50/80 p-3"
+                              >
                                 <input type="hidden" name="patientId" value={patient.id} />
                                 <input type="hidden" name="taskId" value={task.id} />
                                 <input type="hidden" name="status" value="done" />
@@ -157,7 +309,38 @@ export function TaskWorkspaceBoard({
                                 </SubmitButton>
                               </form>
 
-                              <form action={saveTaskAction} className="rounded-2xl bg-rose-50/80 p-3">
+                              <form
+                                action={async (formData) => {
+                                  const blockedReason =
+                                    typeof formData.get("blockedReason") === "string"
+                                      ? String(formData.get("blockedReason")).trim()
+                                      : "";
+
+                                  await runTaskAction({
+                                    workingMessage: `Saving block for ${task.title}...`,
+                                    successMessage: `Blocked reason saved for ${task.title}`,
+                                    optimisticUpdate: () => {
+                                      applyBoardState((current) => ({
+                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, {
+                                          status: "blocked",
+                                          blockedReason,
+                                        }),
+                                        archivedGroups: patchTaskInGroups(
+                                          current.archivedGroups,
+                                          patient.id,
+                                          task.id,
+                                          {
+                                            status: "blocked",
+                                            blockedReason,
+                                          },
+                                        ),
+                                      }));
+                                    },
+                                    action: () => saveTaskAction(formData),
+                                  });
+                                }}
+                                className="rounded-2xl bg-rose-50/80 p-3"
+                              >
                                 <input type="hidden" name="id" value={task.id} />
                                 <input type="hidden" name="patientId" value={patient.id} />
                                 <input type="hidden" name="title" value={task.title} />
@@ -197,13 +380,13 @@ export function TaskWorkspaceBoard({
         </section>
       ))}
 
-      {archivedGroups.length > 0 ? (
+      {boardState.archivedGroups.length > 0 ? (
         <details className="rounded-[28px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-600">
             Archived done tasks
           </summary>
           <div className="mt-4 space-y-4">
-            {archivedGroups.map((group) => (
+            {boardState.archivedGroups.map((group) => (
               <div key={group.ward.id} className="space-y-3">
                 <p className="text-sm font-semibold text-foreground">{group.ward.name}</p>
                 {group.patients.map((patient) => (

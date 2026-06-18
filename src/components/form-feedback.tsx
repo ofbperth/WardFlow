@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
+import { LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
@@ -28,7 +28,14 @@ export function PendingSubmitButton({
         className,
       )}
     >
-      {pending ? pendingLabel : children}
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          {pendingLabel}
+        </span>
+      ) : (
+        children
+      )}
     </button>
   );
 }
@@ -65,7 +72,14 @@ export function ConfirmingSubmitButton({
         className,
       )}
     >
-      {pending ? pendingLabel : children}
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          {pendingLabel}
+        </span>
+      ) : (
+        children
+      )}
     </button>
   );
 }
@@ -94,7 +108,14 @@ export function PendingGhostButton({
         className,
       )}
     >
-      {pending ? pendingLabel : children}
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+          {pendingLabel}
+        </span>
+      ) : (
+        children
+      )}
     </button>
   );
 }
