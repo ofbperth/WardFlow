@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { savePatientAction } from "@/app/actions";
 import { AdmitPatientCreator } from "@/components/form-feedback";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
   EmptyState,
   Field,
@@ -29,6 +30,17 @@ export default async function WardsPage() {
 
   return (
     <div className="space-y-6">
+      <RealtimeRefresh
+        channel="wards-live"
+        filters={[
+          { schema: "public", table: "wards" },
+          { schema: "public", table: "patients" },
+          { schema: "public", table: "ward_tasks" },
+          { schema: "public", table: "problems" },
+          { schema: "public", table: "handover_notes" },
+        ]}
+      />
+
       <GlassPanel
         title="Ward overview"
         subtitle="ดูผู้ป่วยทั้งหมดในวอร์ดแบบอ่านง่าย อัปเดตไว และไม่ต้องไล่กระดาษ"
