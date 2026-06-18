@@ -12,7 +12,6 @@ import {
   LogOut,
   Settings,
   Shield,
-  Stethoscope,
   X,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
@@ -118,16 +117,6 @@ export function AppShell({
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="hidden lg:block">
             <div className="glass-card sticky top-5 rounded-[32px] p-5">
-              <div className="mb-5 flex items-center gap-3 rounded-3xl bg-mint-500/10 px-4 py-3">
-                <Stethoscope className="h-5 w-5 text-mint-700" />
-                <div>
-                  <p className="font-display font-semibold">Operational layer</p>
-                  <p className="text-sm text-muted">
-                    round, follow-up, และ handover ในที่เดียว
-                  </p>
-                </div>
-              </div>
-
               <nav className="space-y-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
