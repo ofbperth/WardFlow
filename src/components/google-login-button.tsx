@@ -1,26 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { SetupNotice } from "@/components/wardflow-ui";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
-
-let browserClient: ReturnType<typeof createClient> | null = null;
-
-function getBrowserSupabaseClient() {
-  if (!supabaseUrl || !supabasePublishableKey) {
-    return null;
-  }
-
-  if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabasePublishableKey);
-  }
-
-  return browserClient;
-}
 
 export function GoogleLoginButton({
   className,
@@ -44,7 +27,7 @@ export function GoogleLoginButton({
         onClick={async () => {
           setError(null);
 
-          const supabase = getBrowserSupabaseClient();
+          const supabase = createClient();
           if (!supabase) {
             setError("Supabase public config is missing.");
             return;
