@@ -5,6 +5,7 @@ import type {
   Patient,
   Problem,
   TaskTemplate,
+  TaskUpdate,
   UserProfile,
   Ward,
   WardTask,
@@ -209,6 +210,33 @@ export const demoTasksSeed: WardTask[] = [
     updatedById: "demo-user-3",
     updatedByName: "Student Mint K.",
     updatedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+  },
+];
+
+export const demoTaskUpdatesSeed: TaskUpdate[] = [
+  {
+    id: "task-update-1",
+    taskId: "task-1",
+    note: "Sent culture request, waiting lab release.",
+    createdById: "demo-user-2",
+    createdByName: "Dr. Pakorn R.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+  },
+  {
+    id: "task-update-2",
+    taskId: "task-1",
+    note: "Prelim report seen, no resistant organism yet.",
+    createdById: "demo-user-1",
+    createdByName: "Dr. Nicha S.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
+  },
+  {
+    id: "task-update-3",
+    taskId: "task-3",
+    note: "Waiting pharmacy med reconciliation list.",
+    createdById: "demo-user-3",
+    createdByName: "Student Mint K.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
   },
 ];
 

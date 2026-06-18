@@ -6,6 +6,7 @@ import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
 import { getRequestOrigin, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
+  bulkCreateTasks,
   deleteUser,
   deleteWard,
   dischargePatient,
@@ -16,6 +17,7 @@ import {
   savePatient,
   saveProblem,
   saveTask,
+  saveTaskUpdate,
   saveTemplate,
   updateUserRole,
   saveWard,
@@ -143,6 +145,12 @@ export async function saveTaskAction(formData: FormData) {
   await saveTask(formData, session);
 }
 
+export async function bulkCreateTasksAction(formData: FormData) {
+  const session = await requireAppSession();
+  const count = await bulkCreateTasks(formData, session);
+  redirect(`/tasks/bulk?toast=bulk-task-saved&count=${count}`);
+}
+
 export async function updateTaskStatusAction(formData: FormData) {
   const session = await requireAppSession();
   const updatedAt =
@@ -154,6 +162,11 @@ export async function updateTaskStatusAction(formData: FormData) {
     updatedAt,
     session,
   );
+}
+
+export async function saveTaskUpdateAction(formData: FormData) {
+  const session = await requireAppSession();
+  await saveTaskUpdate(formData, session);
 }
 
 export async function saveHandoverAction(formData: FormData) {

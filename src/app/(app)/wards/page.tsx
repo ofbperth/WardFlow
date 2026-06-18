@@ -8,6 +8,7 @@ import {
   PatientCensus,
   SectionLabel,
   SelectBox,
+  SetupNotice,
   StaffOptions,
   SubmitButton,
   TextInput,
@@ -17,8 +18,14 @@ import { getProfiles, getWardSummaries } from "@/lib/wardflow";
 
 export default async function WardsPage() {
   const session = await requireAppSession();
-  const canManagePatient = session.profile.role === "admin" || session.profile.role === "resident";
   const [summaries, profiles] = await Promise.all([getWardSummaries(session), getProfiles(session)]);
+  const canManagePatient =
+    session.profile.role === "admin" ||
+    (session.profile.role === "resident" && Boolean(session.profile.wardAssignment));
+  const admitWardIds =
+    session.profile.role === "admin"
+      ? summaries.map((summary) => summary.ward.id)
+      : [session.profile.wardAssignment].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -34,6 +41,14 @@ export default async function WardsPage() {
           </Link>
         }
       >
+        {session.profile.role === "student" && !session.profile.wardAssignment ? (
+          <div className="mb-6">
+            <SetupNotice
+              title="Student ward assignment required"
+              body="รอ admin assign ward ให้ก่อน จึงจะเห็นข้อมูลงานในวอร์ดได้"
+            />
+          </div>
+        ) : null}
         <div className="grid gap-6 2xl:grid-cols-[1.7fr_0.9fr]">
           <div>
             {summaries.length ? (
@@ -61,11 +76,13 @@ export default async function WardsPage() {
                         <option value="" disabled>
                           เลือกวอร์ด
                         </option>
-                        {summaries.map((summary) => (
+                        {summaries
+                          .filter((summary) => admitWardIds.includes(summary.ward.id))
+                          .map((summary) => (
                           <option key={summary.ward.id} value={summary.ward.id}>
                             {summary.ward.name}
                           </option>
-                        ))}
+                          ))}
                       </SelectBox>
                     </Field>
                     <Field label="เตียง">

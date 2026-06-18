@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
   EmptyState,
@@ -6,6 +7,7 @@ import {
   HandoverCards,
   HandoverTextPanel,
   SelectBox,
+  SetupNotice,
   SubmitButton,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
@@ -36,20 +38,41 @@ export default async function HandoverPage({
         ]}
       />
 
-      <GlassPanel title="Handover mode" subtitle="เลือกวอร์ด แล้วคัดลอกข้อความ structured text ไปส่งต่อได้ทันที">
-        <form className="mb-5 grid gap-3 md:max-w-sm">
-          <Field label="Ward">
-            <SelectBox name="wardId" defaultValue={wardId ?? ""}>
-              <option value="">All wards</option>
-              {bundles.map((bundle) => (
-                <option key={bundle.ward.id} value={bundle.ward.id}>
-                  {bundle.ward.name}
-                </option>
-              ))}
-            </SelectBox>
-          </Field>
-          <SubmitButton>Apply ward filter</SubmitButton>
-        </form>
+      <GlassPanel
+        title="Handover mode"
+        subtitle="เลือกวอร์ด แล้วคัดลอกข้อความ structured text ไปส่งต่อได้ทันที"
+      >
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <form className="grid gap-3 md:max-w-sm">
+            <Field label="Ward">
+              <SelectBox name="wardId" defaultValue={wardId ?? ""}>
+                <option value="">All wards</option>
+                {bundles.map((bundle) => (
+                  <option key={bundle.ward.id} value={bundle.ward.id}>
+                    {bundle.ward.name}
+                  </option>
+                ))}
+              </SelectBox>
+            </Field>
+            <SubmitButton>Apply ward filter</SubmitButton>
+          </form>
+
+          <Link
+            href="/handover/tasks"
+            className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+          >
+            Pending task handover
+          </Link>
+        </div>
+
+        {session.profile.role === "student" && !session.profile.wardAssignment ? (
+          <div className="mb-5">
+            <SetupNotice
+              title="Student ward assignment required"
+              body="รอ admin assign ward ให้ก่อน จึงจะเห็น handover ได้"
+            />
+          </div>
+        ) : null}
 
         {selectedBundles.length ? (
           <HandoverCards bundles={selectedBundles} />
@@ -61,9 +84,7 @@ export default async function HandoverPage({
         )}
       </GlassPanel>
 
-      {structuredText ? (
-        <HandoverTextPanel text={structuredText} wardName={selectedWardName} />
-      ) : null}
+      {structuredText ? <HandoverTextPanel text={structuredText} wardName={selectedWardName} /> : null}
     </div>
   );
 }

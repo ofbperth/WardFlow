@@ -24,7 +24,7 @@ const navItems = [
   { href: "/wards", label: "Wards", mobileLabel: "Wards", icon: LayoutGrid },
   { href: "/discharged", label: "Discharged", mobileLabel: "Archive", icon: Archive },
   { href: "/handover", label: "Handover", mobileLabel: "Handover", icon: ClipboardList },
-  { href: "/my-tasks", label: "My tasks", mobileLabel: "Tasks", icon: Activity },
+  { href: "/my-tasks", label: "Task", mobileLabel: "Task", icon: Activity },
 ];
 
 export function AppShell({

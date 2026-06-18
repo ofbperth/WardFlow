@@ -102,6 +102,19 @@ export type WardTask = {
   updatedAt: string;
 };
 
+export type TaskUpdate = {
+  id: string;
+  taskId: string;
+  note: string;
+  createdById: string | null;
+  createdByName: string;
+  createdAt: string;
+};
+
+export type TaskWithUpdates = WardTask & {
+  updates: TaskUpdate[];
+};
+
 export type HandoverNote = {
   id: string;
   patientId: string;
@@ -160,7 +173,7 @@ export type PatientBundle = {
   patient: Patient;
   ward: Ward | null;
   problems: Problem[];
-  tasks: WardTask[];
+  tasks: TaskWithUpdates[];
   handover: HandoverNote | null;
   activity: ActivityLog[];
 };
@@ -176,8 +189,43 @@ export type HandoverBundle = {
   patients: Array<
     Patient & {
       problems: Problem[];
-      tasks: WardTask[];
+      tasks: TaskWithUpdates[];
       handover: HandoverNote | null;
+    }
+  >;
+};
+
+export type BulkTaskDraft = {
+  patientId: string;
+  title: string;
+  ownerId: string | null;
+  priority: TaskPriority;
+  type: TaskType;
+  note: string | null;
+};
+
+export type BulkTaskPayload = {
+  rows: BulkTaskDraft[];
+};
+
+export type TaskWorkspaceFilters = {
+  wardId: string;
+  ownerId: string;
+  type: TaskType | "";
+};
+
+export type PendingTaskHandoverMode = "all" | "mine" | "blocked";
+
+export type PendingTaskHandoverFilters = {
+  wardId: string;
+  mode: PendingTaskHandoverMode;
+};
+
+export type TaskWorkspaceGroup = {
+  ward: Ward;
+  patients: Array<
+    Patient & {
+      tasks: TaskWithUpdates[];
     }
   >;
 };

@@ -6,6 +6,7 @@ import {
   savePatientAction,
   saveProblemAction,
   saveTaskAction,
+  saveTaskUpdateAction,
   updateTaskStatusAction,
 } from "@/app/actions";
 import {
@@ -33,6 +34,7 @@ import {
 import { requireAppSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import {
+  getAssignableProfilesForWard,
   getDischargeDraft,
   getPatientBundle,
   getProfiles,
@@ -66,11 +68,17 @@ export default async function PatientPage({
     redirect(`/discharged/${patientId}`);
   }
 
-  const canManagePatient = session.profile.role === "admin" || session.profile.role === "resident";
+  const taskProfiles = await getAssignableProfilesForWard(session, bundle.patient.wardId);
+
+  const isAssignedWard = session.profile.wardAssignment === bundle.patient.wardId;
+  const canManagePatient = session.profile.role === "admin" || (session.profile.role === "resident" && isAssignedWard);
   const canEditClinical =
-    canManagePatient ||
-    (session.profile.role === "student" &&
-      session.profile.wardAssignment === bundle.patient.wardId);
+    session.profile.role === "admin" ||
+    isAssignedWard;
+  const canEditTaskWorkflow =
+    session.profile.role === "admin" ||
+    session.profile.role === "resident" ||
+    (session.profile.role === "student" && isAssignedWard);
 
   return (
     <div className="space-y-6">
@@ -80,6 +88,7 @@ export default async function PatientPage({
           { schema: "public", table: "patients", filter: `id=eq.${patientId}` },
           { schema: "public", table: "problems", filter: `patient_id=eq.${patientId}` },
           { schema: "public", table: "ward_tasks", filter: `patient_id=eq.${patientId}` },
+          { schema: "public", table: "task_updates" },
           { schema: "public", table: "handover_notes", filter: `patient_id=eq.${patientId}` },
         ]}
       />
@@ -206,8 +215,9 @@ export default async function PatientPage({
               patient={bundle.patient}
               updateStatusAction={updateTaskStatusAction}
               saveTaskAction={saveTaskAction}
-              profiles={profiles}
-              canEdit={canEditClinical}
+              saveTaskUpdateAction={saveTaskUpdateAction}
+              profiles={taskProfiles}
+              canEdit={canEditTaskWorkflow}
             />
           </GlassPanel>
         </div>
@@ -252,8 +262,8 @@ export default async function PatientPage({
             </GlassPanel>
           ) : null}
 
-          {canEditClinical ? (
-            <GlassPanel title="Create task" subtitle="กำหนด owner, priority และเวลาให้ชัดตั้งแต่ตอนสร้าง">
+          {canEditTaskWorkflow ? (
+            <GlassPanel title="Create task" subtitle="กำหนด owner, priority และรายละเอียดให้ชัดตั้งแต่ตอนสร้าง">
               <TaskCreator>
                 <form action={saveTaskAction} className="space-y-3">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
@@ -272,7 +282,7 @@ export default async function PatientPage({
                   </datalist>
                   <Field label="Owner">
                     <SelectBox name="ownerId" defaultValue={session.profile.id}>
-                      <StaffOptions profiles={profiles} />
+                      <StaffOptions profiles={taskProfiles} />
                     </SelectBox>
                   </Field>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -304,9 +314,6 @@ export default async function PatientPage({
                         <option value="medication">Medication</option>
                         <option value="other">Other</option>
                       </SelectBox>
-                    </Field>
-                    <Field label="Due time">
-                      <TextInput name="dueAt" type="datetime-local" />
                     </Field>
                   </div>
                   <Field label="Note">

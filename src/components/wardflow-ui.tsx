@@ -11,7 +11,6 @@ import {
   cn,
   formatDateTime,
   formatRelative,
-  formatShortTime,
   getInitials,
   labelForActivityAction,
   labelForLifecycle,
@@ -43,9 +42,11 @@ import type {
   Patient,
   Problem,
   TaskTemplate,
+  Ward,
+  WardTask,
+  TaskWithUpdates,
   UserProfile,
   WardSummary,
-  WardTask,
 } from "@/lib/types";
 
 export function GlassPanel({
@@ -303,13 +304,15 @@ export function TaskCards({
   patient,
   updateStatusAction,
   saveTaskAction,
+  saveTaskUpdateAction,
   profiles,
   canEdit,
 }: {
-  tasks: WardTask[];
+  tasks: TaskWithUpdates[];
   patient: Patient;
   updateStatusAction: (formData: FormData) => Promise<void>;
   saveTaskAction: (formData: FormData) => Promise<void>;
+  saveTaskUpdateAction: (formData: FormData) => Promise<void>;
   profiles: UserProfile[];
   canEdit: boolean;
 }) {
@@ -325,6 +328,7 @@ export function TaskCards({
           patient={patient}
           updateStatusAction={updateStatusAction}
           saveTaskAction={saveTaskAction}
+          saveTaskUpdateAction={saveTaskUpdateAction}
           profiles={profiles}
           canEdit={canEdit}
         />
@@ -343,6 +347,7 @@ export function TaskCards({
                 patient={patient}
                 updateStatusAction={updateStatusAction}
                 saveTaskAction={saveTaskAction}
+                saveTaskUpdateAction={saveTaskUpdateAction}
                 profiles={profiles}
                 canEdit={canEdit}
                 compact
@@ -360,14 +365,16 @@ function TaskCard({
   patient,
   updateStatusAction,
   saveTaskAction,
+  saveTaskUpdateAction,
   profiles,
   canEdit,
   compact = false,
 }: {
-  task: WardTask;
+  task: TaskWithUpdates;
   patient: Patient;
   updateStatusAction: (formData: FormData) => Promise<void>;
   saveTaskAction: (formData: FormData) => Promise<void>;
+  saveTaskUpdateAction: (formData: FormData) => Promise<void>;
   profiles: UserProfile[];
   canEdit: boolean;
   compact?: boolean;
@@ -386,7 +393,7 @@ function TaskCard({
         </div>
         <div className="text-right text-sm text-muted">
           <p>{task.ownerName ?? "Unassigned"}</p>
-          <p>{task.dueAt ? `Due ${formatShortTime(task.dueAt)}` : "No due time"}</p>
+          <p>{labelForTaskStatus(task.status)}</p>
         </div>
       </div>
 
@@ -397,19 +404,50 @@ function TaskCard({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
-          <form action={updateStatusAction} key={status}>
-            <input type="hidden" name="patientId" value={patient.id} />
-            <input type="hidden" name="taskId" value={task.id} />
-            <input type="hidden" name="status" value={status} />
-            <input type="hidden" name="updatedAt" value={task.updatedAt} />
-            <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
-              {labelForTaskStatus(status)}
-            </PendingGhostButton>
-          </form>
-        ))}
-      </div>
+      {task.updates.length > 0 ? (
+        <div className="mt-4 space-y-2">
+          {task.updates.slice(0, 3).map((update) => (
+            <div key={update.id} className="rounded-2xl bg-mint-50/70 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                <span>{update.createdByName}</span>
+                <span>{formatRelative(update.createdAt)}</span>
+              </div>
+              <p className="mt-1 text-sm text-foreground">{update.note}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {canEdit ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
+            <form action={updateStatusAction} key={status}>
+              <input type="hidden" name="patientId" value={patient.id} />
+              <input type="hidden" name="taskId" value={task.id} />
+              <input type="hidden" name="status" value={status} />
+              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+              <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
+                {labelForTaskStatus(status)}
+              </PendingGhostButton>
+            </form>
+          ))}
+        </div>
+      ) : null}
+
+      {canEdit ? (
+        <form action={saveTaskUpdateAction} className="mt-4 space-y-2">
+          <input type="hidden" name="taskId" value={task.id} />
+          <Field label="Add update">
+            <TextArea
+              name="note"
+              placeholder="Short update for handover"
+              className="min-h-20"
+              required
+            />
+          </Field>
+          <SubmitButton pendingLabel="Saving update...">Add update</SubmitButton>
+        </form>
+      ) : null}
 
       {canEdit ? (
         <TaskEditor>
@@ -442,7 +480,7 @@ function TaskCard({
                 </SelectBox>
               </Field>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-1">
               <Field label="Type">
                 <SelectBox name="type" defaultValue={task.type}>
                   <option value="lab">lab</option>
@@ -454,13 +492,6 @@ function TaskCard({
                   <option value="medication">medication</option>
                   <option value="other">other</option>
                 </SelectBox>
-              </Field>
-              <Field label="Due time">
-                <TextInput
-                  name="dueAt"
-                  type="datetime-local"
-                  defaultValue={toDatetimeLocal(task.dueAt)}
-                />
               </Field>
             </div>
             <Field label="Note">
@@ -872,10 +903,12 @@ export function TemplateCards({ templates }: { templates: TaskTemplate[] }) {
 
 export function StaffRoleCards({
   profiles,
+  wards,
   updateUserRoleAction,
   deleteUserAction,
 }: {
   profiles: UserProfile[];
+  wards: Ward[];
   updateUserRoleAction: (formData: FormData) => Promise<void>;
   deleteUserAction: (formData: FormData) => Promise<void>;
 }) {
@@ -893,16 +926,33 @@ export function StaffRoleCards({
             </div>
           </div>
           <AdminEditor buttonLabel="Edit role" panelTitle={`Edit role | ${profile.name}`}>
-            <form action={updateUserRoleAction} className="mt-4 flex flex-wrap items-end gap-3">
+            <form action={updateUserRoleAction} className="mt-4 space-y-3">
               <input type="hidden" name="userId" value={profile.id} />
-              <Field label="Role">
-                <SelectBox name="role" defaultValue={profile.role} className="min-w-44">
-                  <option value="admin">Admin</option>
-                  <option value="resident">Resident</option>
-                  <option value="student">Student</option>
+              <div className="flex flex-wrap items-end gap-3">
+                <Field label="Role">
+                  <SelectBox name="role" defaultValue={profile.role} className="min-w-44">
+                    <option value="admin">Admin</option>
+                    <option value="resident">Resident</option>
+                    <option value="student">Student</option>
+                  </SelectBox>
+                </Field>
+                <SubmitButton>Save role</SubmitButton>
+              </div>
+
+              <Field label="Assigned ward for student">
+                <SelectBox
+                  name="wardAssignment"
+                  defaultValue={profile.wardAssignment ?? ""}
+                  className="min-w-56"
+                >
+                  <option value="">Unassigned</option>
+                  {wards.map((ward) => (
+                    <option key={ward.id} value={ward.id}>
+                      {ward.name}
+                    </option>
+                  ))}
                 </SelectBox>
               </Field>
-              <SubmitButton>Save role</SubmitButton>
             </form>
           </AdminEditor>
           <div className="mt-4 border-t border-white/70 pt-4">
@@ -955,13 +1005,6 @@ function MiniList({ title, items }: { title: string; items: string[] }) {
       </div>
     </div>
   );
-}
-
-function toDatetimeLocal(value: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  const tzOffset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
 function SkeletonCard() {

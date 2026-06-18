@@ -140,6 +140,7 @@ export default async function AdminWardsPage({
             >
               <StaffRoleCards
                 profiles={profiles}
+                wards={summaries.map((summary) => summary.ward)}
                 updateUserRoleAction={updateUserRoleAdminAction}
                 deleteUserAction={deleteUserAdminAction}
               />

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { hasLiveSupabase } from "@/lib/env";
 import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
+import { labelForTaskPriority, labelForTaskStatus } from "@/lib/utils";
 import {
   demoActivitySeed,
   demoDischargeSummarySeed,
@@ -11,22 +12,29 @@ import {
   demoPatientsSeed,
   demoProblemsSeed,
   demoProfiles,
+  demoTaskUpdatesSeed,
   demoTasksSeed,
   demoTemplatesSeed,
   demoWards,
 } from "@/lib/demo-data";
 import type {
   ActivityLog,
+  BulkTaskPayload,
   DischargeSummary,
   DischargedDirectoryItem,
   HandoverBundle,
   HandoverNote,
+  PendingTaskHandoverFilters,
   Patient,
   PatientBundle,
   Problem,
   Role,
   SessionContext,
   TaskTemplate,
+  TaskUpdate,
+  TaskWithUpdates,
+  TaskWorkspaceFilters,
+  TaskWorkspaceGroup,
   UserProfile,
   Ward,
   WardSummary,
@@ -38,6 +46,7 @@ type DemoStore = {
   patients: Patient[];
   problems: Problem[];
   tasks: WardTask[];
+  taskUpdates: TaskUpdate[];
   handovers: HandoverNote[];
   dischargeSummaries: DischargeSummary[];
   activity: ActivityLog[];
@@ -109,6 +118,15 @@ type TaskRow = {
   updated_by_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type TaskUpdateRow = {
+  id: string;
+  task_id: string;
+  note: string;
+  created_by_id: string | null;
+  created_by_name: string;
+  created_at: string;
 };
 
 type HandoverRow = {
@@ -221,6 +239,33 @@ const taskSchema = z.object({
   updatedAt: z.string().optional().nullable(),
 });
 
+const taskUpdateSchema = z.object({
+  taskId: z.string().min(1),
+  note: z.string().trim().min(1),
+});
+
+const bulkTaskRowSchema = z.object({
+  patientId: z.string().trim().default(""),
+  title: z.string().trim().default(""),
+  ownerId: z.string().trim().nullable().optional(),
+  priority: z.enum(["normal", "urgent", "emergency"]).default("normal"),
+  type: z.enum([
+    "lab",
+    "imaging",
+    "consult",
+    "procedure",
+    "family_talk",
+    "discharge",
+    "medication",
+    "other",
+  ]).default("other"),
+  note: z.string().trim().nullable().optional(),
+});
+
+const bulkTaskPayloadSchema = z.object({
+  rows: z.array(bulkTaskRowSchema),
+});
+
 const handoverSchema = z.object({
   patientId: z.string().min(1),
   note: z.string().optional().default(""),
@@ -259,6 +304,7 @@ const templateSchema = z.object({
 const userRoleSchema = z.object({
   userId: z.string().min(1),
   role: z.enum(["admin", "resident", "student"]),
+  wardAssignment: z.string().optional().nullable(),
 });
 
 const deleteUserSchema = z.object({
@@ -298,6 +344,7 @@ function createSeedStore(): DemoStore {
     patients: structuredClone(demoPatientsSeed),
     problems: structuredClone(demoProblemsSeed),
     tasks: structuredClone(demoTasksSeed),
+    taskUpdates: structuredClone(demoTaskUpdatesSeed),
     handovers: structuredClone(demoHandoverSeed),
     dischargeSummaries: structuredClone(demoDischargeSummarySeed),
     activity: structuredClone(demoActivitySeed),
@@ -316,6 +363,7 @@ function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore
     patients: input?.patients ?? seed.patients,
     problems: input?.problems ?? seed.problems,
     tasks: input?.tasks ?? seed.tasks,
+    taskUpdates: input?.taskUpdates ?? seed.taskUpdates,
     handovers: input?.handovers ?? seed.handovers,
     dischargeSummaries: input?.dischargeSummaries ?? seed.dischargeSummaries,
     activity: input?.activity ?? seed.activity,
@@ -359,8 +407,16 @@ function canManageClinicalEntries(session: SessionContext) {
   );
 }
 
+function canManageTaskWorkflowEveryWard(session: SessionContext) {
+  return session.profile.role === "admin" || session.profile.role === "resident";
+}
+
 function canViewAllWards(session: SessionContext) {
-  return session.profile.role === "admin";
+  return session.profile.role === "admin" || session.profile.role === "resident";
+}
+
+function isStudentAwaitingWardAssignment(session: SessionContext) {
+  return session.profile.role === "student" && !session.profile.wardAssignment;
 }
 
 function requireWardReadAccess(session: SessionContext, wardId: string | null) {
@@ -388,6 +444,22 @@ function requireWardWriteAccess(session: SessionContext, wardId: string | null) 
   }
 }
 
+function requireTaskWorkflowWriteAccess(session: SessionContext, wardId: string | null) {
+  if (!wardId) {
+    throw new Error("Missing ward assignment");
+  }
+
+  if (canManageTaskWorkflowEveryWard(session)) {
+    return;
+  }
+
+  if (session.profile.role === "student" && session.profile.wardAssignment === wardId) {
+    return;
+  }
+
+  throw new Error("Ward access denied");
+}
+
 function requirePatientManager(session: SessionContext) {
   if (!canManagePatients(session)) {
     throw new Error("Only admin or resident can manage patient core data");
@@ -405,9 +477,23 @@ function patientById(input: DemoStore, patientId: string) {
 }
 
 function visibleWardIds(input: DemoStore, session: SessionContext) {
+  if (isStudentAwaitingWardAssignment(session)) {
+    return [];
+  }
+
   return canViewAllWards(session)
     ? input.wards.map((ward) => ward.id)
     : [session.profile.wardAssignment].filter(Boolean) as string[];
+}
+
+function compareBed(left: string, right: string) {
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+}
+
+function compareTaskPriority(left: WardTask["priority"], right: WardTask["priority"]) {
+  const weight = (priority: WardTask["priority"]) =>
+    priority === "emergency" ? 0 : priority === "urgent" ? 1 : 2;
+  return weight(left) - weight(right);
 }
 
 function getPatientDirectoryName(
@@ -468,7 +554,8 @@ function buildWardSummary(
             pendingTaskCount: tasks.filter((task) => task.status !== "done").length,
             blockedTaskCount: tasks.filter((task) => task.status === "blocked").length,
           };
-        }),
+        })
+        .sort((left, right) => compareBed(left.bed, right.bed)),
     }))
     .filter((summary) => summary.patients.length > 0 || lifecycle === "active");
 }
@@ -610,6 +697,17 @@ function mapTaskRow(row: TaskRow, profiles: Map<string, UserProfile>): WardTask 
   };
 }
 
+function mapTaskUpdateRow(row: TaskUpdateRow): TaskUpdate {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    note: row.note,
+    createdById: row.created_by_id,
+    createdByName: row.created_by_name || "Unknown User",
+    createdAt: row.created_at,
+  };
+}
+
 function mapHandoverRow(row: HandoverRow): HandoverNote {
   return {
     id: row.id,
@@ -662,6 +760,25 @@ function mapDischargeSummaryRow(row: DischargeSummaryRow): DischargeSummary {
   };
 }
 
+function getTaskUpdatesForTask(
+  input: DemoStore,
+  taskId: string,
+  limit = Number.POSITIVE_INFINITY,
+): TaskUpdate[] {
+  const updates = input.taskUpdates
+    .filter((update) => update.taskId === taskId)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+
+  return Number.isFinite(limit) ? updates.slice(0, limit) : updates;
+}
+
+function attachTaskUpdates(input: DemoStore, tasks: WardTask[]): TaskWithUpdates[] {
+  return tasks.map((task) => ({
+    ...task,
+    updates: getTaskUpdatesForTask(input, task.id),
+  }));
+}
+
 async function getLiveClient() {
   const supabase = await createServerSupabaseClient();
   if (!supabase) {
@@ -690,6 +807,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     patientsResult,
     problemsResult,
     tasksResult,
+    taskUpdatesResult,
     handoversResult,
     activityResult,
     templatesResult,
@@ -716,6 +834,10 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       )
       .order("updated_at", { ascending: false }),
     supabase
+      .from("task_updates")
+      .select("id, task_id, note, created_by_id, created_by_name, created_at")
+      .order("created_at", { ascending: false }),
+    supabase
       .from("handover_notes")
       .select("id, patient_id, note, escalation_instruction, updated_by_id, created_at, updated_at"),
     supabase
@@ -741,6 +863,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   ensureNoError(patientsResult, "Failed to load patients");
   ensureNoError(problemsResult, "Failed to load problems");
   ensureNoError(tasksResult, "Failed to load tasks");
+  ensureNoError(taskUpdatesResult, "Failed to load task updates");
   ensureNoError(handoversResult, "Failed to load handover notes");
   ensureNoError(activityResult, "Failed to load activity logs");
   ensureNoError(templatesResult, "Failed to load task templates");
@@ -757,6 +880,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     ),
     problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
     tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
+    taskUpdates: ((taskUpdatesResult.data ?? []) as TaskUpdateRow[]).map(mapTaskUpdateRow),
     handovers: ((handoversResult.data ?? []) as HandoverRow[]).map(mapHandoverRow),
     activity: ((activityResult.data ?? []) as ActivityRow[]).map(mapActivityRow),
     templates: ((templatesResult.data ?? []) as TemplateRow[]).map(mapTemplateRow),
@@ -776,11 +900,24 @@ async function getStoreForSession(session: SessionContext) {
 }
 
 function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProfile[] {
+  if (isStudentAwaitingWardAssignment(session)) {
+    return input.profiles.filter((profile) => profile.id === session.profile.id);
+  }
+
   return input.profiles.filter(
     (profile) =>
-      session.profile.role === "admin" ||
+      canViewAllWards(session) ||
       profile.wardAssignment === session.profile.wardAssignment ||
       profile.id === session.profile.id,
+  );
+}
+
+function getProfilesForWard(input: DemoStore, wardId: string) {
+  return input.profiles.filter(
+    (profile) =>
+      profile.role === "admin" ||
+      profile.role === "resident" ||
+      profile.wardAssignment === wardId,
   );
 }
 
@@ -867,7 +1004,9 @@ function revalidateWardflowPaths(patientId?: string) {
   revalidatePath("/wards");
   revalidatePath("/discharged");
   revalidatePath("/handover");
+  revalidatePath("/handover/tasks");
   revalidatePath("/my-tasks");
+  revalidatePath("/tasks/bulk");
   revalidatePath("/admin/wards");
   revalidatePath("/admin/task-templates");
   if (patientId) {
@@ -959,9 +1098,13 @@ export async function hardDeletePatient(patientId: string, session: SessionConte
       null,
     );
 
+    const deletedTaskIds = store.tasks
+      .filter((entry) => entry.patientId === parsed.patientId)
+      .map((entry) => entry.id);
     store.patients = store.patients.filter((entry) => entry.id !== parsed.patientId);
     store.problems = store.problems.filter((entry) => entry.patientId !== parsed.patientId);
     store.tasks = store.tasks.filter((entry) => entry.patientId !== parsed.patientId);
+    store.taskUpdates = store.taskUpdates.filter((entry) => !deletedTaskIds.includes(entry.taskId));
     store.handovers = store.handovers.filter((entry) => entry.patientId !== parsed.patientId);
     store.dischargeSummaries = store.dischargeSummaries.filter(
       (entry) => entry.patientId !== parsed.patientId,
@@ -1061,9 +1204,12 @@ export async function getPatientBundle(
     problems: input.problems
       .filter((problem) => problem.patientId === patientId)
       .sort((left, right) => left.sortOrder - right.sortOrder),
-    tasks: input.tasks
-      .filter((task) => task.patientId === patientId)
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    tasks: attachTaskUpdates(
+      input,
+      input.tasks
+        .filter((task) => task.patientId === patientId)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    ),
     handover: input.handovers.find((handover) => handover.patientId === patientId) ?? null,
     activity: input.activity
       .filter((activity) => activity.patientId === patientId)
@@ -1076,6 +1222,20 @@ export async function getProfiles(session: SessionContext) {
   return getVisibleProfiles(input, session);
 }
 
+export async function getAssignableProfilesForWard(session: SessionContext, wardId: string) {
+  const input = await getStoreForSession(session);
+  requireWardReadAccess(session, wardId);
+  return getProfilesForWard(input, wardId).sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export async function getVisibleWards(session: SessionContext) {
+  const input = await getStoreForSession(session);
+  const wardIds = visibleWardIds(input, session);
+  return input.wards
+    .filter((ward) => wardIds.includes(ward.id))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 export async function getTaskTemplates(session?: SessionContext) {
   if (!session || session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -1086,21 +1246,115 @@ export async function getTaskTemplates(session?: SessionContext) {
   return [...input.templates].sort((left, right) => left.title.localeCompare(right.title));
 }
 
-export async function getMyTasks(session: SessionContext) {
-  const input = await getStoreForSession(session);
+function sortTaskWorkflowItems(
+  left: { task: TaskWithUpdates; patient: Patient; ward: Ward | null },
+  right: { task: TaskWithUpdates; patient: Patient; ward: Ward | null },
+) {
+  const priorityDiff = compareTaskPriority(left.task.priority, right.task.priority);
+  if (priorityDiff !== 0) return priorityDiff;
+  if (left.task.status !== right.task.status) {
+    if (left.task.status === "blocked") return -1;
+    if (right.task.status === "blocked") return 1;
+  }
+  const updatedDiff = right.task.updatedAt.localeCompare(left.task.updatedAt);
+  if (updatedDiff !== 0) return updatedDiff;
+  const wardDiff = (left.ward?.name ?? "").localeCompare(right.ward?.name ?? "");
+  if (wardDiff !== 0) return wardDiff;
+  const bedDiff = compareBed(left.patient.bed, right.patient.bed);
+  if (bedDiff !== 0) return bedDiff;
+  return left.task.title.localeCompare(right.task.title);
+}
+
+function buildTaskWorkspaceItems(input: DemoStore, session: SessionContext) {
+  const wardIds = new Set(visibleWardIds(input, session));
   const patientMap = new Map(
     input.patients
-      .filter((patient) => patient.lifecycle === "active")
+      .filter((patient) => patient.lifecycle === "active" && wardIds.has(patient.wardId))
       .map((patient) => [patient.id, patient]),
   );
+  const wardMap = new Map(input.wards.map((ward) => [ward.id, ward]));
 
-  return input.tasks
-    .filter(
-      (task) =>
-        patientMap.has(task.patientId) &&
-        (task.ownerId === session.profile.id || session.profile.role === "admin"),
-    )
-    .map((task) => ({ task, patient: patientMap.get(task.patientId)! }));
+  return attachTaskUpdates(
+    input,
+    input.tasks.filter((task) => patientMap.has(task.patientId)),
+  )
+    .map((task) => ({
+      task,
+      patient: patientMap.get(task.patientId)!,
+      ward: wardMap.get(patientMap.get(task.patientId)!.wardId) ?? null,
+    }))
+    .sort(sortTaskWorkflowItems);
+}
+
+function groupTaskWorkspaceItems(
+  items: Array<{ task: TaskWithUpdates; patient: Patient; ward: Ward | null }>,
+  includeDone: boolean,
+): TaskWorkspaceGroup[] {
+  const wardMap = new Map<string, TaskWorkspaceGroup>();
+
+  for (const item of items) {
+    if (!item.ward) continue;
+    if (!includeDone && item.task.status === "done") continue;
+    if (includeDone && item.task.status !== "done") continue;
+
+    const wardGroup =
+      wardMap.get(item.ward.id) ??
+      {
+        ward: item.ward,
+        patients: [],
+      };
+
+    let patientGroup = wardGroup.patients.find((patient) => patient.id === item.patient.id);
+    if (!patientGroup) {
+      patientGroup = {
+        ...item.patient,
+        tasks: [],
+      };
+      wardGroup.patients.push(patientGroup);
+    }
+
+    patientGroup.tasks.push(item.task);
+    wardMap.set(item.ward.id, wardGroup);
+  }
+
+  return [...wardMap.values()]
+    .map((group) => ({
+      ...group,
+      patients: group.patients
+        .map((patient) => ({
+          ...patient,
+          tasks: [...patient.tasks].sort((left, right) => sortTaskWorkflowItems(
+            { task: left, patient, ward: group.ward },
+            { task: right, patient, ward: group.ward },
+          )),
+        }))
+        .sort((left, right) => compareBed(left.bed, right.bed)),
+    }))
+    .sort((left, right) => left.ward.name.localeCompare(right.ward.name));
+}
+
+export async function getMyTasks(session: SessionContext, filters?: Partial<TaskWorkspaceFilters>) {
+  const input = await getStoreForSession(session);
+  const items = buildTaskWorkspaceItems(input, session).filter(({ task, patient }) => {
+    if (filters?.wardId && patient.wardId !== filters.wardId) return false;
+    if (filters?.ownerId && task.ownerId !== filters.ownerId) return false;
+    if (filters?.type && task.type !== filters.type) return false;
+    return true;
+  });
+
+  return {
+    blockedByMissingWard: isStudentAwaitingWardAssignment(session),
+    wards: input.wards.filter((ward) => visibleWardIds(input, session).includes(ward.id)),
+    profiles: getVisibleProfiles(input, session),
+    profilesByWard: Object.fromEntries(
+      input.wards.map((ward) => [
+        ward.id,
+        getProfilesForWard(input, ward.id).sort((left, right) => left.name.localeCompare(right.name)),
+      ]),
+    ) as Record<string, UserProfile[]>,
+    activeGroups: groupTaskWorkspaceItems(items, false),
+    archivedGroups: groupTaskWorkspaceItems(items, true),
+  };
 }
 
 export async function getHandoverBundles(session: SessionContext): Promise<HandoverBundle[]> {
@@ -1115,7 +1369,10 @@ export async function getHandoverBundles(session: SessionContext): Promise<Hando
         problems: input.problems.filter(
           (problem) => problem.patientId === patient.id && problem.status !== "resolved",
         ),
-        tasks: input.tasks.filter((task) => task.patientId === patient.id && task.status !== "done"),
+        tasks: attachTaskUpdates(
+          input,
+          input.tasks.filter((task) => task.patientId === patient.id && task.status !== "done"),
+        ),
         handover: input.handovers.find((handover) => handover.patientId === patient.id) ?? null,
       }))
       .sort((left, right) => {
@@ -1169,6 +1426,85 @@ export async function getHandoverStructuredText(session: SessionContext, wardId?
       return [`Ward: ${bundle.ward.name}`, ...patientLines].join("\n\n");
     })
     .join("\n\n--------------------\n\n");
+}
+
+export async function getBulkTaskEntryData(session: SessionContext) {
+  const input = await getStoreForSession(session);
+  const summaries = buildWardSummary(input, session, "active").map((summary) => ({
+    ...summary,
+    patients: [...summary.patients].sort((left, right) => compareBed(left.bed, right.bed)),
+  }));
+
+  return {
+    blockedByMissingWard: isStudentAwaitingWardAssignment(session),
+    wardSummaries: summaries,
+    templates: [...input.templates].sort((left, right) => left.title.localeCompare(right.title)),
+    profilesByWard: Object.fromEntries(
+      input.wards.map((ward) => [
+        ward.id,
+        getProfilesForWard(input, ward.id).sort((left, right) => left.name.localeCompare(right.name)),
+      ]),
+    ) as Record<string, UserProfile[]>,
+    defaultWardId:
+      canViewAllWards(session) || !session.profile.wardAssignment ? "" : session.profile.wardAssignment,
+  };
+}
+
+export async function getPendingTaskHandoverData(
+  session: SessionContext,
+  filters?: Partial<PendingTaskHandoverFilters>,
+) {
+  const input = await getStoreForSession(session);
+  const items = buildTaskWorkspaceItems(input, session).filter(({ task, patient }) => {
+    if (task.status === "done") return false;
+    if (filters?.wardId && patient.wardId !== filters.wardId) return false;
+    if (filters?.mode === "mine" && task.ownerId !== session.profile.id) return false;
+    if (filters?.mode === "blocked" && task.status !== "blocked") return false;
+    return true;
+  });
+
+  return {
+    blockedByMissingWard: isStudentAwaitingWardAssignment(session),
+    wards: input.wards.filter((ward) => visibleWardIds(input, session).includes(ward.id)),
+    groups: groupTaskWorkspaceItems(items, false),
+  };
+}
+
+export async function getPendingTaskHandoverText(
+  session: SessionContext,
+  filters?: Partial<PendingTaskHandoverFilters>,
+) {
+  const data = await getPendingTaskHandoverData(session, filters);
+  const selectedGroups = filters?.wardId
+    ? data.groups.filter((group) => group.ward.id === filters.wardId)
+    : data.groups;
+  const wardName =
+    selectedGroups.length === 1 ? selectedGroups[0].ward.name : "All visible wards";
+
+  const lines = [`Pending Task Handover | ${wardName} | ${now()}`];
+
+  for (const group of selectedGroups) {
+    lines.push("");
+    lines.push(`Ward ${group.ward.name}`);
+
+    for (const patient of group.patients) {
+      lines.push(`Bed ${patient.bed} | ${patient.displayName} | ${patient.diagnosis}`);
+      for (const task of patient.tasks) {
+        lines.push(
+          `- [${labelForTaskPriority(task.priority)}][${labelForTaskStatus(task.status)}] ${task.title} — owner: ${task.ownerName ?? "Unassigned"}`,
+        );
+        if (task.blockedReason) {
+          lines.push(`  Blocked: ${task.blockedReason}`);
+        }
+        if (task.updates[0]) {
+          lines.push(`  Update: ${task.updates[0].note}`);
+        }
+      }
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n").trim();
 }
 
 export async function saveWard(formData: FormData, session: SessionContext) {
@@ -1311,13 +1647,16 @@ export async function updateUserRole(formData: FormData, session: SessionContext
   const parsed = userRoleSchema.parse({
     userId: formData.get("userId"),
     role: formData.get("role"),
+    wardAssignment: textOrNull(formData.get("wardAssignment")),
   });
+  const nextWardAssignment = parsed.role === "student" ? (parsed.wardAssignment ?? null) : null;
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
     const profile = store.profiles.find((entry) => entry.id === parsed.userId);
     if (!profile) throw new Error("User not found");
     profile.role = parsed.role;
+    profile.wardAssignment = nextWardAssignment;
     await persistDemoStore();
     revalidateWardflowPaths();
     return;
@@ -1326,7 +1665,7 @@ export async function updateUserRole(formData: FormData, session: SessionContext
   const supabase = await getLiveClient();
   const result = await supabase
     .from("profiles")
-    .update({ role: parsed.role })
+    .update({ role: parsed.role, ward_assignment: nextWardAssignment })
     .eq("id", parsed.userId);
   ensureNoError(result, "Failed to update user role");
   revalidateWardflowPaths();
@@ -2052,6 +2391,32 @@ export async function moveProblem(
   revalidateWardflowPaths(patientId);
 }
 
+function resolveAssignableOwnerFromProfiles(
+  profiles: UserProfile[],
+  ownerId: string | null | undefined,
+) {
+  if (!ownerId) {
+    return null;
+  }
+
+  const owner = profiles.find((profile) => profile.id === ownerId);
+  if (!owner) {
+    throw new Error("Selected owner is not allowed for this ward");
+  }
+
+  return owner;
+}
+
+async function getLiveAssignableProfilesForWard(supabase: LiveClient, wardId: string) {
+  const result = await supabase
+    .from("profiles")
+    .select("id, name, email, avatar_url, role, ward_assignment")
+    .or(`role.eq.admin,role.eq.resident,ward_assignment.eq.${wardId}`)
+    .order("name", { ascending: true });
+  ensureNoError(result, "Failed to load assignable profiles");
+  return ((result.data ?? []) as ProfileRow[]).map(mapProfileRow);
+}
+
 export async function saveTask(formData: FormData, session: SessionContext) {
   requireClinicalEditor(session);
   const parsed = taskSchema.parse({
@@ -2072,10 +2437,12 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     await ensureDemoStoreLoaded();
     const patient = patientById(store, parsed.patientId);
     if (!patient) throw new Error("Patient not found");
-    requireWardWriteAccess(session, patient.wardId);
+    requireTaskWorkflowWriteAccess(session, patient.wardId);
 
-    const profiles = getVisibleProfiles(store, session);
-    const owner = profiles.find((profile) => profile.id === parsed.ownerId);
+    const owner = resolveAssignableOwnerFromProfiles(
+      getProfilesForWard(store, patient.wardId),
+      parsed.ownerId,
+    );
 
     if (parsed.id) {
       const existing = store.tasks.find((entry) => entry.id === parsed.id);
@@ -2134,7 +2501,11 @@ export async function saveTask(formData: FormData, session: SessionContext) {
   const supabase = await getLiveClient();
   const patient = await fetchLivePatient(supabase, parsed.patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.ward_id);
+  requireTaskWorkflowWriteAccess(session, patient.ward_id);
+  const owner = resolveAssignableOwnerFromProfiles(
+    await getLiveAssignableProfilesForWard(supabase, patient.ward_id ?? ""),
+    parsed.ownerId,
+  );
 
   if (parsed.id) {
     const existing = await fetchLiveTask(supabase, parsed.id);
@@ -2147,7 +2518,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
         .update({
           title: parsed.title,
           note: parsed.note ?? null,
-          owner_id: parsed.ownerId ?? null,
+          owner_id: owner?.id ?? null,
           status: parsed.status,
           priority: parsed.priority,
           type: parsed.type,
@@ -2171,7 +2542,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
         ...existing,
         title: parsed.title,
         note: parsed.note ?? null,
-        owner_id: parsed.ownerId ?? null,
+        owner_id: owner?.id ?? null,
         status: parsed.status,
         priority: parsed.priority,
         type: parsed.type,
@@ -2187,7 +2558,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
         patient_id: parsed.patientId,
         title: parsed.title,
         note: parsed.note ?? null,
-        owner_id: parsed.ownerId ?? null,
+        owner_id: owner?.id ?? null,
         status: parsed.status,
         priority: parsed.priority,
         type: parsed.type,
@@ -2234,7 +2605,7 @@ export async function updateTaskStatus(
     await ensureDemoStoreLoaded();
     const patient = patientById(store, patientId);
     if (!patient) throw new Error("Patient not found");
-    requireWardWriteAccess(session, patient.wardId);
+    requireTaskWorkflowWriteAccess(session, patient.wardId);
     const task = store.tasks.find((entry) => entry.id === taskId);
     if (!task) throw new Error("Task not found");
     assertNoConflict(expectedUpdatedAt, task.updatedAt, "task");
@@ -2256,7 +2627,7 @@ export async function updateTaskStatus(
   const supabase = await getLiveClient();
   const patient = await fetchLivePatient(supabase, patientId);
   if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.ward_id);
+  requireTaskWorkflowWriteAccess(session, patient.ward_id);
 
   const task = await fetchLiveTask(supabase, taskId);
   if (!task) throw new Error("Task not found");
@@ -2288,6 +2659,225 @@ export async function updateTaskStatus(
     "Failed to refresh patient timestamp",
   );
   revalidateWardflowPaths(patientId);
+}
+
+export async function saveTaskUpdate(formData: FormData, session: SessionContext) {
+  requireClinicalEditor(session);
+  const parsed = taskUpdateSchema.parse({
+    taskId: formData.get("taskId"),
+    note: formData.get("note"),
+  });
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const task = store.tasks.find((entry) => entry.id === parsed.taskId);
+    if (!task) throw new Error("Task not found");
+    const patient = patientById(store, task.patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireTaskWorkflowWriteAccess(session, patient.wardId);
+
+    store.taskUpdates.unshift({
+      id: nextId("task-update"),
+      taskId: task.id,
+      note: parsed.note,
+      createdById: session.profile.id,
+      createdByName: session.profile.name,
+      createdAt: now(),
+    });
+    task.updatedById = session.profile.id;
+    task.updatedByName = session.profile.name;
+    task.updatedAt = now();
+    refreshDemoPatient(patient.id);
+    await persistDemoStore();
+    revalidateWardflowPaths(patient.id);
+    return;
+  }
+
+  const supabase = await getLiveClient();
+  const task = await fetchLiveTask(supabase, parsed.taskId);
+  if (!task) throw new Error("Task not found");
+  const patient = await fetchLivePatient(supabase, task.patient_id);
+  if (!patient) throw new Error("Patient not found");
+  requireTaskWorkflowWriteAccess(session, patient.ward_id);
+
+  ensureNoError(
+    await supabase.from("task_updates").insert({
+      id: nextId("task-update"),
+      task_id: task.id,
+      note: parsed.note,
+      created_by_id: session.profile.id,
+      created_by_name: session.profile.name,
+    }),
+    "Failed to create task update",
+  );
+  ensureNoError(
+    await supabase
+      .from("ward_tasks")
+      .update({ updated_by_id: session.profile.id })
+      .eq("id", task.id),
+    "Failed to refresh task timestamp",
+  );
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", patient.id),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(patient.id);
+}
+
+export async function bulkCreateTasks(formData: FormData, session: SessionContext) {
+  requireClinicalEditor(session);
+  const rawPayload = formData.get("payload");
+  if (typeof rawPayload !== "string") {
+    throw new Error("Bulk task payload is missing");
+  }
+
+  let payload: BulkTaskPayload;
+  try {
+    payload = bulkTaskPayloadSchema.parse(JSON.parse(rawPayload)) as BulkTaskPayload;
+  } catch {
+    throw new Error("Bulk task payload is invalid");
+  }
+
+  const rawRows = payload.rows.map((row) => ({
+    patientId: row.patientId.trim(),
+    title: row.title.trim(),
+    ownerId: row.ownerId?.trim() ? row.ownerId.trim() : null,
+    priority: row.priority,
+    type: row.type,
+    note: row.note?.trim() ? row.note.trim() : null,
+  }));
+
+  const validRows = rawRows.filter((row) => row.patientId || row.title || row.ownerId || row.note);
+  if (!validRows.length) {
+    throw new Error("No valid task rows to create");
+  }
+
+  for (const row of validRows) {
+    if (!row.patientId || !row.title) {
+      throw new Error("Each non-empty task row must include patient and title");
+    }
+  }
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const createdPatientIds = new Set<string>();
+
+    for (const row of validRows) {
+      const patient = patientById(store, row.patientId);
+      if (!patient || patient.lifecycle !== "active") {
+        throw new Error("Bulk task row references an invalid active patient");
+      }
+      requireTaskWorkflowWriteAccess(session, patient.wardId);
+      const owner = resolveAssignableOwnerFromProfiles(
+        getProfilesForWard(store, patient.wardId),
+        row.ownerId,
+      );
+
+      const task: WardTask = {
+        id: nextId("task"),
+        patientId: patient.id,
+        title: row.title,
+        note: row.note,
+        ownerId: owner?.id ?? null,
+        ownerName: owner?.name ?? null,
+        status: "not_started",
+        priority: row.priority,
+        type: row.type,
+        dueAt: null,
+        blockedReason: null,
+        updatedById: session.profile.id,
+        updatedByName: session.profile.name,
+        updatedAt: now(),
+      };
+
+      store.tasks.unshift(task);
+      addActivityToDemoStore(session, patient.id, "task.created", "ward_task", task.id, null, task);
+      refreshDemoPatient(patient.id);
+      createdPatientIds.add(patient.id);
+    }
+
+    await persistDemoStore();
+    for (const patientId of createdPatientIds) {
+      revalidateWardflowPaths(patientId);
+    }
+    return validRows.length;
+  }
+
+  const supabase = await getLiveClient();
+  const patientIds = [...new Set(validRows.map((row) => row.patientId))];
+  const patientsResult = await supabase
+    .from("patients")
+    .select(
+      "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, updated_by_id, discharged_at, created_at, updated_at",
+    )
+    .in("id", patientIds);
+  ensureNoError(patientsResult, "Failed to load patients for bulk create");
+  const patients = new Map(
+    ((patientsResult.data ?? []) as PatientRow[]).map((patient) => [patient.id, patient]),
+  );
+
+  const profilesByWard = new Map<string, UserProfile[]>();
+  for (const wardId of [...new Set(validRows.map((row) => patients.get(row.patientId)?.ward_id ?? ""))]) {
+    if (!wardId) continue;
+    profilesByWard.set(wardId, await getLiveAssignableProfilesForWard(supabase, wardId));
+  }
+
+  const inserts: Array<Record<string, unknown>> = [];
+  const activityEntries: ActivityInsert[] = [];
+
+  for (const row of validRows) {
+    const patient = patients.get(row.patientId);
+    if (!patient || patient.lifecycle !== "active") {
+      throw new Error("Bulk task row references an invalid active patient");
+    }
+    requireTaskWorkflowWriteAccess(session, patient.ward_id);
+    const owner = resolveAssignableOwnerFromProfiles(
+      profilesByWard.get(patient.ward_id ?? "") ?? [],
+      row.ownerId,
+    );
+    const taskId = nextId("task");
+
+    inserts.push({
+      id: taskId,
+      patient_id: patient.id,
+      title: row.title,
+      note: row.note,
+      owner_id: owner?.id ?? null,
+      status: "not_started",
+      priority: row.priority,
+      type: row.type,
+      due_at: null,
+      blocked_reason: null,
+      updated_by_id: session.profile.id,
+    });
+    activityEntries.push({
+      patient_id: patient.id,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "task.created",
+      entity_type: "ward_task",
+      entity_id: taskId,
+      before_json: null,
+      after_json: {
+        title: row.title,
+        status: "not_started",
+        priority: row.priority,
+      },
+    });
+  }
+
+  ensureNoError(await supabase.from("ward_tasks").insert(inserts), "Failed to bulk create tasks");
+  for (const entry of activityEntries) {
+    await insertActivityLog(supabase, entry);
+  }
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).in("id", patientIds),
+    "Failed to refresh patient timestamps",
+  );
+  for (const patientId of patientIds) {
+    revalidateWardflowPaths(patientId);
+  }
+  return validRows.length;
 }
 
 export async function saveHandover(formData: FormData, session: SessionContext) {
