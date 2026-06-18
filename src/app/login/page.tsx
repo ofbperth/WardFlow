@@ -1,8 +1,8 @@
-import Image from "next/image";
 import { startDemoSession } from "@/app/actions";
 import { SetupNotice } from "@/components/wardflow-ui";
 import { PendingSubmitButton } from "@/components/form-feedback";
 import { GoogleLoginButton } from "@/components/google-login-button";
+import { WardFlowLogo } from "@/components/wardflow-logo";
 import { getLoginModeInfo } from "@/lib/auth";
 
 export default async function LoginPage({
@@ -17,16 +17,12 @@ export default async function LoginPage({
     <main className="page-shell flex min-h-screen items-center justify-center px-4 py-8">
       <div className="glass-card w-full max-w-md rounded-[40px] px-8 py-10 text-center">
         <div className="mx-auto flex max-w-xs flex-col items-center">
-          <div className="relative h-44 w-44 sm:h-48 sm:w-48">
-            <Image
-              src="/wardflow-app-logo.png"
-              alt="WardFlow logo"
-              fill
-              priority
-              sizes="192px"
-              className="object-contain drop-shadow-[0_24px_48px_rgba(61,181,144,0.22)]"
-            />
-          </div>
+          <WardFlowLogo
+            className="h-44 w-44 sm:h-48 sm:w-48"
+            sizes="192px"
+            priority
+            imageClassName="object-contain drop-shadow-[0_24px_48px_rgba(61,181,144,0.22)]"
+          />
 
           <h1 className="mt-3 font-display text-4xl font-semibold text-foreground sm:text-5xl">
             WardFlow

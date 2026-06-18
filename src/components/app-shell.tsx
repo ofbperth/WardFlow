@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { PendingSubmitButton } from "@/components/form-feedback";
+import { WardFlowLogo } from "@/components/wardflow-logo";
 import { cn, labelForRole } from "@/lib/utils";
 import type { UserProfile } from "@/lib/types";
 
@@ -43,15 +43,7 @@ export function AppShell({
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] ring-1 ring-white/70 shadow-lg shadow-mint-500/15">
-              <Image
-                src="/icon.png"
-                alt="WardFlow"
-                fill
-                sizes="56px"
-                className="object-cover"
-              />
-            </div>
+            <WardFlowLogo className="h-14 w-14 shrink-0" sizes="56px" />
             <div className="min-w-0">
               <p className="font-display text-lg font-semibold text-foreground">WardFlow</p>
               <p className="truncate text-sm text-muted">
