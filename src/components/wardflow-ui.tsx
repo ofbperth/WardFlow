@@ -389,25 +389,20 @@ function TaskCard({
             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-            <span>{task.ownerName ?? "Unassigned"}</span>
-            <span>Updated {formatRelative(task.updatedAt)}</span>
-            <span>
-              {task.updates.length > 0 ? `${task.updates.length} update${task.updates.length === 1 ? "" : "s"}` : "No updates"}
-            </span>
+          <div className="mt-2 space-y-1 text-sm text-muted">
+            <p>Assigned student: {task.ownerName ?? "Unassigned"}</p>
+            {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
           </div>
-          {task.note ? <p className="mt-2 line-clamp-2 text-sm text-muted">{task.note}</p> : null}
         </div>
         <div className="text-right text-sm text-muted">
           <p>{labelForTaskStatus(task.status)}</p>
-          {task.blockedReason ? <p className="text-rose-700">Needs attention</p> : null}
         </div>
       </div>
 
       {task.blockedReason ? (
         <div className="mt-3 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
           <AlertCircle className="h-4 w-4" />
-          {task.blockedReason}
+          Blocked reason: {task.blockedReason}
         </div>
       ) : null}
 
