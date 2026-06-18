@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useOptimistic, useState, useTransition } from "react";
+import { startTransition, useEffect, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Field, Pill, SelectBox, StaffOptions, SubmitButton, TextInput } from "@/components/wardflow-ui";
 import {
+  cn,
   formatRelative,
   labelForTaskPriority,
   labelForTaskStatus,
@@ -68,6 +69,7 @@ export function TaskWorkspaceBoard({
   const router = useRouter();
   const [isRefreshing, startRefreshTransition] = useTransition();
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [openTaskPanels, setOpenTaskPanels] = useState<Record<string, boolean>>({});
   const [boardState, applyBoardState] = useOptimistic<BoardState, (state: BoardState) => BoardState>(
     { groups, archivedGroups },
     (currentState, update) => update(currentState),
@@ -82,16 +84,19 @@ export function TaskWorkspaceBoard({
   async function runTaskAction({
     workingMessage,
     successMessage,
+    taskId,
     optimisticUpdate,
     action,
   }: {
     workingMessage: string;
     successMessage: string;
+    taskId: string;
     optimisticUpdate?: () => void;
     action: () => Promise<void>;
   }) {
     setNotice({ tone: "working", message: workingMessage });
     optimisticUpdate?.();
+    setOpenTaskPanels((current) => ({ ...current, [taskId]: false }));
 
     try {
       await action();
@@ -190,13 +195,25 @@ export function TaskWorkspaceBoard({
                         </div>
                       ) : null}
 
-                      <details className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
+                      <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenTaskPanels((current) => ({ ...current, [task.id]: !current[task.id] }))
+                          }
+                          className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold text-slate-700"
+                        >
                           <span>Expand details</span>
-                          <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
-                        </summary>
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 text-slate-500 transition-transform",
+                              openTaskPanels[task.id] ? "rotate-180" : "",
+                            )}
+                          />
+                        </button>
 
-                        <div className="mt-4 space-y-3">
+                        {openTaskPanels[task.id] ? (
+                          <div className="mt-4 space-y-3">
                           {task.updates[0] ? (
                             <div className="rounded-2xl bg-mint-50/70 px-3 py-2">
                               <p className="text-xs uppercase tracking-[0.16em] text-muted">
@@ -223,22 +240,25 @@ export function TaskWorkspaceBoard({
                                 await runTaskAction({
                                   workingMessage: `Reassigning ${task.title}...`,
                                   successMessage: `Updated owner for ${task.title}`,
+                                  taskId: task.id,
                                   optimisticUpdate: () => {
-                                    applyBoardState((current) => ({
-                                      groups: patchTaskInGroups(current.groups, patient.id, task.id, {
-                                        ownerId: nextOwnerId,
-                                        ownerName: nextOwner?.name ?? null,
-                                      }),
-                                      archivedGroups: patchTaskInGroups(
-                                        current.archivedGroups,
-                                        patient.id,
-                                        task.id,
-                                        {
+                                    startTransition(() => {
+                                      applyBoardState((current) => ({
+                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, {
                                           ownerId: nextOwnerId,
                                           ownerName: nextOwner?.name ?? null,
-                                        },
-                                      ),
-                                    }));
+                                        }),
+                                        archivedGroups: patchTaskInGroups(
+                                          current.archivedGroups,
+                                          patient.id,
+                                          task.id,
+                                          {
+                                            ownerId: nextOwnerId,
+                                            ownerName: nextOwner?.name ?? null,
+                                          },
+                                        ),
+                                      }));
+                                    });
                                   },
                                   action: () => saveTaskAction(formData),
                                 });
@@ -279,18 +299,21 @@ export function TaskWorkspaceBoard({
                                   await runTaskAction({
                                     workingMessage: `Marking ${task.title} as done...`,
                                     successMessage: `${task.title} marked done`,
+                                    taskId: task.id,
                                     optimisticUpdate: () => {
-                                      applyBoardState((current) => ({
-                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, {
-                                          status: "done",
-                                        }),
-                                        archivedGroups: patchTaskInGroups(
-                                          current.archivedGroups,
-                                          patient.id,
-                                          task.id,
-                                          { status: "done" },
-                                        ),
-                                      }));
+                                      startTransition(() => {
+                                        applyBoardState((current) => ({
+                                          groups: patchTaskInGroups(current.groups, patient.id, task.id, {
+                                            status: "done",
+                                          }),
+                                          archivedGroups: patchTaskInGroups(
+                                            current.archivedGroups,
+                                            patient.id,
+                                            task.id,
+                                            { status: "done" },
+                                          ),
+                                        }));
+                                      });
                                     },
                                     action: () => updateTaskStatusAction(formData),
                                   });
@@ -319,22 +342,25 @@ export function TaskWorkspaceBoard({
                                   await runTaskAction({
                                     workingMessage: `Saving block for ${task.title}...`,
                                     successMessage: `Blocked reason saved for ${task.title}`,
+                                    taskId: task.id,
                                     optimisticUpdate: () => {
-                                      applyBoardState((current) => ({
-                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, {
-                                          status: "blocked",
-                                          blockedReason,
-                                        }),
-                                        archivedGroups: patchTaskInGroups(
-                                          current.archivedGroups,
-                                          patient.id,
-                                          task.id,
-                                          {
+                                      startTransition(() => {
+                                        applyBoardState((current) => ({
+                                          groups: patchTaskInGroups(current.groups, patient.id, task.id, {
                                             status: "blocked",
                                             blockedReason,
-                                          },
-                                        ),
-                                      }));
+                                          }),
+                                          archivedGroups: patchTaskInGroups(
+                                            current.archivedGroups,
+                                            patient.id,
+                                            task.id,
+                                            {
+                                              status: "blocked",
+                                              blockedReason,
+                                            },
+                                          ),
+                                        }));
+                                      });
                                     },
                                     action: () => saveTaskAction(formData),
                                   });
@@ -369,8 +395,9 @@ export function TaskWorkspaceBoard({
                               </form>
                             </div>
                           </div>
-                        </div>
-                      </details>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                 </div>
