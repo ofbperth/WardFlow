@@ -382,18 +382,25 @@ function TaskCard({
   return (
     <div className="rounded-[24px] border border-white/70 bg-white/74 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold text-foreground">{task.title}</p>
             <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
-          <p className="mt-2 text-sm text-muted">{task.note ?? "No note"}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+            <span>{task.ownerName ?? "Unassigned"}</span>
+            <span>Updated {formatRelative(task.updatedAt)}</span>
+            <span>
+              {task.updates.length > 0 ? `${task.updates.length} update${task.updates.length === 1 ? "" : "s"}` : "No updates"}
+            </span>
+          </div>
+          {task.note ? <p className="mt-2 line-clamp-2 text-sm text-muted">{task.note}</p> : null}
         </div>
         <div className="text-right text-sm text-muted">
-          <p>{task.ownerName ?? "Unassigned"}</p>
           <p>{labelForTaskStatus(task.status)}</p>
+          {task.blockedReason ? <p className="text-rose-700">Needs attention</p> : null}
         </div>
       </div>
 
@@ -404,105 +411,123 @@ function TaskCard({
         </div>
       ) : null}
 
-      {task.updates.length > 0 ? (
-        <div className="mt-4 space-y-2">
-          {task.updates.slice(0, 3).map((update) => (
-            <div key={update.id} className="rounded-2xl bg-mint-50/70 px-3 py-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-                <span>{update.createdByName}</span>
-                <span>{formatRelative(update.createdAt)}</span>
+      {!compact ? (
+        <details className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
+            <span>Expand details</span>
+            <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
+          </summary>
+
+          <div className="mt-4 space-y-4">
+            {task.note ? (
+              <div className="rounded-2xl bg-white/80 px-3 py-2">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted">Note</p>
+                <p className="mt-1 text-sm text-foreground">{task.note}</p>
               </div>
-              <p className="mt-1 text-sm text-foreground">{update.note}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
+            ) : null}
 
-      {canEdit ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
-            <form action={updateStatusAction} key={status}>
-              <input type="hidden" name="patientId" value={patient.id} />
-              <input type="hidden" name="taskId" value={task.id} />
-              <input type="hidden" name="status" value={status} />
-              <input type="hidden" name="updatedAt" value={task.updatedAt} />
-              <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
-                {labelForTaskStatus(status)}
-              </PendingGhostButton>
-            </form>
-          ))}
-        </div>
-      ) : null}
+            {task.updates.length > 0 ? (
+              <div className="space-y-2">
+                {task.updates.slice(0, 3).map((update) => (
+                  <div key={update.id} className="rounded-2xl bg-mint-50/70 px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                      <span>{update.createdByName}</span>
+                      <span>{formatRelative(update.createdAt)}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-foreground">{update.note}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
-      {canEdit ? (
-        <form action={saveTaskUpdateAction} className="mt-4 space-y-2">
-          <input type="hidden" name="taskId" value={task.id} />
-          <Field label="Add update">
-            <TextArea
-              name="note"
-              placeholder="Short update for handover"
-              className="min-h-20"
-              required
-            />
-          </Field>
-          <SubmitButton pendingLabel="Saving update...">Add update</SubmitButton>
-        </form>
-      ) : null}
+            {canEdit ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
+                  <form action={updateStatusAction} key={status}>
+                    <input type="hidden" name="patientId" value={patient.id} />
+                    <input type="hidden" name="taskId" value={task.id} />
+                    <input type="hidden" name="status" value={status} />
+                    <input type="hidden" name="updatedAt" value={task.updatedAt} />
+                    <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
+                      {labelForTaskStatus(status)}
+                    </PendingGhostButton>
+                  </form>
+                ))}
+              </div>
+            ) : null}
 
-      {canEdit ? (
-        <TaskEditor>
-          <form action={saveTaskAction} className="mt-4 space-y-3">
-            <input type="hidden" name="id" value={task.id} />
-            <input type="hidden" name="patientId" value={patient.id} />
-            <input type="hidden" name="updatedAt" value={task.updatedAt} />
-            <Field label="Title">
-              <TextInput name="title" defaultValue={task.title} required />
-            </Field>
-            <Field label="Owner">
-              <SelectBox name="ownerId" defaultValue={task.ownerId ?? ""}>
-                <StaffOptions profiles={profiles} />
-              </SelectBox>
-            </Field>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Status">
-                <SelectBox name="status" defaultValue={task.status}>
-                  <option value="not_started">Not started</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
-                  <option value="blocked">Blocked</option>
-                </SelectBox>
-              </Field>
-              <Field label="Priority">
-                <SelectBox name="priority" defaultValue={task.priority}>
-                  <option value="normal">Normal</option>
-                  <option value="urgent">Urgent</option>
-                  <option value="emergency">Emergency</option>
-                </SelectBox>
-              </Field>
-            </div>
-            <div className="grid gap-3 md:grid-cols-1">
-              <Field label="Type">
-                <SelectBox name="type" defaultValue={task.type}>
-                  <option value="lab">lab</option>
-                  <option value="imaging">imaging</option>
-                  <option value="consult">consult</option>
-                  <option value="procedure">procedure</option>
-                  <option value="family_talk">family_talk</option>
-                  <option value="discharge">discharge</option>
-                  <option value="medication">medication</option>
-                  <option value="other">other</option>
-                </SelectBox>
-              </Field>
-            </div>
-            <Field label="Note">
-              <TextArea name="note" defaultValue={task.note ?? ""} />
-            </Field>
-            <Field label="Blocked reason">
-              <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
-            </Field>
-            <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
-          </form>
-        </TaskEditor>
+            {canEdit ? (
+              <form action={saveTaskUpdateAction} className="space-y-2">
+                <input type="hidden" name="taskId" value={task.id} />
+                <Field label="Add update">
+                  <TextArea
+                    name="note"
+                    placeholder="Short update for handover"
+                    className="min-h-20"
+                    required
+                  />
+                </Field>
+                <SubmitButton pendingLabel="Saving update...">Add update</SubmitButton>
+              </form>
+            ) : null}
+
+            {canEdit ? (
+              <TaskEditor>
+                <form action={saveTaskAction} className="space-y-3">
+                  <input type="hidden" name="id" value={task.id} />
+                  <input type="hidden" name="patientId" value={patient.id} />
+                  <input type="hidden" name="updatedAt" value={task.updatedAt} />
+                  <Field label="Title">
+                    <TextInput name="title" defaultValue={task.title} required />
+                  </Field>
+                  <Field label="Owner">
+                    <SelectBox name="ownerId" defaultValue={task.ownerId ?? ""}>
+                      <StaffOptions profiles={profiles} />
+                    </SelectBox>
+                  </Field>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Status">
+                      <SelectBox name="status" defaultValue={task.status}>
+                        <option value="not_started">Not started</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="done">Done</option>
+                        <option value="blocked">Blocked</option>
+                      </SelectBox>
+                    </Field>
+                    <Field label="Priority">
+                      <SelectBox name="priority" defaultValue={task.priority}>
+                        <option value="normal">Normal</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="emergency">Emergency</option>
+                      </SelectBox>
+                    </Field>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-1">
+                    <Field label="Type">
+                      <SelectBox name="type" defaultValue={task.type}>
+                        <option value="lab">lab</option>
+                        <option value="imaging">imaging</option>
+                        <option value="consult">consult</option>
+                        <option value="procedure">procedure</option>
+                        <option value="family_talk">family_talk</option>
+                        <option value="discharge">discharge</option>
+                        <option value="medication">medication</option>
+                        <option value="other">other</option>
+                      </SelectBox>
+                    </Field>
+                  </div>
+                  <Field label="Note">
+                    <TextArea name="note" defaultValue={task.note ?? ""} />
+                  </Field>
+                  <Field label="Blocked reason">
+                    <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
+                  </Field>
+                  <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
+                </form>
+              </TaskEditor>
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
       {!compact ? (
