@@ -15,14 +15,27 @@ export function RealtimeRefresh({
   channel,
   filters,
   fallbackMs = 25000,
+  debounceMs = 300,
 }: {
   channel: string;
   filters: RealtimeFilter[];
   fallbackMs?: number;
+  debounceMs?: number;
 }) {
   const router = useRouter();
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refresh = useEffectEvent(() => {
     router.refresh();
+  });
+  const scheduleRefresh = useEffectEvent(() => {
+    if (refreshTimeoutRef.current) {
+      return;
+    }
+
+    refreshTimeoutRef.current = setTimeout(() => {
+      refreshTimeoutRef.current = null;
+      refresh();
+    }, debounceMs);
   });
   const subscriptionRef = useRef<{ unsubscribe?: () => void } | null>(null);
 
@@ -31,9 +44,13 @@ export function RealtimeRefresh({
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     if (!supabase || filters.length === 0) {
-      intervalId = setInterval(() => refresh(), fallbackMs);
+      intervalId = setInterval(() => scheduleRefresh(), fallbackMs);
       return () => {
         if (intervalId) clearInterval(intervalId);
+        if (refreshTimeoutRef.current) {
+          clearTimeout(refreshTimeoutRef.current);
+          refreshTimeoutRef.current = null;
+        }
       };
     }
 
@@ -49,13 +66,13 @@ export function RealtimeRefresh({
           table: entry.table,
           filter: entry.filter,
         },
-        refresh,
+        scheduleRefresh,
       );
     });
 
     liveChannel.subscribe((status: string) => {
       if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && !intervalId) {
-        intervalId = setInterval(() => refresh(), fallbackMs);
+        intervalId = setInterval(() => scheduleRefresh(), fallbackMs);
       }
       if (status === "SUBSCRIBED" && intervalId) {
         clearInterval(intervalId);
@@ -65,11 +82,15 @@ export function RealtimeRefresh({
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       if (subscriptionRef.current) {
         void supabase.removeChannel(subscriptionRef.current as never);
       }
     };
-  }, [channel, fallbackMs, filters, router]);
+  }, [channel, debounceMs, fallbackMs, filters, router]);
 
   return null;
 }

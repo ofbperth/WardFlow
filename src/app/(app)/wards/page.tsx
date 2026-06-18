@@ -15,11 +15,12 @@ import {
   TextInput,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
-import { getProfiles, getWardSummaries } from "@/lib/wardflow";
+import { getWardOverviewData } from "@/lib/wardflow";
 
 export default async function WardsPage() {
-  const session = await requireAppSession();
-  const [summaries, profiles] = await Promise.all([getWardSummaries(session), getProfiles(session)]);
+  const sessionPromise = requireAppSession();
+  const overviewPromise = sessionPromise.then((session) => getWardOverviewData(session));
+  const [session, { summaries, profiles }] = await Promise.all([sessionPromise, overviewPromise]);
   const canManagePatient =
     session.profile.role === "admin" ||
     (session.profile.role === "resident" && Boolean(session.profile.wardAssignment));
@@ -27,14 +28,25 @@ export default async function WardsPage() {
     session.profile.role === "admin"
       ? summaries.map((summary) => summary.ward.id)
       : [session.profile.wardAssignment].filter(Boolean);
+  const singleVisibleWardId = summaries.length === 1 ? summaries[0]?.ward.id ?? null : null;
+  const wardFilter =
+    session.profile.role === "student" && session.profile.wardAssignment
+      ? `id=eq.${session.profile.wardAssignment}`
+      : singleVisibleWardId
+        ? `id=eq.${singleVisibleWardId}`
+        : undefined;
+  const patientFilter =
+    session.profile.role === "student" && session.profile.wardAssignment
+      ? `ward_id=eq.${session.profile.wardAssignment}`
+      : undefined;
 
   return (
     <div className="space-y-6">
       <RealtimeRefresh
         channel="wards-live"
         filters={[
-          { schema: "public", table: "wards" },
-          { schema: "public", table: "patients" },
+          { schema: "public", table: "wards", filter: wardFilter },
+          { schema: "public", table: "patients", filter: patientFilter },
           { schema: "public", table: "ward_tasks" },
           { schema: "public", table: "problems" },
           { schema: "public", table: "handover_notes" },
