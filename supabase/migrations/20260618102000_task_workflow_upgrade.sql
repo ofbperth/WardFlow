@@ -12,8 +12,7 @@ create index if not exists idx_task_updates_created_at on public.task_updates (c
 
 alter table public.task_updates enable row level security;
 
-drop function if exists public.current_profile_ward_assignment();
-create function public.current_profile_ward_assignment()
+create or replace function public.current_profile_ward_assignment_text()
 returns text
 language sql
 stable
@@ -35,8 +34,8 @@ as $$
   select public.current_profile_role() in ('admin', 'resident')
     or (
       target_ward is not null
-      and public.current_profile_ward_assignment() is not null
-      and public.current_profile_ward_assignment() = target_ward
+      and public.current_profile_ward_assignment_text() is not null
+      and public.current_profile_ward_assignment_text() = target_ward
     )
 $$;
 
@@ -51,8 +50,8 @@ as $$
     or (
       target_ward is not null
       and public.current_profile_role() = 'student'
-      and public.current_profile_ward_assignment() is not null
-      and public.current_profile_ward_assignment() = target_ward
+      and public.current_profile_ward_assignment_text() is not null
+      and public.current_profile_ward_assignment_text() = target_ward
     )
 $$;
 
@@ -66,8 +65,8 @@ as $$
   select public.current_profile_role() = 'admin'
     or (
       target_ward is not null
-      and public.current_profile_ward_assignment() is not null
-      and public.current_profile_ward_assignment() = target_ward
+      and public.current_profile_ward_assignment_text() is not null
+      and public.current_profile_ward_assignment_text() = target_ward
     )
 $$;
 
@@ -81,8 +80,8 @@ using (
   id = auth.uid()
   or public.current_profile_role() in ('admin', 'resident')
   or (
-    public.current_profile_ward_assignment() is not null
-    and public.current_profile_ward_assignment() = profiles.ward_assignment
+    public.current_profile_ward_assignment_text() is not null
+    and public.current_profile_ward_assignment_text() = profiles.ward_assignment
   )
 );
 

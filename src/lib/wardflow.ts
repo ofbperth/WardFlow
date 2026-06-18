@@ -913,12 +913,7 @@ function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProf
 }
 
 function getProfilesForWard(input: DemoStore, wardId: string) {
-  return input.profiles.filter(
-    (profile) =>
-      profile.role === "admin" ||
-      profile.role === "resident" ||
-      profile.wardAssignment === wardId,
-  );
+  return input.profiles.filter((profile) => profile.wardAssignment === wardId);
 }
 
 async function insertActivityLog(supabase: LiveClient, entry: ActivityInsert) {

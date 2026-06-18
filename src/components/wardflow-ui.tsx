@@ -939,20 +939,24 @@ export function StaffRoleCards({
                 <SubmitButton>Save role</SubmitButton>
               </div>
 
-              <Field label="Assigned ward for student">
-                <SelectBox
-                  name="wardAssignment"
-                  defaultValue={profile.wardAssignment ?? ""}
-                  className="min-w-56"
-                >
-                  <option value="">Unassigned</option>
-                  {wards.map((ward) => (
-                    <option key={ward.id} value={ward.id}>
-                      {ward.name}
-                    </option>
-                  ))}
-                </SelectBox>
-              </Field>
+              {profile.role === "student" ? (
+                <Field label="Assigned ward for student">
+                  <SelectBox
+                    name="wardAssignment"
+                    defaultValue={profile.wardAssignment ?? ""}
+                    className="min-w-56"
+                  >
+                    <option value="">Unassigned</option>
+                    {wards.map((ward) => (
+                      <option key={ward.id} value={ward.id}>
+                        {ward.name}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </Field>
+              ) : (
+                <input type="hidden" name="wardAssignment" value="" />
+              )}
             </form>
           </AdminEditor>
           <div className="mt-4 border-t border-white/70 pt-4">

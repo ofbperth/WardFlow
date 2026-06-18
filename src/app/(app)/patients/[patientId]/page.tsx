@@ -69,6 +69,9 @@ export default async function PatientPage({
   }
 
   const taskProfiles = await getAssignableProfilesForWard(session, bundle.patient.wardId);
+  const defaultTaskOwnerId = taskProfiles.some((profile) => profile.id === session.profile.id)
+    ? session.profile.id
+    : "";
 
   const isAssignedWard = session.profile.wardAssignment === bundle.patient.wardId;
   const canManagePatient = session.profile.role === "admin" || (session.profile.role === "resident" && isAssignedWard);
@@ -281,7 +284,7 @@ export default async function PatientPage({
                     ))}
                   </datalist>
                   <Field label="Owner">
-                    <SelectBox name="ownerId" defaultValue={session.profile.id}>
+                    <SelectBox name="ownerId" defaultValue={defaultTaskOwnerId}>
                       <StaffOptions profiles={taskProfiles} />
                     </SelectBox>
                   </Field>
