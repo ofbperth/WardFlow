@@ -10,6 +10,7 @@ import {
   ClipboardList,
   LayoutGrid,
   LogOut,
+  Plus,
   Settings,
   Shield,
   X,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/discharged", label: "Discharged", mobileLabel: "Archive", icon: Archive },
   { href: "/handover", label: "Handover", mobileLabel: "Handover", icon: ClipboardList },
   { href: "/my-tasks", label: "Task", mobileLabel: "Task", icon: Activity },
+  { href: "/tasks/quick", label: "Quick task entry", mobileLabel: "Quick", icon: Plus },
 ];
 
 export function AppShell({

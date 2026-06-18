@@ -1137,6 +1137,7 @@ function revalidateWardflowPaths(patientId?: string) {
   revalidatePath("/handover/tasks");
   revalidatePath("/my-tasks");
   revalidatePath("/tasks/bulk");
+  revalidatePath("/tasks/quick");
   revalidatePath("/admin/wards");
   revalidatePath("/admin/task-templates");
   if (patientId) {
@@ -3206,6 +3207,11 @@ export async function bulkCreateTasks(formData: FormData, session: SessionContex
     for (const patientId of createdPatientIds) {
       revalidateWardflowPaths(patientId);
     }
+    for (const wardId of [...new Set(validRows.map((row) => patientById(store, row.patientId)?.wardId ?? ""))]) {
+      if (wardId) {
+        revalidatePath(`/tasks/quick/${wardId}`);
+      }
+    }
     return validRows.length;
   }
 
@@ -3282,6 +3288,11 @@ export async function bulkCreateTasks(formData: FormData, session: SessionContex
   );
   for (const patientId of patientIds) {
     revalidateWardflowPaths(patientId);
+  }
+  for (const wardId of [...new Set(validRows.map((row) => patients.get(row.patientId)?.ward_id ?? ""))]) {
+    if (wardId) {
+      revalidatePath(`/tasks/quick/${wardId}`);
+    }
   }
   return validRows.length;
 }

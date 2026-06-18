@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { saveTaskAction, updateTaskStatusAction } from "@/app/actions";
 import { AppFeedbackToast } from "@/components/app-feedback-toast";
 import { TaskWorkspaceBoard } from "@/components/task-workspace-board";
@@ -28,14 +27,6 @@ export default async function MyTasksPage({
       <GlassPanel
         title="Task"
         subtitle="ดูงานทั้งหมดในวอร์ดที่รับผิดชอบ พร้อม quick action สำหรับ done, blocked, และ reassign"
-        action={
-          <Link
-            href="/tasks/bulk"
-            className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
-          >
-            Bulk task entry
-          </Link>
-        }
       >
         {data.blockedByMissingWard ? (
           <SetupNotice
@@ -86,7 +77,7 @@ export default async function MyTasksPage({
             ) : (
               <EmptyState
                 title="No tasks in view"
-                body="ลองปรับ filter หรือสร้างงานใหม่ผ่าน bulk entry หรือหน้า patient"
+                body="ลองปรับ filter หรือสร้างงานใหม่ผ่าน quick task entry หรือหน้า patient"
               />
             )}
           </>

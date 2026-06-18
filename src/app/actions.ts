@@ -145,10 +145,16 @@ export async function saveTaskAction(formData: FormData) {
   await saveTask(formData, session);
 }
 
-export async function bulkCreateTasksAction(formData: FormData) {
+export async function quickCreateTasksAction(formData: FormData) {
   const session = await requireAppSession();
   const count = await bulkCreateTasks(formData, session);
-  redirect(`/tasks/bulk?toast=bulk-task-saved&count=${count}`);
+  const wardId =
+    typeof formData.get("wardId") === "string" ? String(formData.get("wardId")).trim() : "";
+  redirect(
+    wardId
+      ? `/tasks/quick/${wardId}?toast=quick-task-saved&count=${count}`
+      : `/tasks/quick?toast=quick-task-saved&count=${count}`,
+  );
 }
 
 export async function updateTaskStatusAction(formData: FormData) {
