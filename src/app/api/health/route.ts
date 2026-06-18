@@ -122,6 +122,10 @@ export async function GET(request: Request) {
   }
 
   const patientColumnCheck = await admin.from("patients").select(requiredPatientColumns.join(",")).limit(1);
+  const taskUpdatesColumnCheck = await admin
+    .from("task_updates")
+    .select("id, task_id, note, created_by_id, created_by_name, created_at")
+    .limit(1);
   const dischargeColumnCheck = await admin
     .from("discharge_summaries")
     .select("id, patient_id, ward_id, created_by_id, created_by_name, admit_date, discharge_date")
@@ -140,6 +144,11 @@ export async function GET(request: Request) {
       name: "patients_columns",
       ok: !patientColumnCheck.error,
       error: patientColumnCheck.error?.message ?? null,
+    },
+    {
+      name: "task_updates_columns",
+      ok: !taskUpdatesColumnCheck.error,
+      error: taskUpdatesColumnCheck.error?.message ?? null,
     },
     {
       name: "discharge_summary_columns",

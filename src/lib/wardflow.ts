@@ -794,6 +794,18 @@ function ensureNoError<T extends { error: { message: string } | null }>(result: 
   }
 }
 
+function isRecoverableTaskUpdatesReadError(error: { message: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("task_updates") &&
+    (message.includes("does not exist") ||
+      message.includes("could not find the table") ||
+      message.includes("column") ||
+      message.includes("schema cache") ||
+      message.includes("permission denied"))
+  );
+}
+
 async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   const supabase = await getLiveClient();
   const profileColumns =
@@ -807,7 +819,6 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     patientsResult,
     problemsResult,
     tasksResult,
-    taskUpdatesResult,
     handoversResult,
     activityResult,
     templatesResult,
@@ -834,10 +845,6 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       )
       .order("updated_at", { ascending: false }),
     supabase
-      .from("task_updates")
-      .select("id, task_id, note, created_by_id, created_by_name, created_at")
-      .order("created_at", { ascending: false }),
-    supabase
       .from("handover_notes")
       .select("id, patient_id, note, escalation_instruction, updated_by_id, created_at, updated_at"),
     supabase
@@ -863,11 +870,18 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   ensureNoError(patientsResult, "Failed to load patients");
   ensureNoError(problemsResult, "Failed to load problems");
   ensureNoError(tasksResult, "Failed to load tasks");
-  ensureNoError(taskUpdatesResult, "Failed to load task updates");
   ensureNoError(handoversResult, "Failed to load handover notes");
   ensureNoError(activityResult, "Failed to load activity logs");
   ensureNoError(templatesResult, "Failed to load task templates");
   ensureNoError(summariesResult, "Failed to load discharge summaries");
+
+  const taskUpdatesResult = await supabase
+    .from("task_updates")
+    .select("id, task_id, note, created_by_id, created_by_name, created_at")
+    .order("created_at", { ascending: false });
+  if (taskUpdatesResult.error && !isRecoverableTaskUpdatesReadError(taskUpdatesResult.error)) {
+    ensureNoError(taskUpdatesResult, "Failed to load task updates");
+  }
 
   const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
@@ -880,7 +894,9 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     ),
     problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
     tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
-    taskUpdates: ((taskUpdatesResult.data ?? []) as TaskUpdateRow[]).map(mapTaskUpdateRow),
+    taskUpdates: ((taskUpdatesResult.error ? [] : taskUpdatesResult.data) ?? [] as TaskUpdateRow[]).map(
+      mapTaskUpdateRow,
+    ),
     handovers: ((handoversResult.data ?? []) as HandoverRow[]).map(mapHandoverRow),
     activity: ((activityResult.data ?? []) as ActivityRow[]).map(mapActivityRow),
     templates: ((templatesResult.data ?? []) as TemplateRow[]).map(mapTemplateRow),
