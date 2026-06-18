@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
+import { cache } from "react";
 import { z } from "zod";
+import { measureServerTiming } from "@/lib/dev-timing";
 import { hasLiveSupabase } from "@/lib/env";
 import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import { labelForTaskPriority, labelForTaskStatus } from "@/lib/utils";
@@ -58,6 +60,11 @@ type DemoStore = {
   templates: TaskTemplate[];
   profiles: UserProfile[];
   studentWardAssignments: StudentWardAssignment[];
+};
+
+type WardOverviewData = {
+  summaries: WardSummary[];
+  profiles: UserProfile[];
 };
 
 type WardRow = {
@@ -216,6 +223,25 @@ type ActivityInsert = {
 type LiveClient = NonNullable<Awaited<ReturnType<typeof createServerSupabaseClient>>>;
 
 const DEMO_STORE_PATH = path.join(process.cwd(), ".wardflow-demo", "store.json");
+
+function buildSessionCacheSeed(
+  mode: SessionContext["mode"],
+  profileId: string,
+  role: Role,
+  wardAssignment: string | null,
+): SessionContext {
+  return {
+    mode,
+    profile: {
+      id: profileId,
+      name: "Cached Session",
+      email: "",
+      avatarUrl: null,
+      role,
+      wardAssignment,
+    },
+  };
+}
 
 const patientSchema = z.object({
   id: z.string().optional(),
@@ -475,6 +501,20 @@ function canViewAllWards(session: SessionContext) {
 
 function isStudentAwaitingWardAssignment(session: SessionContext) {
   return session.profile.role === "student" && !session.profile.wardAssignment;
+}
+
+function isProfileVisibleToSession(profile: UserProfile, session: SessionContext) {
+  if (isStudentAwaitingWardAssignment(session)) {
+    return profile.id === session.profile.id;
+  }
+
+  return (
+    canViewAllWards(session) ||
+    profile.role === "admin" ||
+    profile.role === "resident" ||
+    profile.wardAssignment === session.profile.wardAssignment ||
+    profile.id === session.profile.id
+  );
 }
 
 function requireWardReadAccess(session: SessionContext, wardId: string | null) {
@@ -905,148 +945,296 @@ function isRecoverableStudentAssignmentReadError(error: { message: string } | nu
 }
 
 async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
-  const supabase = await getLiveClient();
-  const profileColumns =
-    session.profile.role === "admin"
-      ? "id, name, email, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at"
-      : "id, name, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at";
+  return measureServerTiming("loadLiveStore", async () => {
+    const supabase = await getLiveClient();
+    const profileColumns =
+      session.profile.role === "admin"
+        ? "id, name, email, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at"
+        : "id, name, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at";
 
-  const [
-    wardsResult,
-    profilesResult,
-    patientsResult,
-    problemsResult,
-    tasksResult,
-    handoversResult,
-    activityResult,
-    templatesResult,
-    summariesResult,
-    studentAssignmentsResult,
-  ] = await Promise.all([
-    supabase
-      .from("wards")
-      .select("id, name, location, is_active, created_at, updated_at")
-      .order("name", { ascending: true }),
-    supabase.from("profiles").select(profileColumns).order("name", { ascending: true }),
-    supabase
-      .from("patients")
-      .select(
-        "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, discharged_at, updated_by_id, created_at, updated_at",
-      )
-      .order("updated_at", { ascending: false }),
-    supabase
-      .from("problems")
-      .select(
-        "id, patient_id, title, status, key_data, plan, pending, watch_out, include_in_handover, sort_order, updated_by_id, created_at, updated_at",
-      )
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("ward_tasks")
-      .select(
-        "id, patient_id, title, note, owner_id, status, priority, type, due_at, blocked_reason, updated_by_id, created_at, updated_at",
-      )
-      .order("updated_at", { ascending: false }),
-    supabase
-      .from("handover_notes")
-      .select("id, patient_id, note, escalation_instruction, updated_by_id, created_at, updated_at"),
-    supabase
-      .from("activity_logs")
-      .select(
-        "id, patient_id, actor_id, actor_name, action, entity_type, entity_id, before_json, after_json, created_at",
-      )
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("task_templates")
-      .select("id, title, type, default_priority")
-      .order("title", { ascending: true }),
-    supabase
-      .from("discharge_summaries")
-      .select(
-        "id, patient_id, ward_id, created_by_id, created_by_name, created_at, updated_at, admit_date, discharge_date, length_of_stay, primary_diagnosis, hospital_course, plan, home_medication",
-      )
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("student_ward_assignments")
-      .select(
-        "id, student_id, ward_id, assigned_by_user_id, assigned_at, is_active, created_at, updated_at",
-      )
-      .order("assigned_at", { ascending: true }),
-  ]);
+    const [
+      wardsResult,
+      profilesResult,
+      patientsResult,
+      problemsResult,
+      tasksResult,
+      handoversResult,
+      activityResult,
+      templatesResult,
+      summariesResult,
+      studentAssignmentsResult,
+    ] = await Promise.all([
+      supabase
+        .from("wards")
+        .select("id, name, location, is_active, created_at, updated_at")
+        .order("name", { ascending: true }),
+      supabase.from("profiles").select(profileColumns).order("name", { ascending: true }),
+      supabase
+        .from("patients")
+        .select(
+          "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, discharged_at, updated_by_id, created_at, updated_at",
+        )
+        .order("updated_at", { ascending: false }),
+      supabase
+        .from("problems")
+        .select(
+          "id, patient_id, title, status, key_data, plan, pending, watch_out, include_in_handover, sort_order, updated_by_id, created_at, updated_at",
+        )
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("ward_tasks")
+        .select(
+          "id, patient_id, title, note, owner_id, status, priority, type, due_at, blocked_reason, updated_by_id, created_at, updated_at",
+        )
+        .order("updated_at", { ascending: false }),
+      supabase
+        .from("handover_notes")
+        .select("id, patient_id, note, escalation_instruction, updated_by_id, created_at, updated_at"),
+      supabase
+        .from("activity_logs")
+        .select(
+          "id, patient_id, actor_id, actor_name, action, entity_type, entity_id, before_json, after_json, created_at",
+        )
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("task_templates")
+        .select("id, title, type, default_priority")
+        .order("title", { ascending: true }),
+      supabase
+        .from("discharge_summaries")
+        .select(
+          "id, patient_id, ward_id, created_by_id, created_by_name, created_at, updated_at, admit_date, discharge_date, length_of_stay, primary_diagnosis, hospital_course, plan, home_medication",
+        )
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("student_ward_assignments")
+        .select(
+          "id, student_id, ward_id, assigned_by_user_id, assigned_at, is_active, created_at, updated_at",
+        )
+        .order("assigned_at", { ascending: true }),
+    ]);
 
-  ensureNoError(wardsResult, "Failed to load wards");
-  ensureNoError(profilesResult, "Failed to load profiles");
-  ensureNoError(patientsResult, "Failed to load patients");
-  ensureNoError(problemsResult, "Failed to load problems");
-  ensureNoError(tasksResult, "Failed to load tasks");
-  ensureNoError(handoversResult, "Failed to load handover notes");
-  ensureNoError(activityResult, "Failed to load activity logs");
-  ensureNoError(templatesResult, "Failed to load task templates");
-  ensureNoError(summariesResult, "Failed to load discharge summaries");
-  if (
-    studentAssignmentsResult.error &&
-    !isRecoverableStudentAssignmentReadError(studentAssignmentsResult.error)
-  ) {
-    ensureNoError(studentAssignmentsResult, "Failed to load student ward assignments");
-  }
+    ensureNoError(wardsResult, "Failed to load wards");
+    ensureNoError(profilesResult, "Failed to load profiles");
+    ensureNoError(patientsResult, "Failed to load patients");
+    ensureNoError(problemsResult, "Failed to load problems");
+    ensureNoError(tasksResult, "Failed to load tasks");
+    ensureNoError(handoversResult, "Failed to load handover notes");
+    ensureNoError(activityResult, "Failed to load activity logs");
+    ensureNoError(templatesResult, "Failed to load task templates");
+    ensureNoError(summariesResult, "Failed to load discharge summaries");
+    if (
+      studentAssignmentsResult.error &&
+      !isRecoverableStudentAssignmentReadError(studentAssignmentsResult.error)
+    ) {
+      ensureNoError(studentAssignmentsResult, "Failed to load student ward assignments");
+    }
 
-  const taskUpdatesResult = await supabase
-    .from("task_updates")
-    .select("id, task_id, note, created_by_id, created_by_name, created_at")
-    .order("created_at", { ascending: false });
-  if (taskUpdatesResult.error && !isRecoverableTaskUpdatesReadError(taskUpdatesResult.error)) {
-    ensureNoError(taskUpdatesResult, "Failed to load task updates");
-  }
+    const taskUpdatesResult = await supabase
+      .from("task_updates")
+      .select("id, task_id, note, created_by_id, created_by_name, created_at")
+      .order("created_at", { ascending: false });
+    if (taskUpdatesResult.error && !isRecoverableTaskUpdatesReadError(taskUpdatesResult.error)) {
+      ensureNoError(taskUpdatesResult, "Failed to load task updates");
+    }
 
-  const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
-  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+    const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
+    const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
 
-  return {
-    wards: ((wardsResult.data ?? []) as WardRow[]).map(mapWardRow),
-    profiles,
-    patients: ((patientsResult.data ?? []) as PatientRow[]).map((row) =>
-      mapPatientRow(row, profileMap),
-    ),
-    problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
-    tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
-    taskUpdates: (((taskUpdatesResult.error ? [] : taskUpdatesResult.data) ?? []) as TaskUpdateRow[]).map(
-      mapTaskUpdateRow,
-    ),
-    handovers: ((handoversResult.data ?? []) as HandoverRow[]).map(mapHandoverRow),
-    activity: ((activityResult.data ?? []) as ActivityRow[]).map(mapActivityRow),
-    templates: ((templatesResult.data ?? []) as TemplateRow[]).map(mapTemplateRow),
-    dischargeSummaries: ((summariesResult.data ?? []) as DischargeSummaryRow[]).map(
-      mapDischargeSummaryRow,
-    ),
-    studentWardAssignments: (((studentAssignmentsResult.error
-      ? []
-      : studentAssignmentsResult.data) ?? []) as StudentWardAssignmentRow[]).map(
-      mapStudentWardAssignmentRow,
-    ),
-  };
+    return {
+      wards: ((wardsResult.data ?? []) as WardRow[]).map(mapWardRow),
+      profiles,
+      patients: ((patientsResult.data ?? []) as PatientRow[]).map((row) =>
+        mapPatientRow(row, profileMap),
+      ),
+      problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
+      tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
+      taskUpdates: (((taskUpdatesResult.error ? [] : taskUpdatesResult.data) ?? []) as TaskUpdateRow[]).map(
+        mapTaskUpdateRow,
+      ),
+      handovers: ((handoversResult.data ?? []) as HandoverRow[]).map(mapHandoverRow),
+      activity: ((activityResult.data ?? []) as ActivityRow[]).map(mapActivityRow),
+      templates: ((templatesResult.data ?? []) as TemplateRow[]).map(mapTemplateRow),
+      dischargeSummaries: ((summariesResult.data ?? []) as DischargeSummaryRow[]).map(
+        mapDischargeSummaryRow,
+      ),
+      studentWardAssignments: (((studentAssignmentsResult.error
+        ? []
+        : studentAssignmentsResult.data) ?? []) as StudentWardAssignmentRow[]).map(
+        mapStudentWardAssignmentRow,
+      ),
+    };
+  });
 }
+
+const getStoreForSessionCached = cache(
+  async (
+    mode: SessionContext["mode"],
+    profileId: string,
+    role: Role,
+    wardAssignment: string | null,
+  ) => {
+    if (mode === "demo" || !hasLiveSupabase()) {
+      await ensureDemoStoreLoaded();
+      return store;
+    }
+
+    return loadLiveStore(buildSessionCacheSeed(mode, profileId, role, wardAssignment));
+  },
+);
 
 async function getStoreForSession(session: SessionContext) {
-  if (session.mode === "demo" || !hasLiveSupabase()) {
-    await ensureDemoStoreLoaded();
-    return store;
-  }
-
-  return loadLiveStore(session);
+  return getStoreForSessionCached(
+    session.mode,
+    session.profile.id,
+    session.profile.role,
+    session.profile.wardAssignment,
+  );
 }
 
-function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProfile[] {
-  if (isStudentAwaitingWardAssignment(session)) {
-    return input.profiles.filter((profile) => profile.id === session.profile.id);
-  }
+function buildWardOverviewSummaries(
+  wards: Ward[],
+  patients: PatientRow[],
+  taskCounts: Map<string, { pending: number; blocked: number }>,
+  profiles: Map<string, UserProfile>,
+) {
+  return wards
+    .map((ward) => ({
+      ward,
+      patients: patients
+        .filter((patient) => patient.ward_id === ward.id)
+        .map((patient) => {
+          const counts = taskCounts.get(patient.id) ?? { pending: 0, blocked: 0 };
+          return {
+            ...mapPatientRow(patient, profiles),
+            pendingTaskCount: counts.pending,
+            blockedTaskCount: counts.blocked,
+          };
+        })
+        .sort((left, right) => compareBed(left.bed, right.bed)),
+    }))
+    .filter((summary) => summary.patients.length > 0 || summary.ward.isActive !== false);
+}
 
-  return input.profiles.filter(
-    (profile) =>
-      canViewAllWards(session) ||
-      profile.role === "admin" ||
-      profile.role === "resident" ||
-      profile.wardAssignment === session.profile.wardAssignment ||
-      profile.id === session.profile.id,
-  );
+const getWardOverviewDataCached = cache(
+  async (
+    mode: SessionContext["mode"],
+    profileId: string,
+    role: Role,
+    wardAssignment: string | null,
+  ): Promise<WardOverviewData> => {
+    const session = buildSessionCacheSeed(mode, profileId, role, wardAssignment);
+
+    return measureServerTiming("/wards data load", async () => {
+      if (mode === "demo" || !hasLiveSupabase()) {
+        const input = await getStoreForSession(session);
+        return {
+          summaries: buildWardSummary(input, session, "active"),
+          profiles: getVisibleProfiles(input, session),
+        };
+      }
+
+      if (isStudentAwaitingWardAssignment(session)) {
+        return {
+          summaries: [],
+          profiles: [],
+        };
+      }
+
+      const supabase = await getLiveClient();
+      let wardsQuery = supabase
+        .from("wards")
+        .select("id, name, location, is_active, created_at, updated_at")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+
+      if (!canViewAllWards(session) && wardAssignment) {
+        wardsQuery = wardsQuery.eq("id", wardAssignment);
+      }
+
+      const wardsResult = await wardsQuery;
+      ensureNoError(wardsResult, "Failed to load wards overview");
+
+      const wards = ((wardsResult.data ?? []) as WardRow[]).map(mapWardRow);
+      const wardIds = wards.map((ward) => ward.id);
+      if (!wardIds.length) {
+        return {
+          summaries: [],
+          profiles: [],
+        };
+      }
+
+      const patientsResult = await supabase
+        .from("patients")
+        .select(
+          "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, discharged_at, updated_by_id, created_at, updated_at",
+        )
+        .eq("lifecycle", "active")
+        .in("ward_id", wardIds)
+        .order("bed", { ascending: true });
+      ensureNoError(patientsResult, "Failed to load ward overview patients");
+
+      const patients = (patientsResult.data ?? []) as PatientRow[];
+      const patientIds = patients.map((patient) => patient.id);
+      const responsibleDoctorIds = [...new Set(
+        patients
+          .map((patient) => patient.responsible_doctor_id)
+          .filter((doctorId): doctorId is string => Boolean(doctorId)),
+      )];
+
+      const tasksResult = patientIds.length
+        ? await supabase
+            .from("ward_tasks")
+            .select("patient_id, status")
+            .in("patient_id", patientIds)
+        : { data: [], error: null };
+      ensureNoError(tasksResult, "Failed to load ward overview tasks");
+
+      const profileColumns =
+        role === "admin"
+          ? "id, name, email, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at"
+          : "id, name, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at";
+
+      let profilesQuery = supabase.from("profiles").select(profileColumns).order("name", { ascending: true });
+      if (!canViewAllWards(session)) {
+        const filters = ["role.eq.admin", "role.eq.resident"];
+        if (wardAssignment) {
+          filters.push(`ward_assignment.eq.${wardAssignment}`);
+        }
+        if (responsibleDoctorIds.length) {
+          filters.push(`id.in.(${responsibleDoctorIds.join(",")})`);
+        }
+        profilesQuery = profilesQuery.or(filters.join(","));
+      }
+
+      const profilesResult = await profilesQuery;
+      ensureNoError(profilesResult, "Failed to load ward overview profiles");
+
+      const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
+      const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+      const taskCounts = new Map<string, { pending: number; blocked: number }>();
+
+      for (const task of ((tasksResult.data ?? []) as Array<Pick<TaskRow, "patient_id" | "status">>)) {
+        const current = taskCounts.get(task.patient_id) ?? { pending: 0, blocked: 0 };
+        if (task.status !== "done") {
+          current.pending += 1;
+        }
+        if (task.status === "blocked") {
+          current.blocked += 1;
+        }
+        taskCounts.set(task.patient_id, current);
+      }
+
+      return {
+        summaries: buildWardOverviewSummaries(wards, patients, taskCounts, profileMap),
+        profiles: profiles.filter((profile) => isProfileVisibleToSession(profile, session)),
+      };
+    });
+  },
+);
+
+function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProfile[] {
+  return input.profiles.filter((profile) => isProfileVisibleToSession(profile, session));
 }
 
 function getProfilesForWard(input: DemoStore, wardId: string) {
@@ -1133,7 +1321,7 @@ async function getLivePatientDirectoryName(
     return fallback ?? null;
   }
 
-  const store = await loadLiveStore(session);
+  const store = await getStoreForSession(session);
   return getPatientDirectoryName(store, profileId, fallback);
 }
 
@@ -1156,6 +1344,15 @@ function revalidateWardflowPaths(patientId?: string) {
 export async function getWardSummaries(session: SessionContext): Promise<WardSummary[]> {
   const input = await getStoreForSession(session);
   return buildWardSummary(input, session, "active");
+}
+
+export async function getWardOverviewData(session: SessionContext): Promise<WardOverviewData> {
+  return getWardOverviewDataCached(
+    session.mode,
+    session.profile.id,
+    session.profile.role,
+    session.profile.wardAssignment,
+  );
 }
 
 export async function getDischargedSummaries(session: SessionContext): Promise<WardSummary[]> {

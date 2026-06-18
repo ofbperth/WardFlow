@@ -3,6 +3,7 @@ import { hardDeletePatientAction } from "@/app/actions";
 import {
   DischargedPatientList,
   EmptyState,
+  ExpandableFilters,
   Field,
   GlassPanel,
   SelectBox,
@@ -36,24 +37,26 @@ export default async function DischargedPage({
         title="Discharged patients"
         subtitle="Search by ward or patient name, then open the read-only discharge summary from each card."
       >
-        <form className="grid gap-3 rounded-[24px] bg-white/70 p-4 md:grid-cols-[1fr_1fr_auto]">
-          <Field label="Ward">
-            <SelectBox name="wardId" defaultValue={wardId ?? ""}>
-              <option value="">All wards</option>
-              {directory.wards.map((ward) => (
-                <option key={ward.id} value={ward.id}>
-                  {ward.name}
-                </option>
-              ))}
-            </SelectBox>
-          </Field>
-          <Field label="Patient search">
-            <TextInput name="q" defaultValue={q ?? ""} placeholder="Name, diagnosis, or bed" />
-          </Field>
-          <div className="flex items-end">
-            <SubmitButton>Apply filters</SubmitButton>
-          </div>
-        </form>
+        <ExpandableFilters title="Filter discharged patients">
+          <form className="grid gap-3 rounded-[24px] bg-white/70 p-4 md:grid-cols-[1fr_1fr_auto]">
+            <Field label="Ward">
+              <SelectBox name="wardId" defaultValue={wardId ?? ""}>
+                <option value="">All wards</option>
+                {directory.wards.map((ward) => (
+                  <option key={ward.id} value={ward.id}>
+                    {ward.name}
+                  </option>
+                ))}
+              </SelectBox>
+            </Field>
+            <Field label="Patient search">
+              <TextInput name="q" defaultValue={q ?? ""} placeholder="Name, diagnosis, or bed" />
+            </Field>
+            <div className="flex items-end">
+              <SubmitButton>Apply filters</SubmitButton>
+            </div>
+          </form>
+        </ExpandableFilters>
 
         <div className="mt-5 space-y-4">
           {directory.items.length ? (

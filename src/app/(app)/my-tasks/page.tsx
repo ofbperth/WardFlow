@@ -1,7 +1,16 @@
 import { saveTaskAction, updateTaskStatusAction } from "@/app/actions";
 import { AppFeedbackToast } from "@/components/app-feedback-toast";
 import { TaskWorkspaceBoard } from "@/components/task-workspace-board";
-import { EmptyState, Field, GlassPanel, SelectBox, SetupNotice, StaffOptions, SubmitButton } from "@/components/wardflow-ui";
+import {
+  EmptyState,
+  ExpandableFilters,
+  Field,
+  GlassPanel,
+  SelectBox,
+  SetupNotice,
+  StaffOptions,
+  SubmitButton,
+} from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { getMyTasks } from "@/lib/wardflow";
 import type { TaskWorkspaceFilters } from "@/lib/types";
@@ -35,36 +44,62 @@ export default async function MyTasksPage({
           />
         ) : (
           <>
-            <form className="mb-5 grid gap-3 lg:grid-cols-4">
-              <Field label="Ward">
-                <SelectBox name="wardId" defaultValue={params.wardId ?? ""}>
-                  <option value="">All visible wards</option>
-                  {data.wards.map((ward) => (
-                    <option key={ward.id} value={ward.id}>
-                      {ward.name}
-                    </option>
-                  ))}
-                </SelectBox>
-              </Field>
-              <Field label="Responsible doctor">
-                <SelectBox name="ownerId" defaultValue={params.ownerId ?? ""}>
-                  <StaffOptions profiles={data.profiles} />
-                </SelectBox>
-              </Field>
-              <Field label="Type">
-                <SelectBox name="type" defaultValue={params.type ?? ""}>
-                  <option value="">All types</option>
-                  {(["lab", "imaging", "consult", "procedure", "family_talk", "discharge", "medication", "other"] as const).map((type) => (
-                    <option key={type} value={type}>
-                      {labelForTaskType(type)}
-                    </option>
-                  ))}
-                </SelectBox>
-              </Field>
-              <div className="flex items-end">
-                <SubmitButton>Apply filters</SubmitButton>
-              </div>
-            </form>
+            <ExpandableFilters title="Filter tasks">
+              <form className="grid grid-cols-2 gap-2.5 md:gap-3 lg:grid-cols-4">
+                <Field
+                  label="Ward"
+                  className="col-span-1"
+                  labelClassName="mb-1 text-[11px] tracking-[0.12em] md:mb-1.5 md:text-xs"
+                >
+                  <SelectBox
+                    name="wardId"
+                    defaultValue={params.wardId ?? ""}
+                    className="px-3.5 py-2.5 text-[13px] md:px-4 md:py-3 md:text-sm"
+                  >
+                    <option value="">All visible wards</option>
+                    {data.wards.map((ward) => (
+                      <option key={ward.id} value={ward.id}>
+                        {ward.name}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </Field>
+                <Field
+                  label="Type"
+                  className="col-span-1"
+                  labelClassName="mb-1 text-[11px] tracking-[0.12em] md:mb-1.5 md:text-xs"
+                >
+                  <SelectBox
+                    name="type"
+                    defaultValue={params.type ?? ""}
+                    className="px-3.5 py-2.5 text-[13px] md:px-4 md:py-3 md:text-sm"
+                  >
+                    <option value="">All types</option>
+                    {(["lab", "imaging", "consult", "procedure", "family_talk", "discharge", "medication", "other"] as const).map((type) => (
+                      <option key={type} value={type}>
+                        {labelForTaskType(type)}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </Field>
+                <Field
+                  label="Responsible"
+                  className="col-span-2 lg:col-span-1"
+                  labelClassName="mb-1 text-[11px] tracking-[0.12em] md:mb-1.5 md:text-xs"
+                >
+                  <SelectBox
+                    name="ownerId"
+                    defaultValue={params.ownerId ?? ""}
+                    className="px-3.5 py-2.5 text-[13px] md:px-4 md:py-3 md:text-sm"
+                  >
+                    <StaffOptions profiles={data.profiles} />
+                  </SelectBox>
+                </Field>
+                <div className="col-span-2 flex items-end lg:col-span-1">
+                  <SubmitButton>Apply filters</SubmitButton>
+                </div>
+              </form>
+            </ExpandableFilters>
 
             {data.activeGroups.length || data.archivedGroups.length ? (
               <TaskWorkspaceBoard

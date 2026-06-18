@@ -1,5 +1,15 @@
 import { RealtimeRefresh } from "@/components/realtime-refresh";
-import { EmptyState, Field, GlassPanel, HandoverTextPanel, Pill, SelectBox, SetupNotice, SubmitButton } from "@/components/wardflow-ui";
+import {
+  EmptyState,
+  ExpandableFilters,
+  Field,
+  GlassPanel,
+  HandoverTextPanel,
+  Pill,
+  SelectBox,
+  SetupNotice,
+  SubmitButton,
+} from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { getPendingTaskHandoverData, getPendingTaskHandoverText } from "@/lib/wardflow";
 import { labelForTaskPriority, labelForTaskStatus, labelForTaskType, priorityTone, statusTone } from "@/lib/utils";
@@ -36,28 +46,30 @@ export default async function PendingTaskHandoverPage({
           />
         ) : (
           <>
-            <form className="mb-5 grid gap-3 lg:grid-cols-3">
-              <Field label="Ward">
-                <SelectBox name="wardId" defaultValue={params.wardId ?? ""}>
-                  <option value="">All visible wards</option>
-                  {data.wards.map((ward) => (
-                    <option key={ward.id} value={ward.id}>
-                      {ward.name}
-                    </option>
-                  ))}
-                </SelectBox>
-              </Field>
-              <Field label="Mode">
-                <SelectBox name="mode" defaultValue={mode}>
-                  <option value="all">All pending tasks</option>
-                  <option value="mine">My pending tasks</option>
-                  <option value="blocked">Blocked only</option>
-                </SelectBox>
-              </Field>
-              <div className="flex items-end">
-                <SubmitButton>Apply filters</SubmitButton>
-              </div>
-            </form>
+            <ExpandableFilters title="Filter pending tasks">
+              <form className="grid gap-3 lg:grid-cols-3">
+                <Field label="Ward">
+                  <SelectBox name="wardId" defaultValue={params.wardId ?? ""}>
+                    <option value="">All visible wards</option>
+                    {data.wards.map((ward) => (
+                      <option key={ward.id} value={ward.id}>
+                        {ward.name}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </Field>
+                <Field label="Mode">
+                  <SelectBox name="mode" defaultValue={mode}>
+                    <option value="all">All pending tasks</option>
+                    <option value="mine">My pending tasks</option>
+                    <option value="blocked">Blocked only</option>
+                  </SelectBox>
+                </Field>
+                <div className="flex items-end">
+                  <SubmitButton>Apply filters</SubmitButton>
+                </div>
+              </form>
+            </ExpandableFilters>
 
             {data.groups.length ? (
               <div className="space-y-6">

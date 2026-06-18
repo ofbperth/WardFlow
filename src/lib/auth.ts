@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
+import { measureServerTiming } from "@/lib/dev-timing";
 import { demoUser } from "@/lib/demo-data";
 import {
   canUseBrowserSupabase,
@@ -30,87 +32,95 @@ function mapProfileRow(row: Record<string, unknown>): UserProfile {
 }
 
 async function ensureLiveProfile() {
-  const supabase = await createServerSupabaseClient();
-  const admin = hasAdminSupabase() ? createAdminSupabaseClient() : null;
+  return measureServerTiming("ensureLiveProfile", async () => {
+    const supabase = await createServerSupabaseClient();
+    const admin = hasAdminSupabase() ? createAdminSupabaseClient() : null;
 
-  if (!supabase) {
-    return null;
-  }
+    if (!supabase) {
+      return null;
+    }
 
-  const claimsResult = await supabase.auth.getClaims();
-  const claims = claimsResult.data?.claims;
+    const claimsResult = await supabase.auth.getClaims();
+    const claims = claimsResult.data?.claims;
 
-  if (!claims?.sub) {
-    return null;
-  }
+    if (!claims?.sub) {
+      return null;
+    }
 
-  const userResult = await supabase.auth.getUser();
-  const user = userResult.data.user;
+    const userResult = await supabase.auth.getUser();
+    const user = userResult.data.user;
 
-  const fallbackName =
-    user?.user_metadata?.full_name ??
-    user?.user_metadata?.name ??
-    user?.email?.split("@")[0] ??
-    "WardFlow User";
+    const fallbackName =
+      user?.user_metadata?.full_name ??
+      user?.user_metadata?.name ??
+      user?.email?.split("@")[0] ??
+      "WardFlow User";
 
-  const profileClient =
-    (admin ?? supabase) as unknown as {
-      from: (table: string) => {
-        upsert: (
-          values: Record<string, unknown>,
-          options?: { onConflict?: string },
-        ) => Promise<{ error?: { message?: string } | null }>;
-        select: (columns: string) => {
-          eq: (column: string, value: string) => {
-            single: () => Promise<{
-              error?: { message?: string } | null;
-              data: Record<string, unknown> | null;
-            }>;
+    const profileClient =
+      (admin ?? supabase) as unknown as {
+        from: (table: string) => {
+          upsert: (
+            values: Record<string, unknown>,
+            options?: { onConflict?: string },
+          ) => Promise<{ error?: { message?: string } | null }>;
+          select: (columns: string) => {
+            eq: (column: string, value: string) => {
+              single: () => Promise<{
+                error?: { message?: string } | null;
+                data: Record<string, unknown> | null;
+              }>;
+            };
           };
         };
       };
-    };
 
-  const upsertResult = await profileClient.from("profiles").upsert(
-    {
-      id: claims.sub,
-      name: fallbackName,
-      email: user?.email ?? "",
-      avatar_url: (user?.user_metadata?.avatar_url as string | undefined) ?? null,
-    },
-    { onConflict: "id" },
-  );
-  if (upsertResult.error) {
-    return null;
-  }
+    const upsertResult = await profileClient.from("profiles").upsert(
+      {
+        id: claims.sub,
+        name: fallbackName,
+        email: user?.email ?? "",
+        avatar_url: (user?.user_metadata?.avatar_url as string | undefined) ?? null,
+      },
+      { onConflict: "id" },
+    );
+    if (upsertResult.error) {
+      return null;
+    }
 
-  const profileResult = await profileClient
-    .from("profiles")
-    .select("*")
-    .eq("id", claims.sub)
-    .single();
+    const profileResult = await profileClient
+      .from("profiles")
+      .select("*")
+      .eq("id", claims.sub)
+      .single();
 
-  if (profileResult.error || !profileResult.data) {
-    return null;
-  }
+    if (profileResult.error || !profileResult.data) {
+      return null;
+    }
 
-  return mapProfileRow(profileResult.data);
+    return mapProfileRow(profileResult.data);
+  });
 }
 
-export async function getCurrentSessionContext(): Promise<SessionContext | null> {
-  if (hasLiveSupabase()) {
-    const profile = await ensureLiveProfile();
-    return profile ? { profile, mode: "live" } : null;
-  }
-
-  if (isDemoModeEnabled()) {
-    const cookieStore = await cookies();
-    if (cookieStore.get(DEMO_COOKIE)?.value === "1") {
-      return { profile: demoUser, mode: "demo" };
+const getCurrentSessionContextCached = cache(async (): Promise<SessionContext | null> =>
+  measureServerTiming("session load", async () => {
+    if (hasLiveSupabase()) {
+      const profile = await ensureLiveProfile();
+      return profile ? { profile, mode: "live" } : null;
     }
-  }
 
-  return null;
+    if (isDemoModeEnabled()) {
+      const cookieStore = await cookies();
+      if (cookieStore.get(DEMO_COOKIE)?.value === "1") {
+        return { profile: demoUser, mode: "demo" };
+      }
+    }
+
+    return null;
+  }),
+);
+
+export async function getCurrentSessionContext(): Promise<SessionContext | null> {
+  return getCurrentSessionContextCached();
 }
 
 export async function requireAppSession() {

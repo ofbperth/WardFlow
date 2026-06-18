@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
   EmptyState,
+  ExpandableFilters,
   Field,
   GlassPanel,
   HandoverCards,
@@ -43,19 +44,21 @@ export default async function HandoverPage({
         subtitle="เลือกวอร์ด แล้วคัดลอกข้อความ structured text ไปส่งต่อได้ทันที"
       >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <form className="grid gap-3 md:max-w-sm">
-            <Field label="Ward">
-              <SelectBox name="wardId" defaultValue={wardId ?? ""}>
-                <option value="">All wards</option>
-                {bundles.map((bundle) => (
-                  <option key={bundle.ward.id} value={bundle.ward.id}>
-                    {bundle.ward.name}
-                  </option>
-                ))}
-              </SelectBox>
-            </Field>
-            <SubmitButton>Apply ward filter</SubmitButton>
-          </form>
+          <ExpandableFilters title="Filter handover" className="w-full md:max-w-sm">
+            <form className="grid gap-3">
+              <Field label="Ward">
+                <SelectBox name="wardId" defaultValue={wardId ?? ""}>
+                  <option value="">All wards</option>
+                  {bundles.map((bundle) => (
+                    <option key={bundle.ward.id} value={bundle.ward.id}>
+                      {bundle.ward.name}
+                    </option>
+                  ))}
+                </SelectBox>
+              </Field>
+              <SubmitButton>Apply ward filter</SubmitButton>
+            </form>
+          </ExpandableFilters>
 
           <Link
             href="/handover/tasks"
