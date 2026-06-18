@@ -236,6 +236,18 @@ export function TaskCreator({
   );
 }
 
+export function AdmitPatientCreator({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <InlineEditor buttonLabel="Admit patient" panelTitle="Admit patient" buttonIcon="create">
+      {children}
+    </InlineEditor>
+  );
+}
+
 export function DischargeSummaryEditor({
   children,
 }: {
