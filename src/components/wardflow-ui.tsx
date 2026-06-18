@@ -569,8 +569,8 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                       ]}
                     />
                     <MiniList
-                      title="Escalation"
-                      items={[patient.handover?.escalationInstruction ?? "ยังไม่มีคำสั่ง escalation เพิ่มเติม"]}
+                      title="Observe"
+                      items={[patient.handover?.escalationInstruction ?? "ยังไม่มีคำสั่ง observe เพิ่มเติม"]}
                     />
                   </div>
                 </div>

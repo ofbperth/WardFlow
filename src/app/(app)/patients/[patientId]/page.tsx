@@ -322,7 +322,7 @@ export default async function PatientPage({
           ) : null}
 
           {canEditClinical ? (
-            <GlassPanel title="Manual handover note" subtitle="เพิ่ม short note และคำสั่ง escalation เพิ่มเติมได้">
+            <GlassPanel title="Manual handover note" subtitle="เพิ่ม short note และคำสั่ง observe เพิ่มเติมได้">
               <form action={saveHandoverAction} className="space-y-3">
                 <input type="hidden" name="patientId" value={bundle.patient.id} />
                 <input type="hidden" name="updatedAt" value={bundle.handover?.updatedAt ?? ""} />
@@ -333,7 +333,7 @@ export default async function PatientPage({
                     placeholder="High risk for respiratory deterioration overnight."
                   />
                 </Field>
-                <Field label="Escalation instruction">
+                <Field label="Observe instruction">
                   <TextArea
                     name="escalationInstruction"
                     defaultValue={bundle.handover?.escalationInstruction ?? ""}

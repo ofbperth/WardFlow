@@ -1159,7 +1159,7 @@ export async function getHandoverStructuredText(session: SessionContext, wardId?
             pendingItems.length ? `Pending: ${pendingItems.join("; ")}` : "",
             patient.handover?.note ? `Note: ${patient.handover.note}` : "",
             patient.handover?.escalationInstruction
-              ? `Escalation: ${patient.handover.escalationInstruction}`
+              ? `Observe: ${patient.handover.escalationInstruction}`
               : "",
           ]
             .filter(Boolean)
