@@ -41,6 +41,10 @@ export type Json =
 export type Ward = {
   id: string;
   name: string;
+  location?: string | null;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type UserProfile = {
@@ -50,6 +54,49 @@ export type UserProfile = {
   avatarUrl: string | null;
   role: Role;
   wardAssignment: string | null;
+  studentCode?: string | null;
+  academicYear?: string | null;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type Student = {
+  id: string;
+  name: string;
+  studentCode: string | null;
+  academicYear: string | null;
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  wardAssignment: string | null;
+};
+
+export type StudentWardAssignment = {
+  id: string;
+  studentId: string;
+  wardId: string;
+  assignedByUserId: string | null;
+  assignedAt: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StudentWardAssignmentEntry = {
+  assignment: StudentWardAssignment;
+  student: Student;
+};
+
+export type StudentWardAssignmentWard = {
+  ward: Ward;
+  assignments: StudentWardAssignmentEntry[];
+  assignedStudentCount: number;
+};
+
+export type StudentWardAssignmentBoardData = {
+  wards: StudentWardAssignmentWard[];
+  students: Student[];
 };
 
 export type Patient = {

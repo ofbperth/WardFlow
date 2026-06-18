@@ -6,6 +6,7 @@ import {
   updateUserRoleAdminAction,
 } from "@/app/actions";
 import { AdminFeedbackToast } from "@/components/admin-feedback-toast";
+import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { AdminCreator, AdminEditor } from "@/components/form-feedback";
 import {
   DangerZone,
@@ -32,16 +33,25 @@ export default async function AdminWardsPage({
   return (
     <div className="space-y-6">
       <AdminFeedbackToast toastKey={params.toast} />
+      <AdminSectionTabs />
       <GlassPanel
         title="Admin | Ward management"
         subtitle="Safer layout with collapsed edit actions and a separated danger zone."
         action={
-          <Link
-            href="/admin/task-templates"
-            className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
-          >
-            Task templates
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/student-ward-assignment"
+              className="rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700"
+            >
+              Student Ward Assignment
+            </Link>
+            <Link
+              href="/admin/task-templates"
+              className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+            >
+              Task templates
+            </Link>
+          </div>
         }
       >
         <div className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">

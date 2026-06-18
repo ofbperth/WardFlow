@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { saveTemplateAction } from "@/app/actions";
 import {
   Field,
@@ -18,6 +19,7 @@ export default async function AdminTaskTemplatesPage() {
 
   return (
     <div className="space-y-6">
+      <AdminSectionTabs />
       <GlassPanel
         title="Admin | Task templates"
         subtitle="ตั้ง template งานที่ใช้บ่อย เพื่อให้ทีมสร้าง task ได้เร็วและสม่ำเสมอ"

@@ -21,6 +21,11 @@ function mapProfileRow(row: Record<string, unknown>): UserProfile {
     avatarUrl: (row.avatar_url as string | null | undefined) ?? null,
     role: (row.role as UserProfile["role"] | undefined) ?? "student",
     wardAssignment: (row.ward_assignment as string | null | undefined) ?? null,
+    studentCode: (row.student_code as string | null | undefined) ?? null,
+    academicYear: (row.academic_year as string | null | undefined) ?? null,
+    isActive: (row.is_active as boolean | null | undefined) ?? true,
+    createdAt: (row.created_at as string | null | undefined) ?? undefined,
+    updatedAt: (row.updated_at as string | null | undefined) ?? undefined,
   };
 }
 

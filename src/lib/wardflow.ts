@@ -30,6 +30,11 @@ import type {
   Problem,
   Role,
   SessionContext,
+  Student,
+  StudentWardAssignment,
+  StudentWardAssignmentBoardData,
+  StudentWardAssignmentEntry,
+  StudentWardAssignmentWard,
   TaskTemplate,
   TaskUpdate,
   TaskWithUpdates,
@@ -52,11 +57,16 @@ type DemoStore = {
   activity: ActivityLog[];
   templates: TaskTemplate[];
   profiles: UserProfile[];
+  studentWardAssignments: StudentWardAssignment[];
 };
 
 type WardRow = {
   id: string;
   name: string;
+  location?: string | null;
+  is_active?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type ProfileRow = {
@@ -66,6 +76,22 @@ type ProfileRow = {
   avatar_url: string | null;
   role: Role | null;
   ward_assignment: string | null;
+  student_code?: string | null;
+  academic_year?: string | null;
+  is_active?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+type StudentWardAssignmentRow = {
+  id: string;
+  student_id: string;
+  ward_id: string;
+  assigned_by_user_id: string | null;
+  assigned_at: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type PatientRow = {
@@ -307,6 +333,16 @@ const userRoleSchema = z.object({
   wardAssignment: z.string().optional().nullable(),
 });
 
+const saveStudentWardAssignmentsSchema = z.object({
+  wardId: z.string().min(1),
+  studentIds: z.array(z.string().uuid()).default([]),
+  forceMove: z.boolean().default(false),
+});
+
+const removeStudentWardAssignmentSchema = z.object({
+  assignmentId: z.string().min(1),
+});
+
 const deleteUserSchema = z.object({
   userId: z.string().min(1),
 });
@@ -338,7 +374,26 @@ function textOrNull(value: FormDataEntryValue | null) {
   return trimmed.length ? trimmed : null;
 }
 
+function buildStudentAssignmentsFromProfiles(profiles: UserProfile[]): StudentWardAssignment[] {
+  return profiles
+    .filter((profile) => profile.role === "student" && profile.wardAssignment)
+    .map((profile) => {
+      const timestamp = profile.updatedAt ?? profile.createdAt ?? now();
+      return {
+        id: `student-assignment-seed-${profile.id}`,
+        studentId: profile.id,
+        wardId: profile.wardAssignment ?? "",
+        assignedByUserId: null,
+        assignedAt: timestamp,
+        isActive: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+    });
+}
+
 function createSeedStore(): DemoStore {
+  const profiles = structuredClone(demoProfiles);
   return {
     wards: structuredClone(demoWards),
     patients: structuredClone(demoPatientsSeed),
@@ -349,7 +404,8 @@ function createSeedStore(): DemoStore {
     dischargeSummaries: structuredClone(demoDischargeSummarySeed),
     activity: structuredClone(demoActivitySeed),
     templates: structuredClone(demoTemplatesSeed),
-    profiles: structuredClone(demoProfiles),
+    profiles,
+    studentWardAssignments: buildStudentAssignmentsFromProfiles(profiles),
   };
 }
 
@@ -369,6 +425,8 @@ function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore
     activity: input?.activity ?? seed.activity,
     templates: input?.templates ?? seed.templates,
     profiles: input?.profiles ?? seed.profiles,
+    studentWardAssignments:
+      input?.studentWardAssignments ?? buildStudentAssignmentsFromProfiles(input?.profiles ?? seed.profiles),
   };
 }
 
@@ -636,6 +694,35 @@ function mapProfileRow(row: ProfileRow): UserProfile {
     avatarUrl: row.avatar_url ?? null,
     role: row.role ?? "student",
     wardAssignment: row.ward_assignment ?? null,
+    studentCode: row.student_code ?? null,
+    academicYear: row.academic_year ?? null,
+    isActive: row.is_active ?? true,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
+  };
+}
+
+function mapWardRow(row: WardRow): Ward {
+  return {
+    id: row.id,
+    name: row.name,
+    location: row.location ?? null,
+    isActive: row.is_active ?? true,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
+  };
+}
+
+function mapStudentWardAssignmentRow(row: StudentWardAssignmentRow): StudentWardAssignment {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    wardId: row.ward_id,
+    assignedByUserId: row.assigned_by_user_id,
+    assignedAt: row.assigned_at,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -806,12 +893,23 @@ function isRecoverableTaskUpdatesReadError(error: { message: string } | null | u
   );
 }
 
+function isRecoverableStudentAssignmentReadError(error: { message: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("student_ward_assignments") &&
+    (message.includes("does not exist") ||
+      message.includes("could not find the table") ||
+      message.includes("schema cache") ||
+      message.includes("permission denied"))
+  );
+}
+
 async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   const supabase = await getLiveClient();
   const profileColumns =
     session.profile.role === "admin"
-      ? "id, name, email, avatar_url, role, ward_assignment"
-      : "id, name, avatar_url, role, ward_assignment";
+      ? "id, name, email, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at"
+      : "id, name, avatar_url, role, ward_assignment, student_code, academic_year, is_active, created_at, updated_at";
 
   const [
     wardsResult,
@@ -823,8 +921,12 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     activityResult,
     templatesResult,
     summariesResult,
+    studentAssignmentsResult,
   ] = await Promise.all([
-    supabase.from("wards").select("id, name").order("name", { ascending: true }),
+    supabase
+      .from("wards")
+      .select("id, name, location, is_active, created_at, updated_at")
+      .order("name", { ascending: true }),
     supabase.from("profiles").select(profileColumns).order("name", { ascending: true }),
     supabase
       .from("patients")
@@ -863,6 +965,12 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
         "id, patient_id, ward_id, created_by_id, created_by_name, created_at, updated_at, admit_date, discharge_date, length_of_stay, primary_diagnosis, hospital_course, plan, home_medication",
       )
       .order("created_at", { ascending: false }),
+    supabase
+      .from("student_ward_assignments")
+      .select(
+        "id, student_id, ward_id, assigned_by_user_id, assigned_at, is_active, created_at, updated_at",
+      )
+      .order("assigned_at", { ascending: true }),
   ]);
 
   ensureNoError(wardsResult, "Failed to load wards");
@@ -874,6 +982,12 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   ensureNoError(activityResult, "Failed to load activity logs");
   ensureNoError(templatesResult, "Failed to load task templates");
   ensureNoError(summariesResult, "Failed to load discharge summaries");
+  if (
+    studentAssignmentsResult.error &&
+    !isRecoverableStudentAssignmentReadError(studentAssignmentsResult.error)
+  ) {
+    ensureNoError(studentAssignmentsResult, "Failed to load student ward assignments");
+  }
 
   const taskUpdatesResult = await supabase
     .from("task_updates")
@@ -887,14 +1001,14 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
 
   return {
-    wards: ((wardsResult.data ?? []) as WardRow[]).map((row) => ({ id: row.id, name: row.name })),
+    wards: ((wardsResult.data ?? []) as WardRow[]).map(mapWardRow),
     profiles,
     patients: ((patientsResult.data ?? []) as PatientRow[]).map((row) =>
       mapPatientRow(row, profileMap),
     ),
     problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
     tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
-    taskUpdates: ((taskUpdatesResult.error ? [] : taskUpdatesResult.data) ?? [] as TaskUpdateRow[]).map(
+    taskUpdates: (((taskUpdatesResult.error ? [] : taskUpdatesResult.data) ?? []) as TaskUpdateRow[]).map(
       mapTaskUpdateRow,
     ),
     handovers: ((handoversResult.data ?? []) as HandoverRow[]).map(mapHandoverRow),
@@ -902,6 +1016,11 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     templates: ((templatesResult.data ?? []) as TemplateRow[]).map(mapTemplateRow),
     dischargeSummaries: ((summariesResult.data ?? []) as DischargeSummaryRow[]).map(
       mapDischargeSummaryRow,
+    ),
+    studentWardAssignments: (((studentAssignmentsResult.error
+      ? []
+      : studentAssignmentsResult.data) ?? []) as StudentWardAssignmentRow[]).map(
+      mapStudentWardAssignmentRow,
     ),
   };
 }
@@ -1247,6 +1366,91 @@ export async function getVisibleWards(session: SessionContext) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+function profileToStudent(profile: UserProfile): Student {
+  return {
+    id: profile.id,
+    name: profile.name,
+    studentCode: profile.studentCode ?? null,
+    academicYear: profile.academicYear ?? null,
+    isActive: profile.isActive ?? true,
+    createdAt: profile.createdAt ?? null,
+    updatedAt: profile.updatedAt ?? null,
+    wardAssignment: profile.wardAssignment ?? null,
+  };
+}
+
+function getStudentDirectory(input: DemoStore): Student[] {
+  return input.profiles
+    .filter((profile) => profile.role === "student" && (profile.isActive ?? true))
+    .map(profileToStudent)
+    .sort((left, right) => left.name.localeCompare(right.name, "th"));
+}
+
+function getEffectiveActiveStudentAssignments(input: DemoStore): StudentWardAssignment[] {
+  const explicitAssignments = input.studentWardAssignments.filter((assignment) => assignment.isActive);
+  const byStudentId = new Map(explicitAssignments.map((assignment) => [assignment.studentId, assignment]));
+
+  for (const profile of input.profiles) {
+    if (profile.role !== "student" || !(profile.isActive ?? true) || !profile.wardAssignment) {
+      continue;
+    }
+
+    if (!byStudentId.has(profile.id)) {
+      const timestamp = profile.updatedAt ?? profile.createdAt ?? now();
+      byStudentId.set(profile.id, {
+        id: `student-assignment-profile-${profile.id}`,
+        studentId: profile.id,
+        wardId: profile.wardAssignment,
+        assignedByUserId: null,
+        assignedAt: timestamp,
+        isActive: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  }
+
+  return [...byStudentId.values()];
+}
+
+function buildStudentWardAssignmentBoardData(input: DemoStore): StudentWardAssignmentBoardData {
+  const students = getStudentDirectory(input);
+  const studentMap = new Map(students.map((student) => [student.id, student]));
+  const activeAssignments = getEffectiveActiveStudentAssignments(input);
+  const wards = [...input.wards]
+    .filter((ward) => ward.isActive ?? true)
+    .sort((left, right) => left.name.localeCompare(right.name, "th"))
+    .map((ward): StudentWardAssignmentWard => {
+      const assignments: StudentWardAssignmentEntry[] = activeAssignments
+        .filter((assignment) => assignment.isActive && assignment.wardId === ward.id)
+        .map((assignment) => ({
+          assignment,
+          student: studentMap.get(assignment.studentId),
+        }))
+        .filter((entry): entry is StudentWardAssignmentEntry => Boolean(entry.student))
+        .sort((left, right) => left.student.name.localeCompare(right.student.name, "th"));
+
+      return {
+        ward,
+        assignments,
+        assignedStudentCount: assignments.length,
+      };
+    });
+
+  return { wards, students };
+}
+
+export async function getStudentWardAssignmentBoardData(
+  session: SessionContext,
+): Promise<StudentWardAssignmentBoardData> {
+  if (!canManageAdmin(session)) {
+    throw new Error("Admin only");
+  }
+
+  const input = await getStoreForSession(session);
+  return buildStudentWardAssignmentBoardData(input);
+}
+
 export async function getTaskTemplates(session?: SessionContext) {
   if (!session || session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -1590,6 +1794,11 @@ export async function deleteWard(formData: FormData, session: SessionContext) {
     });
 
     store.wards = store.wards.filter((ward) => ward.id !== parsed.wardId);
+    store.studentWardAssignments = store.studentWardAssignments.map((assignment) =>
+      assignment.wardId === parsed.wardId && assignment.isActive
+        ? { ...assignment, isActive: false, updatedAt: dischargeTimestamp }
+        : assignment,
+    );
     store.profiles = store.profiles.map((profile) =>
       profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
     );
@@ -1682,6 +1891,178 @@ export async function updateUserRole(formData: FormData, session: SessionContext
   revalidateWardflowPaths();
 }
 
+export async function saveStudentWardAssignments(
+  input: z.input<typeof saveStudentWardAssignmentsSchema>,
+  session: SessionContext,
+) {
+  if (!canManageAdmin(session)) {
+    throw new Error("Admin only");
+  }
+
+  const parsed = saveStudentWardAssignmentsSchema.parse({
+    wardId: input.wardId,
+    studentIds: [...new Set(input.studentIds ?? [])],
+    forceMove: input.forceMove ?? false,
+  });
+
+  if (parsed.studentIds.length !== (input.studentIds ?? []).length) {
+    throw new Error("Duplicate student selection is not allowed");
+  }
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const ward = store.wards.find((entry) => entry.id === parsed.wardId && (entry.isActive ?? true));
+    if (!ward) {
+      throw new Error("Ward not found");
+    }
+
+    const students = store.profiles.filter(
+      (profile) =>
+        profile.role === "student" &&
+        (profile.isActive ?? true) &&
+        parsed.studentIds.includes(profile.id),
+    );
+    if (students.length !== parsed.studentIds.length) {
+      throw new Error("One or more selected students are unavailable");
+    }
+
+    const activeAssignments = getEffectiveActiveStudentAssignments(store);
+    const conflicts = students
+      .map((student) => ({
+        student,
+        assignment:
+          activeAssignments.find(
+            (assignment) => assignment.studentId === student.id && assignment.wardId !== parsed.wardId,
+          ) ?? null,
+      }))
+      .filter((entry) => entry.assignment);
+
+    if (conflicts.length > 0 && !parsed.forceMove) {
+      throw new Error(
+        `MOVE_REQUIRED:${JSON.stringify(
+          conflicts.map((entry) => ({
+            studentId: entry.student.id,
+            studentName: entry.student.name,
+            fromWardId: entry.assignment?.wardId ?? null,
+          })),
+        )}`,
+      );
+    }
+
+    const timestamp = now();
+    const impactedStudentIds = new Set<string>();
+
+    store.studentWardAssignments = store.studentWardAssignments.map((assignment) => {
+      const shouldDeactivate =
+        assignment.isActive &&
+        (assignment.wardId === parsed.wardId || parsed.studentIds.includes(assignment.studentId));
+      if (!shouldDeactivate) {
+        return assignment;
+      }
+
+      impactedStudentIds.add(assignment.studentId);
+      return { ...assignment, isActive: false, updatedAt: timestamp };
+    });
+
+    for (const studentId of parsed.studentIds) {
+      impactedStudentIds.add(studentId);
+      store.studentWardAssignments.push({
+        id: nextId("student-assignment"),
+        studentId,
+        wardId: parsed.wardId,
+        assignedByUserId: session.profile.id,
+        assignedAt: timestamp,
+        isActive: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+
+    store.profiles = store.profiles.map((profile) => {
+      if (!impactedStudentIds.has(profile.id) || profile.role !== "student") {
+        return profile;
+      }
+
+      const nextAssignment = parsed.studentIds.includes(profile.id) ? parsed.wardId : null;
+      return {
+        ...profile,
+        wardAssignment: nextAssignment,
+        updatedAt: timestamp,
+      };
+    });
+
+    await persistDemoStore();
+    revalidateWardflowPaths();
+
+    return {
+      wardId: parsed.wardId,
+      movedStudents: conflicts.map((entry) => ({
+        studentId: entry.student.id,
+        studentName: entry.student.name,
+        fromWardId: entry.assignment?.wardId ?? null,
+      })),
+    };
+  }
+
+  const supabase = await getLiveClient();
+  const rpcResult = await supabase.rpc("admin_save_student_ward_assignments", {
+    target_ward_id: parsed.wardId,
+    target_student_ids: parsed.studentIds,
+    force_move: parsed.forceMove,
+  });
+  ensureNoError(rpcResult, "Failed to save student ward assignments");
+  revalidateWardflowPaths();
+
+  return (rpcResult.data ?? {}) as {
+    wardId?: string;
+    movedStudents?: Array<{ studentId: string; studentName: string; fromWardId: string | null }>;
+  };
+}
+
+export async function removeStudentWardAssignment(
+  input: z.input<typeof removeStudentWardAssignmentSchema>,
+  session: SessionContext,
+) {
+  if (!canManageAdmin(session)) {
+    throw new Error("Admin only");
+  }
+
+  const parsed = removeStudentWardAssignmentSchema.parse(input);
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const timestamp = now();
+    const assignment = store.studentWardAssignments.find(
+      (entry) => entry.id === parsed.assignmentId && entry.isActive,
+    );
+    if (!assignment) {
+      throw new Error("Assignment not found");
+    }
+
+    store.studentWardAssignments = store.studentWardAssignments.map((entry) =>
+      entry.id === parsed.assignmentId ? { ...entry, isActive: false, updatedAt: timestamp } : entry,
+    );
+    store.profiles = store.profiles.map((profile) =>
+      profile.id === assignment.studentId
+        ? { ...profile, wardAssignment: null, updatedAt: timestamp }
+        : profile,
+    );
+
+    await persistDemoStore();
+    revalidateWardflowPaths();
+    return { assignmentId: parsed.assignmentId };
+  }
+
+  const supabase = await getLiveClient();
+  const rpcResult = await supabase.rpc("admin_remove_student_ward_assignment", {
+    target_assignment_id: parsed.assignmentId,
+  });
+  ensureNoError(rpcResult, "Failed to remove student ward assignment");
+  revalidateWardflowPaths();
+
+  return (rpcResult.data ?? {}) as { assignmentId?: string };
+}
+
 export async function deleteUser(formData: FormData, session: SessionContext) {
   if (!canManageAdmin(session)) {
     throw new Error("Admin only");
@@ -1724,6 +2105,9 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
     store.activity = store.activity.map((entry) =>
       entry.actorId === parsed.userId ? { ...entry, actorId: null } : entry,
     );
+    store.studentWardAssignments = store.studentWardAssignments.filter(
+      (entry) => entry.studentId !== parsed.userId && entry.assignedByUserId !== parsed.userId,
+    );
 
     store.profiles = store.profiles.filter((entry) => entry.id !== parsed.userId);
     await persistDemoStore();
@@ -1763,6 +2147,17 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
       .eq("owner_id", parsed.userId),
     "Failed to clear task owner",
   );
+
+  const studentAssignmentsDeleteResult = await supabase
+    .from("student_ward_assignments")
+    .delete()
+    .or(`student_id.eq.${parsed.userId},assigned_by_user_id.eq.${parsed.userId}`);
+  if (
+    studentAssignmentsDeleteResult.error &&
+    !isRecoverableStudentAssignmentReadError(studentAssignmentsDeleteResult.error)
+  ) {
+    ensureNoError(studentAssignmentsDeleteResult, "Failed to clear student ward assignments");
+  }
 
   ensureNoError(
     await supabase
