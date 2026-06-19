@@ -148,7 +148,14 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
                     <h3 className="mt-1 line-clamp-2 text-base font-semibold text-foreground md:text-lg">
                       {patient.displayName}
                     </h3>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted">{patient.diagnosis}</p>
+                    <div className="mt-2 rounded-2xl border border-mint-200/80 bg-mint-50/80 px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mint-700/80">
+                        Diagnosis
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
+                        {patient.diagnosis}
+                      </p>
+                    </div>
                   </div>
                   <div className="rounded-2xl bg-mint-50 p-2 text-mint-700">
                     <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
