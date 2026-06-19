@@ -22,7 +22,7 @@ import type { UserProfile } from "@/lib/types";
 
 const navItems = [
   { href: "/wards", label: "Wards", mobileLabel: "Wards", icon: LayoutGrid },
-  { href: "/discharged", label: "Discharged", mobileLabel: "Archive", icon: Archive },
+  { href: "/discharged", label: "Discharged", mobileLabel: "Discharged", icon: Archive },
   { href: "/handover", label: "Handover", mobileLabel: "Handover", icon: ClipboardList },
   { href: "/my-tasks", label: "Task", mobileLabel: "Task", icon: Activity },
   { href: "/tasks/quick", label: "Quick task entry", mobileLabel: "Quick", icon: Plus },
@@ -39,7 +39,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="page-shell min-h-screen px-4 pb-28 pt-5 md:px-8 md:pb-10">
+    <div className="page-shell min-h-screen px-4 pb-32 pt-5 md:px-8 md:pb-10">
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6">
         <header className="glass-card flex items-center justify-between rounded-[28px] px-4 py-4 md:px-5">
           <div className="flex min-w-0 items-center gap-4">
@@ -77,28 +77,38 @@ export function AppShell({
         </header>
 
         {mobileMenuOpen ? (
-          <div className="glass-card rounded-[28px] p-4 md:hidden">
-            <div className="space-y-2">
+          <div className="glass-card rounded-[28px] border border-white/70 p-4 md:hidden">
+            <div className="mb-4 rounded-[22px] bg-white/65 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                Account actions
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{profile.name}</p>
+              <p className="text-sm text-muted">{labelForRole(profile.role)}</p>
+            </div>
+
+            <div className="space-y-2.5">
               {profile.role === "admin" ? (
                 <Link
                   href="/admin/wards"
-                  onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                    "flex items-center justify-between gap-3 rounded-[22px] px-4 py-3.5 text-sm font-semibold transition",
                     pathname.startsWith("/admin")
                       ? "bg-slate-900 text-white"
-                      : "bg-white/70 text-foreground",
+                      : "bg-white/80 text-foreground hover:bg-white",
                   )}
                 >
-                  <Shield className="h-4 w-4" />
-                  Admin control
+                  <span className="flex items-center gap-3">
+                    <Shield className="h-4 w-4" />
+                    Admin control
+                  </span>
+                  <span className="text-xs opacity-70">Open</span>
                 </Link>
               ) : null}
 
               <form action={logoutAction}>
                 <PendingSubmitButton
                   pendingLabel="Signing out..."
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500 bg-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-none hover:bg-rose-600"
+                  className="flex w-full items-center justify-center gap-2 rounded-[22px] border border-rose-500 bg-rose-500 px-4 py-3.5 text-sm font-semibold text-white shadow-none hover:bg-rose-600"
                 >
                   <LogOut className="h-4 w-4" />
                   Log out
@@ -156,7 +166,7 @@ export function AppShell({
         </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-4 z-30 mx-auto flex w-[min(820px,calc(100vw-24px))] items-center justify-between rounded-[30px] border border-white/65 bg-white/80 px-3 py-3 shadow-2xl shadow-emerald-950/10 backdrop-blur-2xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-2 z-30 mx-auto flex w-[min(820px,calc(100vw-20px))] items-center justify-between rounded-[28px] border border-white/65 bg-white/85 px-2.5 py-2 shadow-2xl shadow-emerald-950/10 backdrop-blur-2xl lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
@@ -164,8 +174,9 @@ export function AppShell({
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setMobileMenuOpen(false)}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold transition",
+                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition",
                 active ? "bg-mint-500 text-white" : "text-muted",
               )}
             >

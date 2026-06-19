@@ -41,7 +41,7 @@ export default async function WardsPage() {
       : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <RealtimeRefresh
         channel="wards-live"
         filters={[
@@ -59,21 +59,24 @@ export default async function WardsPage() {
         action={
           <Link
             href="/discharged"
-            className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+            className="inline-flex w-full items-center justify-center rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground md:w-auto"
           >
-            Discharged patients
+            Discharged
           </Link>
         }
+        headerClassName="flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between"
+        titleBlockClassName="max-w-2xl"
+        actionClassName="w-full md:w-auto"
       >
         {session.profile.role === "student" && !session.profile.wardAssignment ? (
-          <div className="mb-6">
+          <div className="mb-4 md:mb-6">
             <SetupNotice
               title="Student ward assignment required"
               body="รอ admin assign ward ให้ก่อน จึงจะเห็นข้อมูลงานในวอร์ดได้"
             />
           </div>
         ) : null}
-        <div className="grid gap-6 2xl:grid-cols-[1.7fr_0.9fr]">
+        <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.7fr_0.9fr]">
           <div>
             {summaries.length ? (
               <PatientCensus summaries={summaries} />
