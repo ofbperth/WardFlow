@@ -55,21 +55,27 @@ export function GlassPanel({
   action,
   children,
   className,
+  headerClassName,
+  titleBlockClassName,
+  actionClassName,
 }: {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  headerClassName?: string;
+  titleBlockClassName?: string;
+  actionClassName?: string;
 }) {
   return (
-    <section className={cn("glass-card rounded-[32px] p-5 md:p-6", className)}>
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
+    <section className={cn("glass-card rounded-[32px] p-4 md:p-6", className)}>
+      <div className={cn("mb-4 flex items-start justify-between gap-4 md:mb-5", headerClassName)}>
+        <div className={cn("min-w-0", titleBlockClassName)}>
           <h2 className="font-display text-xl font-semibold text-foreground">{title}</h2>
           {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
         </div>
-        {action}
+        {action ? <div className={cn("shrink-0", actionClassName)}>{action}</div> : null}
       </div>
       {children}
     </section>
@@ -120,21 +126,21 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
 
 export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-3.5 md:space-y-5">
       {summaries.map((summary) => (
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
           subtitle={`${summary.patients.length} คนในวอร์ด`}
           action={<Pill tone="bg-mint-500/15 text-mint-700">{summary.patients.length} ราย</Pill>}
-          className="rounded-[32px] px-5 py-5 md:px-6 md:py-6"
+          className="rounded-[30px] px-4 py-4 md:rounded-[32px] md:px-6 md:py-6"
         >
-          <div className="grid gap-3 md:grid-cols-2 xl:gap-4 2xl:grid-cols-3">
+          <div className="grid gap-2.5 md:grid-cols-2 xl:gap-4 2xl:grid-cols-3">
             {summary.patients.map((patient) => (
               <Link
                 key={patient.id}
                 href={`/patients/${patient.id}`}
-                className="group rounded-[24px] border border-white/70 bg-white/72 p-3.5 shadow-lg shadow-emerald-950/5 transition hover:-translate-y-0.5 hover:bg-white md:rounded-[26px] md:p-4"
+                className="group rounded-[22px] border border-white/70 bg-white/72 p-3 shadow-lg shadow-emerald-950/5 transition hover:-translate-y-0.5 hover:bg-white md:rounded-[26px] md:p-4"
               >
                 <div className="flex items-start justify-between gap-2.5">
                   <div className="min-w-0 flex-1">
@@ -175,27 +181,61 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
 }
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
-  const items = [
+  const primaryItems = [
     { label: "Ward", value: ward ?? "-" },
     { label: "Bed", value: patient.bed },
     { label: "Diagnosis", value: patient.diagnosis },
     { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
     { label: "Status", value: labelForPatientStatus(patient.status) },
+  ];
+  const secondaryItems = [
     { label: "Precaution", value: labelForPrecaution(patient.precaution) },
     { label: "Allergy", value: patient.allergy ?? "-" },
     { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
     { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
   ];
+  const allItems = [...primaryItems, ...secondaryItems];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-      {items.map((item) => (
-        <div key={item.label} className="rounded-[24px] bg-white/78 p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted">{item.label}</p>
-          <p className="mt-2 text-sm font-semibold text-foreground">{item.value}</p>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid gap-2.5 sm:grid-cols-2 md:hidden">
+        {primaryItems.map((item) => (
+          <div
+            key={item.label}
+            className={cn(
+              "rounded-[22px] bg-white/78 p-3.5",
+              item.label === "Diagnosis" ? "sm:col-span-2" : "",
+            )}
+          >
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{item.label}</p>
+            <p className="mt-1.5 text-sm font-semibold text-foreground">{item.value}</p>
+          </div>
+        ))}
+
+        <details className="sm:col-span-2 rounded-[22px] border border-white/70 bg-white/60 p-3.5">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-slate-700">
+            More patient details
+          </summary>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {secondaryItems.map((item) => (
+              <div key={item.label} className="rounded-2xl bg-white/78 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted">{item.label}</p>
+                <p className="mt-1.5 text-sm font-semibold text-foreground">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      </div>
+
+      <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        {allItems.map((item) => (
+          <div key={item.label} className="rounded-[24px] bg-white/78 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">{item.label}</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -218,7 +258,7 @@ export function ProblemCards({
   return (
     <div className="space-y-4">
       {active.map((problem, index) => (
-        <div key={problem.id} className="rounded-[24px] border border-white/70 bg-white/74 p-4">
+        <div key={problem.id} className="rounded-[22px] border border-white/70 bg-white/74 p-3.5 md:rounded-[24px] md:p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -254,7 +294,7 @@ export function ProblemCards({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 xl:grid-cols-3">
+          <div className="mt-3 grid gap-2.5 xl:mt-4 xl:gap-3 xl:grid-cols-3">
             <InfoBlock label="Plan" value={problem.plan ?? "-"} />
             <InfoBlock label="Pending" value={problem.pending ?? "-"} />
             <InfoBlock label="Watch out" value={problem.watchOut ?? "-"} />
@@ -411,7 +451,7 @@ function TaskCard({
             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
-          <div className="mt-2 space-y-1 text-sm text-muted">
+          <div className="mt-1.5 space-y-1 text-sm text-muted">
             <p>Assigned student: {task.ownerName ?? "Unassigned"}</p>
             {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
           </div>
@@ -422,14 +462,14 @@ function TaskCard({
       </div>
 
       {task.blockedReason ? (
-        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
           <AlertCircle className="h-4 w-4" />
           Blocked reason: {task.blockedReason}
         </div>
       ) : null}
 
       {!compact ? (
-        <details className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
+        <details className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 md:mt-4">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
             <span>Expand details</span>
             <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />

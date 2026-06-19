@@ -84,7 +84,7 @@ export default async function PatientPage({
     (session.profile.role === "student" && isAssignedWard);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <RealtimeRefresh
         channel={`patient-${patientId}`}
         filters={[
@@ -99,6 +99,7 @@ export default async function PatientPage({
       <GlassPanel
         title={`${bundle.patient.displayName} | Bed ${bundle.patient.bed}`}
         subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
+        className="px-4 py-4 md:px-6 md:py-6"
       >
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
@@ -200,8 +201,8 @@ export default async function PatientPage({
         ) : null}
       </GlassPanel>
 
-      <div className="grid gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
-        <div className="space-y-6">
+      <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
+        <div className="space-y-4 md:space-y-6">
           <GlassPanel title="Problem list" subtitle="Resolved items collapse by default.">
             <ProblemCards
               problems={bundle.problems}
@@ -225,7 +226,7 @@ export default async function PatientPage({
           </GlassPanel>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {canEditClinical ? (
             <GlassPanel title="Add problem" subtitle="บันทึกข้อมูลแบบสั้น ชัด และใช้ต่อใน handover ได้">
               <SectionLabel>Problem</SectionLabel>

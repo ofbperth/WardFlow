@@ -168,7 +168,7 @@ export function InlineEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-4 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100"
+        className="mt-3 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-mint-50 px-3.5 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100 md:mt-4 md:px-4"
       >
         <Icon className="h-4 w-4" />
         {buttonLabel}
@@ -177,7 +177,7 @@ export function InlineEditor({
   }
 
   return (
-    <div className="mt-4 rounded-[20px] bg-mint-50/70 p-4">
+    <div className="mt-3 rounded-[20px] bg-mint-50/70 p-4 md:mt-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-mint-700">{panelTitle}</p>
         <button
@@ -280,11 +280,11 @@ export function DischargeSummaryEditor({
 
   if (!open) {
     return (
-      <div className="mt-5 flex justify-end">
+      <div className="mt-3 flex justify-stretch md:mt-5 md:justify-end">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 md:w-auto md:border-amber-300 md:bg-amber-500 md:px-5 md:py-3 md:text-white md:shadow-lg md:shadow-amber-500/25 md:hover:bg-amber-600"
         >
           <TriangleAlert className="h-4 w-4" />
           Discharge patient
