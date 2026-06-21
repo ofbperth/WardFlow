@@ -21,9 +21,9 @@ import { getWardOverviewData } from "@/lib/wardflow";
 export default async function WardsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ toast?: string }>;
+  searchParams?: Promise<{ toast?: string; error?: string }>;
 }) {
-  const { toast } = (await searchParams) ?? {};
+  const { toast, error } = (await searchParams) ?? {};
   const sessionPromise = requireAppSession();
   const overviewPromise = sessionPromise.then((session) => getWardOverviewData(session));
   const [session, { summaries, profiles }] = await Promise.all([sessionPromise, overviewPromise]);
@@ -33,6 +33,7 @@ export default async function WardsPage({
     session.profile.role === "admin" || session.profile.role === "resident"
       ? summaries.map((summary) => summary.ward.id)
       : [session.profile.wardAssignment].filter(Boolean);
+  const defaultAdmitWardId = session.profile.wardAssignment ?? admitWardIds[0] ?? "";
   const singleVisibleWardId = summaries.length === 1 ? summaries[0]?.ward.id ?? null : null;
   const wardFilter =
     session.profile.role === "student" && session.profile.wardAssignment
@@ -82,6 +83,14 @@ export default async function WardsPage({
             />
           </div>
         ) : null}
+        {error === "patient-save-failed" ? (
+          <div className="mb-4 md:mb-6">
+            <SetupNotice
+              title="Unable to admit patient"
+              body="ระบบบันทึกผู้ป่วยไม่สำเร็จ ลองตรวจ ward ที่เลือกและสิทธิ์ของ account นี้ แล้วลองใหม่อีกครั้ง"
+            />
+          </div>
+        ) : null}
         <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.7fr_0.9fr]">
           <div>
             {summaries.length ? (
@@ -105,7 +114,7 @@ export default async function WardsPage({
                   <SectionLabel>New patient</SectionLabel>
                   <form action={savePatientWardAction} className="space-y-3">
                     <Field label="Ward">
-                      <SelectBox name="wardId" defaultValue={session.profile.wardAssignment ?? ""}>
+                      <SelectBox name="wardId" defaultValue={defaultAdmitWardId}>
                         <option value="" disabled>
                           เลือกวอร์ด
                         </option>

@@ -122,8 +122,21 @@ export async function deleteUserAdminAction(formData: FormData) {
 
 export async function savePatientWardAction(formData: FormData) {
   const session = await requireAppSession();
-  await savePatient(formData, session);
-  redirect("/wards?toast=patient-saved");
+
+  try {
+    await savePatient(formData, session);
+    redirect("/wards?toast=patient-saved");
+  } catch (error) {
+    console.error("savePatientWardAction failed", {
+      role: session.profile.role,
+      actorId: session.profile.id,
+      wardAssignment: session.profile.wardAssignment,
+      targetWardId:
+        typeof formData.get("wardId") === "string" ? String(formData.get("wardId")).trim() : null,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    redirect("/wards?error=patient-save-failed");
+  }
 }
 
 export async function savePatientDetailAction(formData: FormData) {
