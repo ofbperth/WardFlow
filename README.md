@@ -14,6 +14,7 @@ WardFlow is a mobile-first ward work management app for ward round, patient task
 
 - Google login via Supabase Auth
 - Role-based access for `admin`, `resident`, and `student`
+- `resident` has full operational access across all wards outside `/admin`
 - Ward census and patient detail flows
 - Problem list, task board, handover, and discharged directory
 - Discharge summary draft + Word export

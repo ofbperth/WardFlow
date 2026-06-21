@@ -22,10 +22,9 @@ export default async function WardsPage() {
   const overviewPromise = sessionPromise.then((session) => getWardOverviewData(session));
   const [session, { summaries, profiles }] = await Promise.all([sessionPromise, overviewPromise]);
   const canManagePatient =
-    session.profile.role === "admin" ||
-    (session.profile.role === "resident" && Boolean(session.profile.wardAssignment));
+    session.profile.role === "admin" || session.profile.role === "resident";
   const admitWardIds =
-    session.profile.role === "admin"
+    session.profile.role === "admin" || session.profile.role === "resident"
       ? summaries.map((summary) => summary.ward.id)
       : [session.profile.wardAssignment].filter(Boolean);
   const singleVisibleWardId = summaries.length === 1 ? summaries[0]?.ward.id ?? null : null;

@@ -536,7 +536,7 @@ function requireWardWriteAccess(session: SessionContext, wardId: string | null) 
     throw new Error("Missing ward assignment");
   }
 
-  if (session.profile.role === "admin") return;
+  if (canManagePatients(session)) return;
   if (session.profile.wardAssignment !== wardId) {
     throw new Error("Ward access denied");
   }

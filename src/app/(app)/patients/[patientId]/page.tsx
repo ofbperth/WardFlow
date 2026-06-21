@@ -74,9 +74,11 @@ export default async function PatientPage({
     : "";
 
   const isAssignedWard = session.profile.wardAssignment === bundle.patient.wardId;
-  const canManagePatient = session.profile.role === "admin" || (session.profile.role === "resident" && isAssignedWard);
+  const canManagePatient =
+    session.profile.role === "admin" || session.profile.role === "resident";
   const canEditClinical =
     session.profile.role === "admin" ||
+    session.profile.role === "resident" ||
     isAssignedWard;
   const canEditTaskWorkflow =
     session.profile.role === "admin" ||
