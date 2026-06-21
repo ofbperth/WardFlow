@@ -3,7 +3,7 @@ import {
   dischargePatientWithSummaryAction,
   reorderProblemAction,
   saveHandoverAction,
-  savePatientAction,
+  savePatientDetailAction,
   saveProblemAction,
   saveTaskAction,
   saveTaskUpdateAction,
@@ -107,7 +107,7 @@ export default async function PatientPage({
 
         {canManagePatient ? (
           <PatientEditor>
-            <form action={savePatientAction} className="space-y-3">
+            <form action={savePatientDetailAction} className="space-y-3">
               <input type="hidden" name="id" value={bundle.patient.id} />
               <input type="hidden" name="wardId" value={bundle.patient.wardId} />
               <input type="hidden" name="updatedAt" value={bundle.patient.lastUpdate} />

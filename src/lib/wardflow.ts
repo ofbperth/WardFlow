@@ -2390,7 +2390,7 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
   revalidateWardflowPaths();
 }
 
-export async function savePatient(formData: FormData, session: SessionContext) {
+export async function savePatient(formData: FormData, session: SessionContext): Promise<string> {
   const parsed = patientSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
@@ -2418,6 +2418,7 @@ export async function savePatient(formData: FormData, session: SessionContext) {
       parsed.responsibleDoctorId ?? null,
       session.profile.name,
     );
+    let savedPatientId = parsed.id ?? "";
 
     if (parsed.id) {
       const existing = patientById(store, parsed.id);
@@ -2443,6 +2444,7 @@ export async function savePatient(formData: FormData, session: SessionContext) {
         before,
         existing,
       );
+      savedPatientId = existing.id;
     } else {
       const patient: Patient = {
         id: nextId("patient"),
@@ -2464,11 +2466,12 @@ export async function savePatient(formData: FormData, session: SessionContext) {
       };
       store.patients.push(patient);
       addActivityToDemoStore(session, patient.id, "patient.created", "patient", patient.id, null, patient);
+      savedPatientId = patient.id;
     }
 
     await persistDemoStore();
     revalidateWardflowPaths(parsed.id);
-    return;
+    return savedPatientId;
   }
 
   const supabase = await getLiveClient();
@@ -2524,7 +2527,7 @@ export async function savePatient(formData: FormData, session: SessionContext) {
       },
     });
     revalidateWardflowPaths(parsed.id);
-    return;
+    return parsed.id;
   }
 
   const patientId = nextId("patient");
@@ -2559,6 +2562,7 @@ export async function savePatient(formData: FormData, session: SessionContext) {
   });
 
   revalidateWardflowPaths(patientId);
+  return patientId;
 }
 
 export async function dischargePatient(patientId: string, session: SessionContext) {

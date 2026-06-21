@@ -120,9 +120,16 @@ export async function deleteUserAdminAction(formData: FormData) {
   redirect("/admin/wards?toast=user-deleted");
 }
 
-export async function savePatientAction(formData: FormData) {
+export async function savePatientWardAction(formData: FormData) {
   const session = await requireAppSession();
   await savePatient(formData, session);
+  redirect("/wards?toast=patient-saved");
+}
+
+export async function savePatientDetailAction(formData: FormData) {
+  const session = await requireAppSession();
+  const patientId = await savePatient(formData, session);
+  redirect(`/patients/${patientId}`);
 }
 
 export async function saveProblemAction(formData: FormData) {

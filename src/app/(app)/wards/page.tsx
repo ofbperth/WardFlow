@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { savePatientAction } from "@/app/actions";
+import { savePatientWardAction } from "@/app/actions";
+import { AppFeedbackToast } from "@/components/app-feedback-toast";
 import { AdmitPatientCreator } from "@/components/form-feedback";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
@@ -17,7 +18,12 @@ import {
 import { requireAppSession } from "@/lib/auth";
 import { getWardOverviewData } from "@/lib/wardflow";
 
-export default async function WardsPage() {
+export default async function WardsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ toast?: string }>;
+}) {
+  const { toast } = (await searchParams) ?? {};
   const sessionPromise = requireAppSession();
   const overviewPromise = sessionPromise.then((session) => getWardOverviewData(session));
   const [session, { summaries, profiles }] = await Promise.all([sessionPromise, overviewPromise]);
@@ -41,6 +47,7 @@ export default async function WardsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <AppFeedbackToast toastKey={toast} />
       <RealtimeRefresh
         channel="wards-live"
         filters={[
@@ -96,7 +103,7 @@ export default async function WardsPage() {
               >
                 <AdmitPatientCreator>
                   <SectionLabel>New patient</SectionLabel>
-                  <form action={savePatientAction} className="space-y-3">
+                  <form action={savePatientWardAction} className="space-y-3">
                     <Field label="Ward">
                       <SelectBox name="wardId" defaultValue={session.profile.wardAssignment ?? ""}>
                         <option value="" disabled>

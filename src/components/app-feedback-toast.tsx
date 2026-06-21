@@ -9,6 +9,7 @@ const toastCopy: Record<string, string> = {
   "ward-deleted": "Ward deleted",
   "role-saved": "User updated",
   "user-deleted": "User deleted",
+  "patient-saved": "Patient saved",
   "quick-task-saved": "Quick tasks created",
 };
 
