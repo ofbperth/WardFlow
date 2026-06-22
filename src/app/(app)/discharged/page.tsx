@@ -34,6 +34,7 @@ export default async function DischargedPage({
   return (
     <div className="space-y-6">
       <GlassPanel
+        headingLevel={1}
         title="Discharged patients"
         subtitle="Search by ward or patient name, then open the read-only discharge summary from each card."
       >

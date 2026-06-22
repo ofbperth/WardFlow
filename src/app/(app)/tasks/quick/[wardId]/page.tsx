@@ -29,6 +29,7 @@ export default async function QuickTaskEntryWardPage({
       <AppFeedbackToast toastKey={query.toast} />
 
       <GlassPanel
+        headingLevel={1}
         title="Quick task entry"
         subtitle={
           wardSummary

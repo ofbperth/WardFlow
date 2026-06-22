@@ -34,6 +34,7 @@ export default async function MyTasksPage({
       <AppFeedbackToast toastKey={params.toast} />
 
       <GlassPanel
+        headingLevel={1}
         title="Task"
         subtitle="ดูงานทั้งหมดในวอร์ดที่รับผิดชอบ พร้อม quick action สำหรับ done, blocked, และ reassign"
       >

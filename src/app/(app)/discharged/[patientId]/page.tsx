@@ -33,6 +33,7 @@ export default async function DischargedPatientSummaryPage({
   return (
     <div className="space-y-6">
       <GlassPanel
+        headingLevel={1}
         title={`Discharge summary | ${bundle.patient.displayName}`}
         subtitle={`Bed ${bundle.patient.bed} | ${bundle.ward?.name ?? "-"}`}
         action={

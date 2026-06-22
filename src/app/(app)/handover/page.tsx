@@ -40,6 +40,7 @@ export default async function HandoverPage({
       />
 
       <GlassPanel
+        headingLevel={1}
         title="Handover mode"
         subtitle="เลือกวอร์ด แล้วคัดลอกข้อความ structured text ไปส่งต่อได้ทันที"
       >

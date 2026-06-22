@@ -21,6 +21,7 @@ export default async function AdminTaskTemplatesPage() {
     <div className="space-y-6">
       <AdminSectionTabs />
       <GlassPanel
+        headingLevel={1}
         title="Admin | Task templates"
         subtitle="ตั้ง template งานที่ใช้บ่อย เพื่อให้ทีมสร้าง task ได้เร็วและสม่ำเสมอ"
         action={

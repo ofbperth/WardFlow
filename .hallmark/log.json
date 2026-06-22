@@ -1,0 +1,10 @@
+[
+  {
+    "date": "2026-06-22",
+    "macrostructure": "Workbench",
+    "theme": "custom-hospital-green",
+    "enrichment": "none",
+    "brief": "WardFlow multi-page hospital-style redesign",
+    "scope": "app"
+  }
+]

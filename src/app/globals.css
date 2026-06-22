@@ -1,24 +1,31 @@
+/* Hallmark · genre: modern-minimal · macrostructure: design-system · design-system: design.md · designed-as-app */
 @import "tailwindcss";
 
 :root {
-  --background: #f6fffb;
-  --foreground: #173b37;
-  --surface: rgba(255, 255, 255, 0.58);
-  --surface-strong: rgba(255, 255, 255, 0.82);
-  --surface-border: rgba(90, 167, 149, 0.18);
-  --muted: #688b85;
-  --ring: #66b8a4;
-  --mint-50: #effcf7;
-  --mint-100: #dbf8ee;
-  --mint-200: #b5f0dd;
-  --mint-300: #85e0c8;
-  --mint-400: #57cab1;
-  --mint-500: #36af98;
-  --mint-600: #248978;
-  --mint-700: #1f6f62;
-  --danger: #dc6a72;
-  --warning: #f0a64d;
-  --shadow: 0 24px 64px rgba(41, 102, 91, 0.14);
+  --background: oklch(0.982 0.008 159);
+  --foreground: oklch(0.262 0.036 171);
+  --surface: oklch(0.993 0.004 160 / 0.94);
+  --surface-strong: oklch(0.998 0.002 160 / 0.98);
+  --surface-muted: oklch(0.968 0.011 160 / 0.92);
+  --surface-border: oklch(0.864 0.023 166 / 0.78);
+  --muted: oklch(0.52 0.025 171);
+  --muted-soft: oklch(0.6 0.018 171);
+  --ring: oklch(0.67 0.089 166);
+  --mint-50: oklch(0.984 0.01 160);
+  --mint-100: oklch(0.964 0.02 160);
+  --mint-200: oklch(0.927 0.034 163);
+  --mint-300: oklch(0.865 0.056 165);
+  --mint-400: oklch(0.781 0.081 166);
+  --mint-500: oklch(0.684 0.102 166);
+  --mint-600: oklch(0.584 0.092 168);
+  --mint-700: oklch(0.466 0.069 169);
+  --danger: oklch(0.637 0.147 24);
+  --warning: oklch(0.774 0.133 72);
+  --shadow: 0 16px 40px oklch(0.321 0.04 168 / 0.08);
+  --shadow-soft: 0 10px 24px oklch(0.321 0.03 168 / 0.05);
+  --radius-shell: 2rem;
+  --radius-panel: 1.5rem;
+  --radius-card: 1.1rem;
 }
 
 @theme inline {
@@ -26,8 +33,10 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-strong: var(--surface-strong);
+  --color-surface-muted: var(--surface-muted);
   --color-surface-border: var(--surface-border);
   --color-muted: var(--muted);
+  --color-muted-soft: var(--muted-soft);
   --color-ring: var(--ring);
   --color-mint-50: var(--mint-50);
   --color-mint-100: var(--mint-100);
@@ -49,18 +58,20 @@
 
 html {
   min-height: 100%;
+  overflow-x: clip;
   background:
-    radial-gradient(circle at top left, rgba(152, 241, 213, 0.72), transparent 32%),
-    radial-gradient(circle at right, rgba(191, 243, 229, 0.88), transparent 24%),
-    linear-gradient(180deg, #f4fff9 0%, #eef8f5 54%, #e7f6f1 100%);
+    radial-gradient(circle at top left, oklch(0.92 0.055 164 / 0.65), transparent 28%),
+    linear-gradient(180deg, oklch(0.989 0.006 159) 0%, oklch(0.974 0.01 159) 48%, oklch(0.962 0.013 159) 100%);
   color: var(--foreground);
 }
 
 body {
   min-height: 100vh;
+  overflow-x: clip;
   background: transparent;
   color: var(--foreground);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 a {
@@ -80,17 +91,17 @@ textarea {
 }
 
 .glass-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58));
+  background: linear-gradient(180deg, var(--surface-strong), var(--surface));
   border: 1px solid var(--surface-border);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(24px);
+  backdrop-filter: saturate(1.02) blur(10px);
 }
 
 .soft-grid {
   background-image:
-    linear-gradient(rgba(71, 134, 121, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(71, 134, 121, 0.06) 1px, transparent 1px);
-  background-size: 22px 22px;
+    linear-gradient(oklch(0.804 0.028 165 / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.804 0.028 165 / 0.35) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 .page-shell {
@@ -103,8 +114,18 @@ textarea {
   z-index: -1;
   content: "";
   background:
-    radial-gradient(circle at 10% 0%, rgba(103, 220, 184, 0.3), transparent 26%),
-    radial-gradient(circle at 92% 10%, rgba(108, 219, 217, 0.16), transparent 24%);
+    radial-gradient(circle at 8% 0%, oklch(0.9 0.052 165 / 0.46), transparent 24%),
+    radial-gradient(circle at 100% 8%, oklch(0.88 0.033 188 / 0.28), transparent 22%);
+}
+
+.panel-surface {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.clinical-divider {
+  border-color: oklch(0.874 0.02 166 / 0.9);
 }
 
 @keyframes toast-in {

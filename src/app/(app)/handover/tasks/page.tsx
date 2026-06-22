@@ -38,7 +38,11 @@ export default async function PendingTaskHandoverPage({
         ]}
       />
 
-      <GlassPanel title="Pending task handover" subtitle="รวมเฉพาะงานที่ยังไม่ done เพื่อส่งต่องานเป็นก้อนเดียว">
+      <GlassPanel
+        headingLevel={1}
+        title="Pending task handover"
+        subtitle="รวมเฉพาะงานที่ยังไม่ done เพื่อส่งต่องานเป็นก้อนเดียว"
+      >
         {data.blockedByMissingWard ? (
           <SetupNotice
             title="Student ward assignment required"

@@ -24,6 +24,7 @@ export default async function WardDetailPage({
   return (
     <div className="space-y-6">
       <GlassPanel
+        headingLevel={1}
         title={detail.ward.name}
         subtitle="Ward-scoped live board for round follow-up and patient drill-down."
         action={

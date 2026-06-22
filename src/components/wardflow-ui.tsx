@@ -5,7 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
-  Sparkles,
+  Cross,
 } from "lucide-react";
 import {
   cn,
@@ -54,6 +54,7 @@ export function GlassPanel({
   subtitle,
   action,
   children,
+  headingLevel = 2,
   className,
   headerClassName,
   titleBlockClassName,
@@ -63,17 +64,32 @@ export function GlassPanel({
   subtitle?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  headingLevel?: 1 | 2 | 3;
   className?: string;
   headerClassName?: string;
   titleBlockClassName?: string;
   actionClassName?: string;
 }) {
+  const HeadingTag = `h${headingLevel}` as "h1" | "h2" | "h3";
+
   return (
-    <section className={cn("glass-card rounded-[32px] p-4 md:p-6", className)}>
-      <div className={cn("mb-4 flex items-start justify-between gap-4 md:mb-5", headerClassName)}>
+    <section className={cn("glass-card rounded-[28px] p-4 md:p-6", className)}>
+      <div
+        className={cn(
+          "mb-4 flex items-start justify-between gap-4 border-b clinical-divider pb-4 md:mb-5",
+          headerClassName,
+        )}
+      >
         <div className={cn("min-w-0", titleBlockClassName)}>
-          <h2 className="font-display text-xl font-semibold text-foreground">{title}</h2>
-          {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+          <HeadingTag
+            className={cn(
+              "font-display font-semibold text-foreground",
+              headingLevel === 1 ? "text-[1.95rem] md:text-[2.35rem]" : "text-xl md:text-[1.55rem]",
+            )}
+          >
+            {title}
+          </HeadingTag>
+          {subtitle ? <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted">{subtitle}</p> : null}
         </div>
         {action ? <div className={cn("shrink-0", actionClassName)}>{action}</div> : null}
       </div>
@@ -84,10 +100,39 @@ export function GlassPanel({
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-      <Sparkles className="h-3.5 w-3.5" />
+    <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
+      <Cross className="h-3.5 w-3.5 text-mint-600" />
       {children}
     </div>
+  );
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+  className,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("glass-card rounded-[28px] px-4 py-5 md:px-6 md:py-6", className)}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0 max-w-4xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
+            WardFlow workspace
+          </p>
+          <h1 className="mt-2 font-display text-[1.95rem] font-semibold text-foreground md:text-[2.35rem]">
+            {title}
+          </h1>
+          {subtitle ? <p className="mt-2 text-sm leading-6 text-muted">{subtitle}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+    </section>
   );
 }
 
@@ -101,8 +146,13 @@ export function ExpandableFilters({
   className?: string;
 }) {
   return (
-    <details className={cn("mb-5 rounded-[24px] border border-white/70 bg-white/58 p-3.5", className)}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[20px] bg-white/80 px-4 py-3 text-sm font-semibold text-foreground marker:content-none">
+    <details
+      className={cn(
+        "mb-5 rounded-[22px] border clinical-divider bg-[var(--surface-muted)] p-3.5",
+        className,
+      )}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[18px] bg-white/88 px-4 py-3 text-sm font-semibold text-foreground marker:content-none">
         <span>{title}</span>
         <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
       </summary>
@@ -115,8 +165,8 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
-        tone ?? "bg-white/80 text-foreground",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold",
+        tone ?? "border-white/80 bg-white/88 text-foreground",
       )}
     >
       {children}
@@ -126,57 +176,60 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
 
 export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
   return (
-    <div className="space-y-3.5 md:space-y-5">
+    <div className="space-y-4 md:space-y-5">
       {summaries.map((summary) => (
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
           subtitle={`${summary.patients.length} คนในวอร์ด`}
-          action={<Pill tone="bg-mint-500/15 text-mint-700">{summary.patients.length} ราย</Pill>}
-          className="rounded-[30px] px-4 py-4 md:rounded-[32px] md:px-6 md:py-6"
+          action={
+            <Pill tone="border-mint-200 bg-mint-50 text-mint-700">{summary.patients.length} ราย</Pill>
+          }
+          className="rounded-[28px] px-4 py-4 md:px-6 md:py-6"
         >
           <div className="grid gap-2.5 md:grid-cols-2 xl:gap-4 2xl:grid-cols-3">
             {summary.patients.map((patient) => (
               <Link
                 key={patient.id}
                 href={`/patients/${patient.id}`}
-                className="group rounded-[22px] border border-white/70 bg-white/72 p-3 shadow-lg shadow-emerald-950/5 transition hover:-translate-y-0.5 hover:bg-white md:rounded-[26px] md:p-4"
+                className="group rounded-[20px] border clinical-divider bg-white p-4 shadow-sm transition hover:border-mint-300 hover:bg-mint-50/35"
               >
                 <div className="flex items-start justify-between gap-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
-                    <h3 className="mt-1 line-clamp-2 text-base font-semibold text-foreground md:text-lg">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
+                        Bed {patient.bed}
+                      </p>
+                      <Pill tone={statusTone(patient.status)}>
+                        {labelForPatientStatus(patient.status)}
+                      </Pill>
+                    </div>
+                    <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-foreground">
                       {patient.displayName}
                     </h3>
-                    <div className="mt-2 rounded-2xl border border-mint-200/80 bg-mint-50/80 px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mint-700/80">
-                        Diagnosis
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
-                        {patient.diagnosis}
-                      </p>
-                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-foreground/90">{patient.diagnosis}</p>
                   </div>
-                  <div className="rounded-2xl bg-mint-50 p-2 text-mint-700">
+                  <div className="rounded-full border clinical-divider bg-mint-50 p-2 text-mint-700">
                     <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
-                  <Pill tone="bg-amber-100 text-amber-700">{patient.pendingTaskCount} งานค้าง</Pill>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Pill tone="border-amber-200 bg-amber-50 text-amber-800">
+                    {patient.pendingTaskCount} งานค้าง
+                  </Pill>
                   {patient.blockedTaskCount > 0 ? (
-                    <Pill tone="bg-rose-100 text-rose-700">
+                    <Pill tone="border-rose-200 bg-rose-50 text-rose-700">
                       {patient.blockedTaskCount} งานติดปัญหา
                     </Pill>
                   ) : null}
                   {patient.lifecycle === "discharged" ? (
-                    <Pill tone="bg-slate-100 text-slate-600">Discharged</Pill>
+                    <Pill tone="border-slate-200 bg-slate-50 text-slate-600">Discharged</Pill>
                   ) : null}
                 </div>
 
-                <div className="mt-3 text-sm text-muted">
-                  <span className="line-clamp-2">{patient.responsibleDoctorName ?? "Unassigned"}</span>
+                <div className="mt-4 border-t clinical-divider pt-3 text-sm text-muted">
+                  <span className="line-clamp-2">Responsible: {patient.responsibleDoctorName ?? "Unassigned"}</span>
                 </div>
               </Link>
             ))}
@@ -210,24 +263,24 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
           <div
             key={item.label}
             className={cn(
-              "rounded-[22px] bg-white/78 p-3.5",
+              "rounded-[20px] border clinical-divider bg-white p-3.5",
               item.label === "Diagnosis" ? "sm:col-span-2" : "",
             )}
           >
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{item.label}</p>
-            <p className="mt-1.5 text-sm font-semibold text-foreground">{item.value}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-foreground">{item.value}</p>
           </div>
         ))}
 
-        <details className="sm:col-span-2 rounded-[22px] border border-white/70 bg-white/60 p-3.5">
+        <details className="sm:col-span-2 rounded-[20px] border clinical-divider bg-[var(--surface-muted)] p-3.5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-slate-700">
-            More patient details
+            Clinical details
           </summary>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {secondaryItems.map((item) => (
-              <div key={item.label} className="rounded-2xl bg-white/78 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted">{item.label}</p>
-                <p className="mt-1.5 text-sm font-semibold text-foreground">{item.value}</p>
+              <div key={item.label} className="rounded-[18px] border clinical-divider bg-white p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-foreground">{item.value}</p>
               </div>
             ))}
           </div>
@@ -236,9 +289,9 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
 
       <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {allItems.map((item) => (
-          <div key={item.label} className="rounded-[24px] bg-white/78 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted">{item.label}</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{item.value}</p>
+          <div key={item.label} className="rounded-[20px] border clinical-divider bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-foreground">{item.value}</p>
           </div>
         ))}
       </div>
@@ -265,14 +318,14 @@ export function ProblemCards({
   return (
     <div className="space-y-4">
       {active.map((problem, index) => (
-        <div key={problem.id} className="rounded-[22px] border border-white/70 bg-white/74 p-3.5 md:rounded-[24px] md:p-4">
+        <div key={problem.id} className="rounded-[22px] border clinical-divider bg-white p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-base font-semibold text-foreground">{problem.title}</p>
                 <Pill tone={statusTone(problem.status)}>{labelForProblemStatus(problem.status)}</Pill>
               </div>
-              <p className="mt-2 text-sm text-muted">{problem.keyData ?? "ยังไม่มีข้อมูลสำคัญ"}</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{problem.keyData ?? "ยังไม่มีข้อมูลสำคัญ"}</p>
             </div>
             <div className="flex items-center gap-2">
               {canEdit ? (
@@ -348,7 +401,7 @@ export function ProblemCards({
       ))}
 
       {resolved.length > 0 ? (
-        <details className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
+        <details className="rounded-[22px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-600">
             Resolved problems ({resolved.length})
           </summary>
@@ -449,7 +502,7 @@ function TaskCard({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-[24px] border border-white/70 bg-white/74 p-4">
+    <div className="rounded-[22px] border clinical-divider bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -469,14 +522,14 @@ function TaskCard({
       </div>
 
       {task.blockedReason ? (
-        <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="mt-2.5 flex items-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
           <AlertCircle className="h-4 w-4" />
           Blocked reason: {task.blockedReason}
         </div>
       ) : null}
 
       {!compact ? (
-        <details className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 md:mt-4">
+        <details className="mt-3 rounded-[20px] border border-slate-200/80 bg-slate-50/70 p-3 md:mt-4">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
             <span>Expand details</span>
             <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
@@ -484,7 +537,7 @@ function TaskCard({
 
           <div className="mt-4 space-y-4">
             {task.note ? (
-              <div className="rounded-2xl bg-white/80 px-3 py-2">
+              <div className="rounded-[18px] border clinical-divider bg-white px-3 py-2">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Note</p>
                 <p className="mt-1 text-sm text-foreground">{task.note}</p>
               </div>
@@ -493,7 +546,7 @@ function TaskCard({
             {task.updates.length > 0 ? (
               <div className="space-y-2">
                 {task.updates.slice(0, 3).map((update) => (
-                  <div key={update.id} className="rounded-2xl bg-mint-50/70 px-3 py-2">
+                  <div key={update.id} className="rounded-[18px] border border-mint-200 bg-mint-50/70 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                       <span>{update.createdByName}</span>
                       <span>{formatRelative(update.createdAt)}</span>
@@ -613,7 +666,7 @@ export function Timeline({ items }: { items: ActivityLog[] }) {
         <TimelineRow key={item.id} item={item} />
       ))}
       {remainingItems.length > 0 ? (
-        <details className="rounded-[24px] bg-slate-50/70 p-4">
+        <details className="rounded-[22px] border clinical-divider bg-slate-50/70 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-600">
             ดู activity เพิ่มเติม ({remainingItems.length})
           </summary>
@@ -630,8 +683,8 @@ export function Timeline({ items }: { items: ActivityLog[] }) {
 
 function TimelineRow({ item, compact = false }: { item: ActivityLog; compact?: boolean }) {
   return (
-    <div className={cn("flex gap-3 rounded-[24px] bg-white/74 p-4", compact && "p-3")}>
-      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-mint-500/12 text-sm font-semibold text-mint-700">
+    <div className={cn("flex gap-3 rounded-[22px] border clinical-divider bg-white p-4", compact && "p-3")}>
+      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[18px] bg-mint-50 text-sm font-semibold text-mint-700">
         {getInitials(item.actorName)}
       </div>
       <div className="min-w-0 flex-1">
@@ -663,7 +716,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                   patient.problems.some((problem) => problem.watchOut || problem.pending),
               )
               .map((patient) => (
-                <div key={patient.id} className="rounded-[28px] border border-white/70 bg-white/74 p-5">
+                <div key={patient.id} className="rounded-[24px] border clinical-divider bg-white p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
@@ -718,7 +771,7 @@ export function HandoverTextPanel({
       <textarea
         readOnly
         value={text}
-        className="min-h-72 w-full rounded-[24px] border border-white/70 bg-white px-4 py-4 text-sm text-foreground outline-none"
+        className="min-h-72 w-full rounded-[22px] border clinical-divider bg-white px-4 py-4 text-sm text-foreground outline-none"
       />
     </GlassPanel>
   );
@@ -735,7 +788,7 @@ export function TaskInbox({
     <div className="space-y-3">
       {items.map(({ task, patient }) => {
         const card = (
-          <div className="rounded-[24px] border border-white/70 bg-white/74 p-4 transition hover:-translate-y-0.5 hover:bg-white">
+          <div className="rounded-[22px] border clinical-divider bg-white p-4 transition hover:border-mint-300 hover:bg-mint-50/35">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -781,7 +834,7 @@ export function DischargedPatientList({
       {items.map(({ patient, ward, summary }) => (
         <div
           key={patient.id}
-          className="rounded-[28px] border border-white/70 bg-white/74 p-5 transition hover:bg-white"
+          className="rounded-[24px] border clinical-divider bg-white p-5 transition hover:border-mint-300 hover:bg-mint-50/35"
         >
           <Link
             href={`/discharged/${patient.id}`}
@@ -832,7 +885,12 @@ export function Field({
 }) {
   return (
     <label className={cn("block text-sm font-medium text-foreground", className)}>
-      <span className={cn("mb-1.5 block text-xs uppercase tracking-[0.14em] text-muted", labelClassName)}>
+      <span
+        className={cn(
+          "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted",
+          labelClassName,
+        )}
+      >
         {label}
       </span>
       {children}
@@ -845,7 +903,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "w-full rounded-2xl border border-white/70 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
+        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
         props.className,
       )}
     />
@@ -857,7 +915,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={cn(
-        "min-h-24 w-full rounded-2xl border border-white/70 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
+        "min-h-24 w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
         props.className,
       )}
     />
@@ -869,7 +927,7 @@ export function SelectBox(props: React.SelectHTMLAttributes<HTMLSelectElement>) 
     <select
       {...props}
       className={cn(
-        "w-full rounded-2xl border border-white/70 bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
+        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
         props.className,
       )}
     />
@@ -894,7 +952,7 @@ export function EmptyState({
   body: string;
 }) {
   return (
-    <div className="rounded-[28px] border border-dashed border-white/80 bg-white/60 p-8 text-center">
+    <div className="rounded-[24px] border border-dashed clinical-divider bg-white/70 p-8 text-center">
       <Clock3 className="mx-auto h-8 w-8 text-muted" />
       <h3 className="mt-3 font-display text-lg font-semibold text-foreground">{title}</h3>
       <p className="mt-2 text-sm text-muted">{body}</p>
@@ -910,7 +968,7 @@ export function SetupNotice({
   body: string;
 }) {
   return (
-    <div className="rounded-[28px] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+    <div className="rounded-[24px] border border-amber-200 bg-amber-50/85 p-4 text-sm text-amber-900">
       <p className="font-semibold">{title}</p>
       <p className="mt-2 leading-6">{body}</p>
     </div>
@@ -926,7 +984,7 @@ export function LoadingShell({
 }) {
   return (
     <div className="space-y-6">
-      <GlassPanel title={title} subtitle={subtitle}>
+      <GlassPanel title={title} subtitle={subtitle} headingLevel={1}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <SkeletonCard key={index} />
@@ -940,7 +998,7 @@ export function LoadingShell({
 export function LoginSkeleton() {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10">
-      <div className="glass-card soft-grid w-full overflow-hidden rounded-[40px] p-6 md:p-10">
+      <div className="glass-card soft-grid w-full overflow-hidden rounded-[36px] p-6 md:p-10">
         <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
             <SkeletonBlock className="h-5 w-32" />
@@ -951,7 +1009,7 @@ export function LoginSkeleton() {
               <SkeletonCard />
             </div>
           </div>
-          <div className="glass-card rounded-[32px] p-6">
+          <div className="glass-card rounded-[28px] p-6">
             <SkeletonBlock className="h-6 w-40" />
             <div className="mt-5 space-y-3">
               <SkeletonBlock className="h-14 w-full rounded-2xl" />
@@ -982,7 +1040,7 @@ export function TemplateCards({ templates }: { templates: TaskTemplate[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {templates.map((template) => (
-        <div key={template.id} className="rounded-[24px] bg-white/74 p-4">
+        <div key={template.id} className="rounded-[22px] border clinical-divider bg-white p-4">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-foreground">{template.title}</p>
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(template.type)}</Pill>

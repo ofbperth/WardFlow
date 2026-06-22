@@ -24,7 +24,7 @@ export function PendingSubmitButton({
       disabled={pending || props.disabled}
       aria-busy={pending}
       className={cn(
-        "inline-flex items-center justify-center rounded-full bg-mint-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600 disabled:cursor-not-allowed disabled:opacity-70",
+        "inline-flex items-center justify-center rounded-full border border-mint-600 bg-mint-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-mint-700 disabled:cursor-not-allowed disabled:opacity-70",
         className,
       )}
     >
@@ -68,7 +68,7 @@ export function ConfirmingSubmitButton({
         }
       }}
       className={cn(
-        "inline-flex items-center justify-center rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-600/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70",
+        "inline-flex items-center justify-center rounded-full border border-rose-700 bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-70",
         className,
       )}
     >
@@ -103,8 +103,10 @@ export function PendingGhostButton({
       disabled={pending}
       aria-busy={pending}
       className={cn(
-        "rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-70",
-        active ? "bg-mint-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+        "rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-70",
+        active
+          ? "border-mint-600 bg-mint-600 text-white"
+          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
         className,
       )}
     >
@@ -139,7 +141,7 @@ export function PendingIconButton({
       disabled={disabled || pending}
       aria-busy={pending}
       className={cn(
-        "rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-35",
+        "rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35",
         className,
       )}
       title={pending ? pendingLabel : undefined}
@@ -168,7 +170,7 @@ export function InlineEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-mint-50 px-3.5 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100 md:mt-4 md:px-4"
+        className="mt-4 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-white px-4 py-2.5 text-sm font-semibold text-mint-700 transition hover:bg-mint-50 md:px-4"
       >
         <Icon className="h-4 w-4" />
         {buttonLabel}
@@ -177,13 +179,13 @@ export function InlineEditor({
   }
 
   return (
-    <div className="mt-3 rounded-[20px] bg-mint-50/70 p-4 md:mt-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="mt-4 rounded-[24px] border clinical-divider bg-mint-50/65 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3">
         <p className="text-sm font-semibold text-mint-700">{panelTitle}</p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-full border border-mint-200 bg-white px-3 py-1.5 text-xs font-semibold text-mint-700"
+          className="rounded-full border border-mint-200 bg-white px-3 py-1.5 text-xs font-semibold text-mint-700 transition hover:bg-mint-50"
         >
           Cancel
         </button>
@@ -284,7 +286,7 @@ export function DischargeSummaryEditor({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 md:w-auto md:border-amber-300 md:bg-amber-500 md:px-5 md:py-3 md:text-white md:shadow-lg md:shadow-amber-500/25 md:hover:bg-amber-600"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-200 md:w-auto md:px-5 md:py-3"
         >
           <TriangleAlert className="h-4 w-4" />
           Discharge patient
@@ -294,13 +296,13 @@ export function DischargeSummaryEditor({
   }
 
   return (
-    <div className="mt-5 rounded-[20px] border border-amber-200 bg-amber-50/80 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/80 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-amber-200 pb-3">
         <p className="text-sm font-semibold text-amber-700">Discharge summary</p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700"
+          className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
         >
           Cancel
         </button>
@@ -360,7 +362,7 @@ export function DangerZone({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-[28px] border border-rose-200/80 bg-rose-50/70 p-5">
+    <div className="rounded-[28px] border border-rose-200/80 bg-rose-50/80 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl bg-rose-100 p-2 text-rose-700">
@@ -374,7 +376,7 @@ export function DangerZone({
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+          className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
         >
           {open ? "Hide danger actions" : "Open danger actions"}
         </button>
@@ -402,7 +404,7 @@ export function CopyTextButton({
         setTimeout(() => setCopied(false), 1500);
       }}
       className={cn(
-        "rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100",
+        "rounded-full border border-mint-200 bg-white px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-50",
         className,
       )}
     >

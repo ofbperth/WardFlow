@@ -18,6 +18,7 @@ export default async function QuickTaskEntryLandingPage({
       <AppFeedbackToast toastKey={params.toast} />
 
       <GlassPanel
+        headingLevel={1}
         title="Quick task entry"
         subtitle="เลือก ward จาก card ด้านล่าง แล้วเข้า quick task entry ของวอร์ดนั้นได้ทันที"
       >

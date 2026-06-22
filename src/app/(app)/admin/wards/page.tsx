@@ -35,6 +35,7 @@ export default async function AdminWardsPage({
       <AdminFeedbackToast toastKey={params.toast} />
       <AdminSectionTabs />
       <GlassPanel
+        headingLevel={1}
         title="Admin | Ward management"
         subtitle="Safer layout with collapsed edit actions and a separated danger zone."
         action={

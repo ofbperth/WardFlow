@@ -20,6 +20,7 @@ import {
   EmptyState,
   Field,
   GlassPanel,
+  PageHeader,
   ProblemCards,
   SectionLabel,
   SelectBox,
@@ -98,9 +99,14 @@ export default async function PatientPage({
         ]}
       />
 
+      <PageHeader
+        title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
+        subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)} · เปิดหน้านี้เพื่อจัดการปัญหา งาน และ handover ของผู้ป่วยรายนี้จากจุดเดียว`}
+      />
+
       <GlassPanel
-        title={`${bundle.patient.displayName} | Bed ${bundle.patient.bed}`}
-        subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
+        title="Patient summary"
+        subtitle="ข้อมูล patient core สำหรับ round, sign-out และการแก้ไขข้อมูลหลัก"
         className="px-4 py-4 md:px-6 md:py-6"
       >
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
@@ -158,20 +164,20 @@ export default async function PatientPage({
               <input type="hidden" name="patientId" value={bundle.patient.id} />
               <input type="hidden" name="patientUpdatedAt" value={bundle.patient.lastUpdate} />
               <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl bg-white/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Admit date</p>
+                <div className="rounded-[18px] border clinical-divider bg-white p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Admit date</p>
                   <p className="mt-2 text-sm text-foreground">
                     {formatDateTime(dischargeDraft.admitDate)}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Discharge date</p>
+                <div className="rounded-[18px] border clinical-divider bg-white p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Discharge date</p>
                   <p className="mt-2 text-sm text-foreground">
                     {formatDateTime(dischargeDraft.dischargeDate)}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                <div className="rounded-[18px] border clinical-divider bg-white p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                     Length of stay
                   </p>
                   <p className="mt-2 text-sm text-foreground">
