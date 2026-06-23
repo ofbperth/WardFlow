@@ -74,47 +74,39 @@ export function BulkTaskEntryBuilder({
   } as const;
 
   return (
-    <form action={submitAction} className="space-y-6">
+    <form action={submitAction} className="space-y-4">
       <input type="hidden" name="wardId" value={wardSummary.ward.id} />
 
-      <div className="grid gap-4 xl:grid-cols-[0.86fr_1.14fr]">
-        <div className="rounded-[28px] border clinical-divider bg-white p-5">
+      <div className="grid gap-3 xl:grid-cols-[0.86fr_1.14fr]">
+        <div className="rounded-[26px] border clinical-divider bg-white p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <SectionLabel>Ward focus</SectionLabel>
-              <h3 className="text-xl font-semibold text-foreground">{wardSummary.ward.name}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{wardSummary.ward.name}</h3>
             </div>
             <div className="rounded-full bg-mint-50 px-3 py-1.5 text-xs font-semibold text-mint-700">
               {wardSummary.patients.length} active
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            ใช้หน้านี้สำหรับยิงหลาย task ต่อ patient แบบไม่ต้องสลับ route และยังคง scope ตาม ward access เดิม
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
             <WorkbenchMiniCard
               icon={ClipboardList}
               label="Instant actions"
               value={`${instantTemplates.length} templates`}
-              note="ยิง task มาตรฐานได้ไวขึ้น"
             />
             <WorkbenchMiniCard
               icon={UserRound}
               label="Assignable staff"
               value={`${profiles.length} profiles`}
-              note="default owner ใช้ซ้ำได้ทั้งหน้า"
             />
           </div>
         </div>
 
-        <div className="rounded-[28px] border clinical-divider bg-white p-5">
+        <div className="rounded-[26px] border clinical-divider bg-white p-4">
           <SectionLabel>Default kit</SectionLabel>
-          <p className="max-w-2xl text-sm leading-6 text-muted">
-            ตั้งค่าที่ใช้บ่อยครั้งเดียว แล้วทุก row ใหม่จะ inherit ค่าเหล่านี้ก่อนแก้ราย patient
-          </p>
           <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <label className="block text-sm font-medium text-foreground">
-              <span className="mb-2 flex min-h-10 items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              <span className="mb-1.5 flex items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Responsible doctor
               </span>
               <SelectBox value={defaultOwnerId} onChange={(event) => setDefaultOwnerId(event.target.value)}>
@@ -128,7 +120,7 @@ export function BulkTaskEntryBuilder({
             </label>
 
             <label className="block text-sm font-medium text-foreground">
-              <span className="mb-2 flex min-h-10 items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              <span className="mb-1.5 flex items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Default priority
               </span>
               <SelectBox
@@ -142,7 +134,7 @@ export function BulkTaskEntryBuilder({
             </label>
 
             <label className="block text-sm font-medium text-foreground">
-              <span className="mb-2 flex min-h-10 items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              <span className="mb-1.5 flex items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Default type
               </span>
               <SelectBox
@@ -163,24 +155,23 @@ export function BulkTaskEntryBuilder({
         </div>
       </div>
 
-      <section className="space-y-4">
+      <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Patients in queue</p>
-            <h3 className="mt-1 text-xl font-semibold text-foreground">{wardSummary.ward.name}</h3>
-            <p className="mt-1 text-sm text-muted">เลือก patient แล้วเริ่มจาก template หรือเปิด row เปล่าเพื่อใส่รายละเอียดเอง</p>
+            <h3 className="mt-1 text-lg font-semibold text-foreground">{wardSummary.ward.name}</h3>
           </div>
-          <div className="rounded-full bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-foreground">
-            {wardSummary.patients.length} active patients
+          <div className="rounded-full bg-[var(--surface-muted)] px-3.5 py-1.5 text-sm font-semibold text-foreground">
+            {wardSummary.patients.length} active
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {wardSummary.patients.map((patient) => {
             const patientRows = rowsByPatient[patient.id] ?? [];
 
             return (
-              <div key={patient.id} className="rounded-[30px] border clinical-divider bg-white p-5">
+              <div key={patient.id} className="rounded-[26px] border clinical-divider bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -198,9 +189,9 @@ export function BulkTaskEntryBuilder({
                         </span>
                       ) : null}
                     </div>
-                    <h4 className="mt-3 text-[1.45rem] font-semibold text-foreground">{patient.displayName}</h4>
-                    <p className="mt-1 text-sm leading-6 text-muted">{patient.diagnosis}</p>
-                    <p className="mt-2 text-sm text-foreground/80">
+                    <h4 className="mt-2.5 text-[1.3rem] font-semibold text-foreground">{patient.displayName}</h4>
+                    <p className="mt-1 text-sm text-muted">{patient.diagnosis}</p>
+                    <p className="mt-1.5 text-sm text-foreground/80">
                       Responsible: {patient.responsibleDoctorName ?? "Unassigned"}
                     </p>
                   </div>
@@ -223,7 +214,7 @@ export function BulkTaskEntryBuilder({
                             ],
                           }))
                         }
-                        className="rounded-full border border-mint-200 bg-mint-50 px-3 py-1.5 text-xs font-semibold text-mint-700 transition hover:bg-mint-100"
+                        className="rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1.5 text-xs font-semibold text-mint-700 transition hover:bg-mint-100"
                       >
                         <span className="inline-flex items-center gap-1">
                           <Sparkles className="h-3.5 w-3.5" />
@@ -239,7 +230,7 @@ export function BulkTaskEntryBuilder({
                           [patient.id]: [...(current[patient.id] ?? []), makeDraftRow(patient.id, defaults)],
                         }))
                       }
-                      className="rounded-full border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-amber-50"
+                      className="rounded-full border border-amber-400 bg-white px-2.5 py-1.5 text-xs font-semibold text-foreground transition hover:bg-amber-50"
                     >
                       <span className="inline-flex items-center gap-1">
                         <Plus className="h-3.5 w-3.5" />
@@ -249,16 +240,11 @@ export function BulkTaskEntryBuilder({
                   </div>
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2.5">
                   {patientRows.map((row) => (
-                    <div key={row.id} className="rounded-[26px] border clinical-divider bg-[var(--surface)] p-4 md:p-5">
-                      <div className="mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Task row</p>
-                          <p className="mt-1 text-sm text-foreground/85">
-                            สร้างงานสำหรับ {patient.displayName} โดยใช้ defaults เป็นฐาน แล้วแก้เฉพาะ field ที่จำเป็น
-                          </p>
-                        </div>
+                    <div key={row.id} className="rounded-[22px] border clinical-divider bg-[var(--surface)] p-3.5 md:p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3 border-b clinical-divider pb-2.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Task row</p>
                         <button
                           type="button"
                           onClick={() =>
@@ -406,16 +392,15 @@ export function BulkTaskEntryBuilder({
                               }))
                             }
                             placeholder="Optional note"
-                            className="min-h-20"
+                            className="min-h-16"
                           />
                         </Field>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t clinical-divider pt-4">
-                        <p className="text-sm text-muted">ตรวจ title, owner, priority แล้วค่อย confirm เพื่อสร้าง task นี้ทันที</p>
+                      <div className="mt-3 flex justify-end border-t clinical-divider pt-3">
                         <PendingSubmitButton
                           pendingLabel="Creating..."
-                          className="bg-mint-600 px-4 py-2.5 text-sm shadow-none hover:bg-mint-700"
+                          className="bg-mint-600 px-4 py-2 text-sm shadow-none hover:bg-mint-700"
                           name="payload"
                           value={serializeRow(row)}
                         >
@@ -429,11 +414,8 @@ export function BulkTaskEntryBuilder({
                   ))}
 
                   {!patientRows.length ? (
-                    <div className="rounded-[24px] border border-dashed clinical-divider bg-[var(--surface-muted)] px-4 py-4">
-                      <p className="text-sm font-medium text-foreground">No task rows yet</p>
-                      <p className="mt-1 text-sm leading-6 text-muted">
-                        เริ่มจาก instant template ด้านบน หรือกด Add row เพื่อกรอกรายละเอียดเอง
-                      </p>
+                    <div className="rounded-[20px] border border-dashed clinical-divider bg-[var(--surface-muted)] px-4 py-3 text-sm font-medium text-foreground">
+                      No task rows yet
                     </div>
                   ) : null}
                 </div>
@@ -450,21 +432,18 @@ function WorkbenchMiniCard({
   icon: Icon,
   label,
   value,
-  note,
 }: {
   icon: typeof ClipboardList;
   label: string;
   value: string;
-  note: string;
 }) {
   return (
-    <div className="rounded-[22px] bg-[var(--surface-muted)] px-4 py-4">
+    <div className="rounded-[20px] bg-[var(--surface-muted)] px-4 py-3.5">
       <div className="flex items-center gap-2 text-muted">
         <Icon className="h-4 w-4 text-mint-600" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{label}</p>
       </div>
-      <p className="mt-2 text-base font-semibold text-foreground">{value}</p>
-      <p className="mt-1 text-sm leading-6 text-muted">{note}</p>
+      <p className="mt-2 text-base font-semibold leading-none text-foreground">{value}</p>
     </div>
   );
 }

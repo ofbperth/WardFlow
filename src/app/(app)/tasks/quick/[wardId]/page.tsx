@@ -32,11 +32,6 @@ export default async function QuickTaskEntryWardPage({
       <GlassPanel
         headingLevel={1}
         title="Quick task entry"
-        subtitle={
-          wardSummary
-            ? `สร้างหลาย task ใน ${wardSummary.ward.name} ได้ในหน้าเดียว พร้อม default assignment และ template ที่ใช้บ่อย`
-            : "สร้างหลาย task ได้เร็วขึ้นใน ward ที่ได้รับมอบหมาย"
-        }
         action={
           <Link
             href="/tasks/quick"
@@ -53,16 +48,15 @@ export default async function QuickTaskEntryWardPage({
             body="รอ admin assign ward ให้ก่อน จึงจะใช้ quick task entry ได้"
           />
         ) : wardSummary ? (
-          <div className="space-y-5">
-            <section className="grid gap-3 border-b clinical-divider pb-5 md:grid-cols-4">
-              <WardEntryMetric label="Selected ward" value={wardSummary.ward.name} note="workspace ที่กำลังแก้ไข" />
+          <div className="space-y-4">
+            <section className="grid gap-2.5 border-b clinical-divider pb-4 md:grid-cols-4">
+              <WardEntryMetric label="Selected ward" value={wardSummary.ward.name} />
               <WardEntryMetric
                 label="Patients"
                 value={`${wardSummary.patients.length}`}
-                note="active patients ใน scope ตอนนี้"
               />
-              <WardEntryMetric label="Templates" value={`${data.templates.length}`} note="เลือกใช้หรือยิงจาก instant action" />
-              <WardEntryMetric label="Assignable staff" value={`${profileCount}`} note="รายชื่อที่ assign ได้ใน ward นี้" />
+              <WardEntryMetric label="Templates" value={`${data.templates.length}`} />
+              <WardEntryMetric label="Assignable staff" value={`${profileCount}`} />
             </section>
 
             <BulkTaskEntryBuilder
@@ -81,17 +75,14 @@ export default async function QuickTaskEntryWardPage({
 function WardEntryMetric({
   label,
   value,
-  note,
 }: {
   label: string;
   value: string;
-  note: string;
 }) {
   return (
-    <div className="rounded-[24px] bg-[var(--surface-muted)] px-4 py-4">
+    <div className="rounded-[22px] bg-[var(--surface-muted)] px-4 py-3.5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
-      <p className="mt-2 text-base font-semibold text-foreground">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-muted">{note}</p>
+      <p className="mt-2 text-lg font-semibold leading-none text-foreground">{value}</p>
     </div>
   );
 }
