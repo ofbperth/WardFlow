@@ -242,11 +242,29 @@ export function TaskEditor({
 
 export function PatientEditor({
   children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
 }: {
   children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
 }) {
   return (
-    <InlineEditor buttonLabel="Edit patient detail" panelTitle="Edit patient detail">
+    <InlineEditor
+      buttonLabel="Edit patient detail"
+      panelTitle="Edit patient detail"
+      className={className}
+      buttonClassName={buttonClassName}
+      panelClassName={panelClassName}
+      headerClassName={headerClassName}
+      contentClassName={contentClassName}
+    >
       {children}
     </InlineEditor>
   );
@@ -254,11 +272,30 @@ export function PatientEditor({
 
 export function ProblemCreator({
   children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
 }: {
   children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
 }) {
   return (
-    <InlineEditor buttonLabel="Create problem" panelTitle="Create problem" buttonIcon="create">
+    <InlineEditor
+      buttonLabel="Create problem"
+      panelTitle="Create problem"
+      buttonIcon="create"
+      className={className}
+      buttonClassName={buttonClassName}
+      panelClassName={panelClassName}
+      headerClassName={headerClassName}
+      contentClassName={contentClassName}
+    >
       {children}
     </InlineEditor>
   );
@@ -266,11 +303,30 @@ export function ProblemCreator({
 
 export function TaskCreator({
   children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
 }: {
   children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
 }) {
   return (
-    <InlineEditor buttonLabel="Create task" panelTitle="Create task" buttonIcon="create">
+    <InlineEditor
+      buttonLabel="Create task"
+      panelTitle="Create task"
+      buttonIcon="create"
+      className={className}
+      buttonClassName={buttonClassName}
+      panelClassName={panelClassName}
+      headerClassName={headerClassName}
+      contentClassName={contentClassName}
+    >
       {children}
     </InlineEditor>
   );
@@ -309,18 +365,31 @@ export function AdmitPatientCreator({
 
 export function DischargeSummaryEditor({
   children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
 }: {
   children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   if (!open) {
     return (
-      <div className="mt-3 flex justify-stretch md:mt-5 md:justify-end">
+      <div className={cn("mt-3 flex justify-stretch md:mt-5 md:justify-end", className)}>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-200 md:w-auto md:px-5 md:py-3"
+          className={cn(
+            "inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-200 md:w-auto md:px-5 md:py-3",
+            buttonClassName,
+          )}
         >
           <TriangleAlert className="h-4 w-4" />
           Discharge patient
@@ -330,8 +399,8 @@ export function DischargeSummaryEditor({
   }
 
   return (
-    <div className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/80 p-4">
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-amber-200 pb-3">
+    <div className={cn("mt-5 rounded-[24px] border border-amber-200 bg-amber-50/80 p-4", className, panelClassName)}>
+      <div className={cn("mb-4 flex items-center justify-between gap-3 border-b border-amber-200 pb-3", headerClassName)}>
         <p className="text-sm font-semibold text-amber-700">Discharge summary</p>
         <button
           type="button"
@@ -342,6 +411,7 @@ export function DischargeSummaryEditor({
         </button>
       </div>
       <div
+        className={contentClassName}
         onSubmit={() => {
           setOpen(false);
         }}
