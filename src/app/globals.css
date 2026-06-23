@@ -34,12 +34,6 @@ body {
 
 html {
   --mobile-bottom-nav-height: 6rem;
-  --mobile-bottom-nav-offset: 0.75rem;
-  --mobile-bottom-nav-buffer: 1.5rem;
-  --mobile-bottom-nav-clearance: calc(
-    var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-offset) + var(--mobile-bottom-nav-buffer) +
-      env(safe-area-inset-bottom)
-  );
   background:
     radial-gradient(circle at top left, oklch(0.96 0.012 200 / 0.45), transparent 28%),
     linear-gradient(180deg, var(--color-paper) 0%, var(--color-paper-2) 100%);
@@ -106,13 +100,18 @@ summary {
 .app-canvas {
   min-height: 100vh;
   padding: 1rem;
-  scroll-padding-bottom: calc(var(--mobile-bottom-nav-clearance) + 1rem);
+  scroll-padding-bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom) + 1rem);
 }
 
 .app-shell-frame {
   margin: 0 auto;
   width: 100%;
   max-width: 1580px;
+}
+
+.mobile-bottom-dock {
+  background:
+    linear-gradient(180deg, oklch(0.985 0.004 200 / 0) 0%, oklch(0.985 0.004 200 / 0.92) 22%, var(--color-paper) 100%);
 }
 
 .glass-card,

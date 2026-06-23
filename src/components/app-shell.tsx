@@ -39,8 +39,8 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="page-shell app-canvas pb-[calc(var(--mobile-bottom-nav-clearance)+1.5rem)] md:pb-8">
-      <div className="app-shell-frame flex flex-col gap-4 md:gap-6">
+    <div className="page-shell app-canvas md:pb-8">
+      <div className="app-shell-frame flex min-h-[calc(100vh-2rem)] flex-col gap-4 md:min-h-[calc(100vh-3rem)] md:gap-6">
         <header className="app-panel px-4 py-4 md:px-6 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-4">
@@ -142,7 +142,7 @@ export function AppShell({
           </div>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6">
+        <div className="grid flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6">
           <aside className="hidden lg:block">
             <div className="app-panel sticky top-6 p-4">
               <div className="panel-accent rounded-[22px] px-4 py-4">
@@ -199,28 +199,30 @@ export function AppShell({
 
           <main className="min-w-0">{children}</main>
         </div>
-      </div>
 
-      <nav className="app-panel fixed inset-x-0 bottom-[max(var(--mobile-bottom-nav-offset),env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-[min(760px,calc(100vw-18px))] items-center justify-between px-2 py-2 lg:hidden">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className={cn(
-                "nav-chip flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-1.5 py-2 text-[10px] font-semibold",
-                active && "nav-chip-active",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.mobileLabel}
-            </Link>
-          );
-        })}
-      </nav>
+        <div className="mobile-bottom-dock sticky bottom-0 z-30 mt-4 px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
+          <nav className="app-panel mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-full max-w-[760px] items-center justify-between px-2 py-2 shadow-[0_-10px_30px_rgba(15,23,42,0.06)]">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "nav-chip flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-1.5 py-2 text-[10px] font-semibold",
+                    active && "nav-chip-active",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.mobileLabel}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
     </div>
   );
 }
