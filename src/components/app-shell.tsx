@@ -40,7 +40,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="page-shell min-h-screen px-3 pb-28 pt-4 md:px-6 md:pb-10 md:pt-6">
+    <div className="page-shell min-h-screen px-3 pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-4 md:px-6 md:pb-10 md:pt-6">
       <div className="mx-auto flex w-full max-w-[1580px] flex-col gap-4 md:gap-6">
         <header className="glass-card rounded-[30px] px-4 py-4 md:px-6">
           <div className="flex items-center justify-between gap-4">
@@ -194,7 +194,7 @@ export function AppShell({
         </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-3 z-30 mx-auto flex w-[min(780px,calc(100vw-18px))] items-center justify-between rounded-[24px] border clinical-divider bg-white/94 px-2 py-2 shadow-xl shadow-emerald-950/10 backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex w-[min(780px,calc(100vw-18px))] items-center justify-between rounded-[24px] border clinical-divider bg-white/94 px-2 py-2 shadow-xl shadow-emerald-950/10 backdrop-blur-xl lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);

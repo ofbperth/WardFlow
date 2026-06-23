@@ -156,11 +156,21 @@ export function InlineEditor({
   panelTitle,
   buttonIcon = "edit",
   children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
 }: {
   buttonLabel: string;
   panelTitle: string;
   buttonIcon?: "edit" | "create";
   children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const Icon = buttonIcon === "create" ? Plus : Pencil;
@@ -170,7 +180,11 @@ export function InlineEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-4 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-white px-4 py-2.5 text-sm font-semibold text-mint-700 transition hover:bg-mint-50 md:px-4"
+        className={cn(
+          "mt-4 inline-flex items-center gap-2 rounded-full border border-mint-200 bg-white px-4 py-2.5 text-sm font-semibold text-mint-700 transition hover:bg-mint-50 md:px-4",
+          className,
+          buttonClassName,
+        )}
       >
         <Icon className="h-4 w-4" />
         {buttonLabel}
@@ -179,8 +193,8 @@ export function InlineEditor({
   }
 
   return (
-    <div className="mt-4 rounded-[24px] border clinical-divider bg-mint-50/65 p-4">
-      <div className="mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3">
+    <div className={cn("mt-4 rounded-[24px] border clinical-divider bg-mint-50/65 p-4", className, panelClassName)}>
+      <div className={cn("mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3", headerClassName)}>
         <p className="text-sm font-semibold text-mint-700">{panelTitle}</p>
         <button
           type="button"
@@ -191,6 +205,7 @@ export function InlineEditor({
         </button>
       </div>
       <div
+        className={contentClassName}
         onSubmit={() => {
           setOpen(false);
         }}
@@ -263,11 +278,30 @@ export function TaskCreator({
 
 export function AdmitPatientCreator({
   children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
 }: {
   children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
 }) {
   return (
-    <InlineEditor buttonLabel="Admit patient" panelTitle="Admit patient" buttonIcon="create">
+    <InlineEditor
+      buttonLabel="Admit patient"
+      panelTitle="Admit patient"
+      buttonIcon="create"
+      className={className}
+      buttonClassName={buttonClassName}
+      panelClassName={panelClassName}
+      headerClassName={headerClassName}
+      contentClassName={contentClassName}
+    >
       {children}
     </InlineEditor>
   );

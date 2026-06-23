@@ -174,7 +174,13 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
   );
 }
 
-export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
+export function PatientCensus({
+  summaries,
+  renderWardFooter,
+}: {
+  summaries: WardSummary[];
+  renderWardFooter?: (summary: WardSummary) => React.ReactNode;
+}) {
   return (
     <div className="space-y-4 md:space-y-5">
       {summaries.map((summary) => (
@@ -234,6 +240,11 @@ export function PatientCensus({ summaries }: { summaries: WardSummary[] }) {
               </Link>
             ))}
           </div>
+          {renderWardFooter ? (
+            <div className="mt-4 flex justify-end border-t clinical-divider pt-4">
+              {renderWardFooter(summary)}
+            </div>
+          ) : null}
         </GlassPanel>
       ))}
     </div>

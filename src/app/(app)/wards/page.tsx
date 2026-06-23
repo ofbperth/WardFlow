@@ -34,7 +34,6 @@ export default async function WardsPage({
     session.profile.role === "admin" || session.profile.role === "resident"
       ? summaries.map((summary) => summary.ward.id)
       : [session.profile.wardAssignment].filter(Boolean);
-  const defaultAdmitWardId = session.profile.wardAssignment ?? admitWardIds[0] ?? "";
   const singleVisibleWardId = summaries.length === 1 ? summaries[0]?.ward.id ?? null : null;
   const wardFilter =
     session.profile.role === "student" && session.profile.wardAssignment
@@ -46,6 +45,7 @@ export default async function WardsPage({
     session.profile.role === "student" && session.profile.wardAssignment
       ? `ward_id=eq.${session.profile.wardAssignment}`
       : undefined;
+  const admitEligibleSummaries = summaries.filter((summary) => admitWardIds.includes(summary.ward.id));
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -63,7 +63,7 @@ export default async function WardsPage({
 
       <PageHeader
         title="Ward overview"
-        subtitle="ดูผู้ป่วยทั้งหมดในวอร์ดแบบอ่านเร็ว เห็นสถานะสำคัญทันที และเปิดต่อไปยัง patient workspace ได้โดยไม่ต้องไล่หลายชั้น"
+        subtitle="Scan every ward quickly, spot key status at a glance, and jump into the patient workspace without extra steps."
         action={
           <Link
             href="/discharged"
@@ -77,101 +77,104 @@ export default async function WardsPage({
       {session.profile.role === "student" && !session.profile.wardAssignment ? (
         <SetupNotice
           title="Student ward assignment required"
-          body="รอ admin assign ward ให้ก่อน จึงจะเห็นข้อมูลงานในวอร์ดได้"
+          body="Wait for an admin to assign a ward before ward data becomes visible here."
         />
       ) : null}
 
       {error === "patient-save-failed" ? (
         <SetupNotice
           title="Unable to admit patient"
-          body="ระบบบันทึกผู้ป่วยไม่สำเร็จ ลองตรวจ ward ที่เลือกและสิทธิ์ของ account นี้ แล้วลองใหม่อีกครั้ง"
+          body="The admit could not be saved. Check the selected ward and this account's permission, then try again."
         />
       ) : null}
 
-      <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.7fr_0.9fr]">
-        <div>
-          {summaries.length ? (
-            <PatientCensus summaries={summaries} />
-          ) : (
-            <EmptyState
-              title="No wards visible yet"
-              body="สร้างวอร์ดในหน้า admin หรือ assign user นี้เข้าวอร์ดก่อน"
-            />
-          )}
-        </div>
+      {summaries.length ? (
+        <PatientCensus
+          summaries={summaries}
+          renderWardFooter={
+            canManagePatient
+              ? (summary) => (
+                  <AdmitPatientCreator
+                    className="mt-0 w-full rounded-[22px] bg-mint-50/80"
+                    buttonClassName="mt-0 ml-auto"
+                    panelClassName="mt-0 w-full"
+                    headerClassName="items-start"
+                    contentClassName="space-y-3"
+                  >
+                    <SectionLabel>New patient</SectionLabel>
+                    <form action={savePatientWardAction} className="space-y-3">
+                      <input type="hidden" name="wardId" value={summary.ward.id} />
+                      {admitEligibleSummaries.length > 1 ? (
+                        <Field label="Ward">
+                          <SelectBox name="wardId" defaultValue={summary.ward.id}>
+                            {admitEligibleSummaries.map((item) => (
+                              <option key={item.ward.id} value={item.ward.id}>
+                                {item.ward.name}
+                              </option>
+                            ))}
+                          </SelectBox>
+                        </Field>
+                      ) : null}
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <Field label="Bed">
+                          <TextInput name="bed" placeholder="12" required />
+                        </Field>
+                        <Field label="Display name" className="md:col-span-2">
+                          <TextInput name="displayName" placeholder="S. Woranit" required />
+                        </Field>
+                      </div>
+                      <Field label="Diagnosis">
+                        <TextInput name="diagnosis" placeholder="Pneumonia with AKI" required />
+                      </Field>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Field label="Precaution">
+                          <SelectBox name="precaution" defaultValue="none">
+                            <option value="none">None</option>
+                            <option value="contact">Contact</option>
+                            <option value="droplet">Droplet</option>
+                            <option value="airborne">Airborne</option>
+                          </SelectBox>
+                        </Field>
+                        <Field label="Status">
+                          <SelectBox name="status" defaultValue="stable">
+                            <option value="stable">Stable</option>
+                            <option value="watch">Watch</option>
+                            <option value="critical">Critical</option>
+                          </SelectBox>
+                        </Field>
+                        <Field label="Responsible">
+                          <SelectBox name="responsibleDoctorId" defaultValue={session.profile.id}>
+                            <StaffOptions profiles={profiles} />
+                          </SelectBox>
+                        </Field>
+                      </div>
+                      <div className="flex justify-end">
+                        <SubmitButton>Admit patient</SubmitButton>
+                      </div>
+                    </form>
+                  </AdmitPatientCreator>
+                )
+              : undefined
+          }
+        />
+      ) : (
+        <EmptyState
+          title="No wards visible yet"
+          body="Create a ward in admin or assign this user into a ward first."
+        />
+      )}
 
-        <div className="space-y-4">
-          {canManagePatient ? (
-            <GlassPanel
-              title="Admit patient"
-              subtitle="รับผู้ป่วยใหม่เข้าวอร์ดจากหน้าหลักได้ทันที โดยเก็บข้อมูลสำคัญเฉพาะที่ทีมต้องใช้ต่อ"
-              className="h-fit"
-            >
-              <AdmitPatientCreator>
-                <SectionLabel>New patient</SectionLabel>
-                <form action={savePatientWardAction} className="space-y-3">
-                  <Field label="Ward">
-                    <SelectBox name="wardId" defaultValue={defaultAdmitWardId}>
-                      <option value="" disabled>
-                        เลือกวอร์ด
-                      </option>
-                      {summaries
-                        .filter((summary) => admitWardIds.includes(summary.ward.id))
-                        .map((summary) => (
-                          <option key={summary.ward.id} value={summary.ward.id}>
-                            {summary.ward.name}
-                          </option>
-                        ))}
-                    </SelectBox>
-                  </Field>
-                  <Field label="เตียง">
-                    <TextInput name="bed" placeholder="12" required />
-                  </Field>
-                  <Field label="ชื่อที่ใช้แสดง">
-                    <TextInput name="displayName" placeholder="S. Woranit" required />
-                  </Field>
-                  <Field label="Diagnosis">
-                    <TextInput name="diagnosis" placeholder="Pneumonia with AKI" required />
-                  </Field>
-                  <Field label="Precaution">
-                    <SelectBox name="precaution" defaultValue="none">
-                      <option value="none">None</option>
-                      <option value="contact">Contact</option>
-                      <option value="droplet">Droplet</option>
-                      <option value="airborne">Airborne</option>
-                    </SelectBox>
-                  </Field>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Status">
-                      <SelectBox name="status" defaultValue="stable">
-                        <option value="stable">Stable</option>
-                        <option value="watch">Watch</option>
-                        <option value="critical">Critical</option>
-                      </SelectBox>
-                    </Field>
-                    <Field label="Responsible">
-                      <SelectBox name="responsibleDoctorId" defaultValue={session.profile.id}>
-                        <StaffOptions profiles={profiles} />
-                      </SelectBox>
-                    </Field>
-                  </div>
-                  <SubmitButton>Admit patient</SubmitButton>
-                </form>
-              </AdmitPatientCreator>
-            </GlassPanel>
-          ) : (
-            <GlassPanel
-              title="Student access"
-              subtitle="Student เพิ่ม task, problem list, handover และแก้ไขรายการเหล่านี้ได้จากหน้า patient"
-              className="h-fit"
-            >
-              <p className="text-sm leading-6 text-muted">
-                การรับผู้ป่วยเข้าและการจำหน่ายผู้ป่วย จะทำได้เฉพาะ Resident และ Admin
-              </p>
-            </GlassPanel>
-          )}
-        </div>
-      </div>
+      {!canManagePatient ? (
+        <GlassPanel
+          title="Student access"
+          subtitle="Students can add tasks, problem lists, and handover updates from the patient page."
+          className="h-fit"
+        >
+          <p className="text-sm leading-6 text-muted">
+            Admitting and discharging patients remains limited to Resident and Admin roles.
+          </p>
+        </GlassPanel>
+      ) : null}
     </div>
   );
 }
