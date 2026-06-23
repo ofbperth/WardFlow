@@ -39,7 +39,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="page-shell app-canvas pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8">
+    <div className="page-shell app-canvas pb-[calc(var(--mobile-bottom-nav-clearance)+1rem)] md:pb-8">
       <div className="app-shell-frame flex flex-col gap-4 md:gap-6">
         <header className="app-panel px-4 py-4 md:px-6 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -201,7 +201,7 @@ export function AppShell({
         </div>
       </div>
 
-      <nav className="app-panel fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex w-[min(760px,calc(100vw-18px))] items-center justify-between px-2 py-2 lg:hidden">
+      <nav className="app-panel fixed inset-x-0 bottom-[max(var(--mobile-bottom-nav-offset),env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-[min(760px,calc(100vw-18px))] items-center justify-between px-2 py-2 lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
