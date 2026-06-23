@@ -39,11 +39,7 @@ export default async function HandoverPage({
         ]}
       />
 
-      <GlassPanel
-        headingLevel={1}
-        title="Handover mode"
-        subtitle="เลือกวอร์ด แล้วคัดลอกข้อความ structured text ไปส่งต่อได้ทันที"
-      >
+      <GlassPanel headingLevel={1} title="Handover mode">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <ExpandableFilters title="Filter handover" className="w-full md:max-w-sm">
             <form className="grid gap-3">
@@ -71,20 +67,14 @@ export default async function HandoverPage({
 
         {session.profile.role === "student" && !session.profile.wardAssignment ? (
           <div className="mb-5">
-            <SetupNotice
-              title="Student ward assignment required"
-              body="รอ admin assign ward ให้ก่อน จึงจะเห็น handover ได้"
-            />
+            <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
           </div>
         ) : null}
 
         {selectedBundles.length ? (
           <HandoverCards bundles={selectedBundles} />
         ) : (
-          <EmptyState
-            title="Nothing to hand over"
-            body="อาจยังไม่มีข้อมูลในวอร์ดที่เลือก หรือยังไม่มีผู้ป่วยที่ต้องส่งต่อ"
-          />
+          <EmptyState title="Nothing to hand over" body="ยังไม่มีรายการใน scope นี้" />
         )}
       </GlassPanel>
 

@@ -18,12 +18,7 @@ export default async function DischargedPatientSummaryPage({
   ]);
 
   if (!bundle) {
-    return (
-      <EmptyState
-        title="Patient not found"
-        body="This discharged patient is unavailable or you do not have access to the ward."
-      />
-    );
+    return <EmptyState title="Patient not found" body="Unavailable in your current scope." />;
   }
 
   if (bundle.patient.lifecycle !== "discharged") {
@@ -35,7 +30,6 @@ export default async function DischargedPatientSummaryPage({
       <GlassPanel
         headingLevel={1}
         title={`Discharge summary | ${bundle.patient.displayName}`}
-        subtitle={`Bed ${bundle.patient.bed} | ${bundle.ward?.name ?? "-"}`}
         action={
           payload ? (
             <a
@@ -80,10 +74,7 @@ export default async function DischargedPatientSummaryPage({
             <SummaryRow label="Created at" value={formatDateTime(payload.summary.createdAt)} />
           </div>
         ) : (
-          <EmptyState
-            title="No discharge summary yet"
-            body="This patient has been discharged, but no discharge summary has been generated for this record."
-          />
+          <EmptyState title="No discharge summary yet" />
         )}
       </GlassPanel>
     </div>

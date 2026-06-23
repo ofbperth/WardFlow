@@ -33,11 +33,7 @@ export default async function DischargedPage({
 
   return (
     <div className="space-y-6">
-      <GlassPanel
-        headingLevel={1}
-        title="Discharged patients"
-        subtitle="Search by ward or patient name, then open the read-only discharge summary from each card."
-      >
+      <GlassPanel headingLevel={1} title="Discharged patients">
         <ExpandableFilters title="Filter discharged patients">
           <form className="grid gap-3 rounded-[24px] bg-white/70 p-4 md:grid-cols-[1fr_1fr_auto]">
             <Field label="Ward">
@@ -99,10 +95,7 @@ export default async function DischargedPage({
               </div>
             </>
           ) : (
-            <EmptyState
-              title="No discharged patients yet"
-              body="Discharged patients will appear here automatically after Resident or Admin completes the discharge flow."
-            />
+            <EmptyState title="No discharged patients yet" />
           )}
         </div>
       </GlassPanel>

@@ -22,20 +22,16 @@ export default async function QuickTaskEntryLandingPage({
       <GlassPanel
         headingLevel={1}
         title="Quick task entry"
-        subtitle="เลือก ward ที่กำลังดูแล แล้วเข้า workspace สำหรับสร้างหลาย task ได้ทันทีในหน้าเดียว"
         className="overflow-hidden"
       >
         {data.blockedByMissingWard ? (
-          <SetupNotice
-            title="Student ward assignment required"
-            body="รอ admin assign ward ให้ก่อน จึงจะใช้ quick task entry ได้"
-          />
+          <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
         ) : data.wardSummaries.length ? (
           <div className="space-y-5">
             <section className="grid gap-3 border-b clinical-divider pb-5 md:grid-cols-3">
-              <QuickEntryMetric label="Wards ready" value={wardCount} note="เข้าได้ทันทีตามสิทธิ์ปัจจุบัน" />
-              <QuickEntryMetric label="Patients in scope" value={patientCount} note="active patients ที่พร้อมสร้างงาน" />
-              <QuickEntryMetric label="Entry mode" value="1-step" note="เลือก ward แล้วเริ่มสร้าง task ได้ทันที" />
+              <QuickEntryMetric label="Wards ready" value={wardCount} />
+              <QuickEntryMetric label="Patients in scope" value={patientCount} />
+              <QuickEntryMetric label="Entry mode" value="1-step" />
             </section>
 
             <section className="grid gap-4 xl:grid-cols-2">
@@ -47,13 +43,7 @@ export default async function QuickTaskEntryLandingPage({
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
-                        Quick entry workspace
-                      </p>
-                      <h3 className="mt-2 text-[1.45rem] font-semibold text-foreground">{summary.ward.name}</h3>
-                      <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-                        เปิดหน้าเดียวสำหรับเพิ่มหลาย task ใน ward นี้ พร้อมใช้ template และ default assignment ได้ทันที
-                      </p>
+                      <h3 className="text-[1.45rem] font-semibold text-foreground">{summary.ward.name}</h3>
                     </div>
                     <div className="rounded-full border border-mint-200 bg-mint-50 px-3 py-1.5 text-xs font-semibold text-mint-700">
                       {summary.patients.length} active
@@ -67,14 +57,11 @@ export default async function QuickTaskEntryLandingPage({
                     </div>
                     <div className="rounded-[22px] bg-[var(--surface-muted)] px-4 py-3 md:col-span-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Best for</p>
-                      <p className="mt-2 text-sm leading-6 text-foreground/85">
-                        follow-up, consult, procedure prep และงานที่ต้องยิงหลายรายการในรอบเดียว
-                      </p>
+                      <p className="mt-2 text-sm leading-6 text-foreground/85">Follow-up, consult, procedure prep</p>
                     </div>
                   </div>
 
                   <div className="mt-5 flex items-center justify-between gap-3 border-t clinical-divider pt-4">
-                    <span className="text-sm text-muted">เลือก ward นี้เพื่อเข้า builder</span>
                     <span className="inline-flex items-center rounded-full bg-mint-600 px-4 py-2 text-sm font-semibold text-white">
                       Enter workspace
                     </span>
@@ -84,10 +71,7 @@ export default async function QuickTaskEntryLandingPage({
             </section>
           </div>
         ) : (
-          <EmptyState
-            title="No ward available"
-            body="ยังไม่มี ward ที่คุณเข้าถึงได้สำหรับ quick task entry ในตอนนี้"
-          />
+          <EmptyState title="No ward available" body="ยังไม่มี ward ที่คุณเข้าถึงได้" />
         )}
       </GlassPanel>
     </div>
@@ -97,17 +81,14 @@ export default async function QuickTaskEntryLandingPage({
 function QuickEntryMetric({
   label,
   value,
-  note,
 }: {
   label: string;
   value: number | string;
-  note: string;
 }) {
   return (
     <div className="rounded-[24px] bg-[var(--surface-muted)] px-4 py-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
       <p className="mt-2 font-display text-[1.8rem] font-semibold leading-none text-foreground">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-muted">{note}</p>
     </div>
   );
 }

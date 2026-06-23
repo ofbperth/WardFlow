@@ -33,16 +33,9 @@ export default async function MyTasksPage({
     <div className="space-y-6">
       <AppFeedbackToast toastKey={params.toast} />
 
-      <GlassPanel
-        headingLevel={1}
-        title="Task"
-        subtitle="ดูงานทั้งหมดในวอร์ดที่รับผิดชอบ พร้อม quick action สำหรับ done, blocked, และ reassign"
-      >
+      <GlassPanel headingLevel={1} title="Task">
         {data.blockedByMissingWard ? (
-          <SetupNotice
-            title="Student ward assignment required"
-            body="รอ admin assign ward ให้ก่อน จึงจะเห็นและจัดการ task ได้"
-          />
+          <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
         ) : (
           <>
             <ExpandableFilters title="Filter tasks">
@@ -111,10 +104,7 @@ export default async function MyTasksPage({
                 updateTaskStatusAction={updateTaskStatusAction}
               />
             ) : (
-              <EmptyState
-                title="No tasks in view"
-                body="ลองปรับ filter หรือสร้างงานใหม่ผ่าน quick task entry หรือหน้า patient"
-              />
+              <EmptyState title="No tasks in view" body="ลองปรับ filter" />
             )}
           </>
         )}

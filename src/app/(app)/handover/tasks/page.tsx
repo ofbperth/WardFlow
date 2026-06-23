@@ -38,16 +38,9 @@ export default async function PendingTaskHandoverPage({
         ]}
       />
 
-      <GlassPanel
-        headingLevel={1}
-        title="Pending task handover"
-        subtitle="รวมเฉพาะงานที่ยังไม่ done เพื่อส่งต่องานเป็นก้อนเดียว"
-      >
+      <GlassPanel headingLevel={1} title="Pending task handover">
         {data.blockedByMissingWard ? (
-          <SetupNotice
-            title="Student ward assignment required"
-            body="รอ admin assign ward ให้ก่อน จึงจะเห็น task handover ได้"
-          />
+          <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
         ) : (
           <>
             <ExpandableFilters title="Filter pending tasks">
@@ -141,10 +134,7 @@ export default async function PendingTaskHandoverPage({
                 ))}
               </div>
             ) : (
-              <EmptyState
-                title="No pending tasks"
-                body="ยังไม่มี task ค้างใน scope ที่เลือก หรือ filter ตอนนี้แคบเกินไป"
-              />
+              <EmptyState title="No pending tasks" body="ไม่มีงานค้างใน scope นี้" />
             )}
           </>
         )}

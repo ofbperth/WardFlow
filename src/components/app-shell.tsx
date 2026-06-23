@@ -12,7 +12,6 @@ import {
   Menu,
   Plus,
   Shield,
-  Stethoscope,
   X,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
@@ -47,10 +46,7 @@ export function AppShell({
             <div className="flex min-w-0 items-center gap-4">
               <WardFlowLogo className="h-14 w-14 shrink-0" sizes="56px" />
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted">
-                  Clinical Operations
-                </p>
-                <p className="mt-1 font-display text-xl font-semibold text-foreground">WardFlow</p>
+                <p className="font-display text-xl font-semibold text-foreground">WardFlow</p>
               </div>
             </div>
 
@@ -79,16 +75,6 @@ export function AppShell({
               >
                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
-            </div>
-          </div>
-
-          <div className="mt-4 hidden items-center justify-between gap-4 border-t clinical-divider pt-4 md:flex">
-            <div className="flex min-w-0 items-center gap-3 text-sm text-muted">
-              <Stethoscope className="h-4 w-4 text-mint-600" />
-              <span>Hospital ward board for live patient, task, and handover workflow.</span>
-            </div>
-            <div className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Secure clinical workspace
             </div>
           </div>
         </header>

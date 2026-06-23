@@ -13,12 +13,7 @@ export default async function WardDetailPage({
   const detail = await getWardDetail(session, wardId);
 
   if (!detail) {
-    return (
-      <EmptyState
-        title="Ward not found"
-        body="The ward may not exist or is outside your assignment scope."
-      />
-    );
+    return <EmptyState title="Ward not found" body="Unavailable in your current scope." />;
   }
 
   return (
@@ -26,7 +21,6 @@ export default async function WardDetailPage({
       <GlassPanel
         headingLevel={1}
         title={detail.ward.name}
-        subtitle="Ward-scoped live board for round follow-up and patient drill-down."
         action={
           <Link
             href="/handover"

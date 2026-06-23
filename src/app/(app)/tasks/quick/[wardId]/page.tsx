@@ -43,10 +43,7 @@ export default async function QuickTaskEntryWardPage({
         className="overflow-hidden"
       >
         {data.blockedByMissingWard ? (
-          <SetupNotice
-            title="Student ward assignment required"
-            body="รอ admin assign ward ให้ก่อน จึงจะใช้ quick task entry ได้"
-          />
+          <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
         ) : wardSummary ? (
           <div className="space-y-4">
             <section className="grid gap-2.5 border-b clinical-divider pb-4 md:grid-cols-4">

@@ -37,7 +37,6 @@ export default async function AdminWardsPage({
       <GlassPanel
         headingLevel={1}
         title="Admin | Ward management"
-        subtitle="Safer layout with collapsed edit actions and a separated danger zone."
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -86,10 +85,7 @@ export default async function AdminWardsPage({
               ))}
             </div>
 
-            <GlassPanel
-              title="Create ward"
-              subtitle="Create stays hidden until you intentionally open the form."
-            >
+            <GlassPanel title="Create ward">
               <div className="sticky top-20 z-10 rounded-full bg-white/70 px-4 py-3 backdrop-blur-xl">
                 <SectionLabel>New ward</SectionLabel>
               </div>
@@ -147,7 +143,6 @@ export default async function AdminWardsPage({
             </div>
             <GlassPanel
               title="User roles"
-              subtitle="Role changes are collapsed too, so the page stays calmer and safer to use."
             >
               <StaffRoleCards
                 profiles={profiles}

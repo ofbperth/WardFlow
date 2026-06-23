@@ -265,7 +265,6 @@ export function StudentWardAssignmentBoard() {
 
       <GlassPanel
         title="Student Ward Assignment"
-        subtitle="จัดนักศึกษาเข้าวอร์ดแบบ card layout, ไม่ผูกกับ bed และไม่จำกัด capacity"
         className="border border-mint-100 bg-white/90"
         action={
           <div className="flex items-center gap-2 rounded-full bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700">
@@ -311,7 +310,7 @@ export function StudentWardAssignmentBoard() {
       {!loading && visibleWards.length === 0 ? (
         <EmptyState
           title="ยังไม่มีวอร์ด"
-          body={search.trim() ? "ไม่พบวอร์ดตามคำค้นนี้" : "สร้างหรือเปิดใช้งานวอร์ดก่อน แล้วจึงจัดนักศึกษาเข้าวอร์ด"}
+          body={search.trim() ? "ไม่พบวอร์ดตามคำค้นนี้" : "สร้างหรือเปิดใช้งานวอร์ดก่อน"}
         />
       ) : null}
 

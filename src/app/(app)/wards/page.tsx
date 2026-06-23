@@ -63,7 +63,6 @@ export default async function WardsPage({
 
       <PageHeader
         title="Ward overview"
-        subtitle="Scan every ward quickly, spot key status at a glance, and jump into the patient workspace without extra steps."
         action={
           <Link
             href="/discharged"
@@ -75,17 +74,11 @@ export default async function WardsPage({
       />
 
       {session.profile.role === "student" && !session.profile.wardAssignment ? (
-        <SetupNotice
-          title="Student ward assignment required"
-          body="Wait for an admin to assign a ward before ward data becomes visible here."
-        />
+        <SetupNotice title="Student ward assignment required" body="Ask admin to assign your ward." />
       ) : null}
 
       {error === "patient-save-failed" ? (
-        <SetupNotice
-          title="Unable to admit patient"
-          body="The admit could not be saved. Check the selected ward and this account's permission, then try again."
-        />
+        <SetupNotice title="Unable to admit patient" body="Check ward access and try again." />
       ) : null}
 
       {summaries.length ? (
@@ -158,20 +151,13 @@ export default async function WardsPage({
           }
         />
       ) : (
-        <EmptyState
-          title="No wards visible yet"
-          body="Create a ward in admin or assign this user into a ward first."
-        />
+        <EmptyState title="No wards visible yet" body="Create a ward or assign this user first." />
       )}
 
       {!canManagePatient ? (
-        <GlassPanel
-          title="Student access"
-          subtitle="Students can add tasks, problem lists, and handover updates from the patient page."
-          className="h-fit"
-        >
+        <GlassPanel title="Student access" className="h-fit">
           <p className="text-sm leading-6 text-muted">
-            Admitting and discharging patients remains limited to Resident and Admin roles.
+            Admit and discharge stay limited to Resident and Admin.
           </p>
         </GlassPanel>
       ) : null}

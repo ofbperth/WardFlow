@@ -17,28 +17,22 @@ export default async function LoginPage({
     <main className="page-shell flex min-h-screen items-center px-4 py-8">
       <div className="mx-auto grid w-full max-w-6xl gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="glass-card rounded-[34px] px-6 py-8 md:px-8 md:py-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted">
-            Clinical workflow system
-          </p>
-          <h1 className="mt-3 max-w-xl font-display text-4xl font-semibold text-foreground sm:text-5xl">
+          <h1 className="max-w-xl font-display text-4xl font-semibold text-foreground sm:text-5xl">
             WardFlow
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-muted">
-            Professional ward workspace for patient tracking, task coordination, and handover in one green clinical console.
-          </p>
 
           <div className="mt-8 grid gap-3 md:grid-cols-3">
             <div className="rounded-[22px] border clinical-divider bg-white/88 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Patient board</p>
-              <p className="mt-2 text-sm leading-6 text-foreground">See active patients, core diagnosis, and urgent work at a glance.</p>
+              <p className="mt-2 text-2xl font-display font-semibold text-foreground">Live</p>
             </div>
             <div className="rounded-[22px] border clinical-divider bg-white/88 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Task flow</p>
-              <p className="mt-2 text-sm leading-6 text-foreground">Track ward tasks with clear status, owner, and blocked reasons.</p>
+              <p className="mt-2 text-2xl font-display font-semibold text-foreground">Track</p>
             </div>
             <div className="rounded-[22px] border clinical-divider bg-white/88 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Handover</p>
-              <p className="mt-2 text-sm leading-6 text-foreground">Prepare structured sign-out without switching between screens.</p>
+              <p className="mt-2 text-2xl font-display font-semibold text-foreground">Ready</p>
             </div>
           </div>
         </section>
@@ -55,9 +49,6 @@ export default async function LoginPage({
             <h2 className="mt-4 text-center font-display text-3xl font-semibold text-foreground">
               Sign in to continue
             </h2>
-            <p className="mt-2 text-center text-sm leading-6 text-muted">
-              เข้าใช้งานระบบบอร์ดวอร์ด, patient workspace และ handover console
-            </p>
 
             <div className="mt-8 w-full">
             {params.error ? (
@@ -69,7 +60,7 @@ export default async function LoginPage({
             {state.hasIncompleteSupabaseSetup ? (
               <SetupNotice
                 title="Partial Supabase setup"
-                body="Google login should work, but server-side admin checks are still unavailable until SUPABASE_SERVICE_ROLE_KEY is added."
+                body="Add `SUPABASE_SERVICE_ROLE_KEY` to enable admin checks."
               />
             ) : null}
 

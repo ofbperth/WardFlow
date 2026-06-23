@@ -122,10 +122,7 @@ export function PageHeader({
     <section className={cn("glass-card rounded-[28px] px-4 py-5 md:px-6 md:py-6", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0 max-w-4xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
-            WardFlow workspace
-          </p>
-          <h1 className="mt-2 font-display text-[1.95rem] font-semibold text-foreground md:text-[2.35rem]">
+          <h1 className="font-display text-[1.95rem] font-semibold text-foreground md:text-[2.35rem]">
             {title}
           </h1>
           {subtitle ? <p className="mt-2 text-sm leading-6 text-muted">{subtitle}</p> : null}
@@ -187,7 +184,6 @@ export function PatientCensus({
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
-          subtitle={`${summary.patients.length} คนในวอร์ด`}
           action={
             <Pill tone="border-mint-200 bg-mint-50 text-mint-700">{summary.patients.length} ราย</Pill>
           }
@@ -713,11 +709,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
   return (
     <div className="space-y-6">
       {bundles.map((bundle) => (
-        <GlassPanel
-          key={bundle.ward.id}
-          title={bundle.ward.name}
-          subtitle="เรียงคนวิกฤตก่อน แล้วตามด้วยคนที่ต้องเฝ้าระวัง งานค้าง และงานที่ติดปัญหา"
-        >
+        <GlassPanel key={bundle.ward.id} title={bundle.ward.name}>
           <div className="space-y-4">
             {bundle.patients
               .filter(
@@ -776,9 +768,9 @@ export function HandoverTextPanel({
   return (
     <GlassPanel
       title="Structured handover text"
-      subtitle={`คัดลอกข้อความสำหรับส่งต่อผ่าน messaging app ของ ${wardName}`}
       action={<CopyTextButton text={text} />}
     >
+      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted">{wardName}</div>
       <textarea
         readOnly
         value={text}
@@ -960,13 +952,13 @@ export function EmptyState({
   body,
 }: {
   title: string;
-  body: string;
+  body?: string;
 }) {
   return (
     <div className="rounded-[24px] border border-dashed clinical-divider bg-white/70 p-8 text-center">
       <Clock3 className="mx-auto h-8 w-8 text-muted" />
       <h3 className="mt-3 font-display text-lg font-semibold text-foreground">{title}</h3>
-      <p className="mt-2 text-sm text-muted">{body}</p>
+      {body ? <p className="mt-2 text-sm text-muted">{body}</p> : null}
     </div>
   );
 }
@@ -976,19 +968,19 @@ export function SetupNotice({
   body,
 }: {
   title: string;
-  body: string;
+  body?: string;
 }) {
   return (
     <div className="rounded-[24px] border border-amber-200 bg-amber-50/85 p-4 text-sm text-amber-900">
       <p className="font-semibold">{title}</p>
-      <p className="mt-2 leading-6">{body}</p>
+      {body ? <p className="mt-2 leading-6">{body}</p> : null}
     </div>
   );
 }
 
 export function LoadingShell({
   title = "Loading data",
-  subtitle = "รอสักครู่ ระบบกำลังเตรียมข้อมูลล่าสุด",
+  subtitle,
 }: {
   title?: string;
   subtitle?: string;

@@ -57,12 +57,7 @@ export default async function PatientPage({
   ]);
 
   if (!bundle) {
-    return (
-      <EmptyState
-        title="Patient not found"
-        body="ไม่พบข้อมูลผู้ป่วยรายนี้ หรือคุณไม่มีสิทธิ์เข้าถึงวอร์ดนี้"
-      />
-    );
+    return <EmptyState title="Patient not found" body="ไม่พบข้อมูลหรือไม่มีสิทธิ์เข้าถึง" />;
   }
 
   if (bundle.patient.lifecycle === "discharged") {
@@ -101,12 +96,11 @@ export default async function PatientPage({
 
       <PageHeader
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
-        subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)} · เปิดหน้านี้เพื่อจัดการปัญหา งาน และ handover ของผู้ป่วยรายนี้จากจุดเดียว`}
+        subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
       />
 
       <GlassPanel
         title="Patient summary"
-        subtitle="ข้อมูล patient core สำหรับ round, sign-out และการแก้ไขข้อมูลหลัก"
         className="px-4 py-4 md:px-6 md:py-6"
       >
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
@@ -225,7 +219,7 @@ export default async function PatientPage({
 
       <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
         <div className="space-y-4 md:space-y-6">
-          <GlassPanel title="Problem list" subtitle="Resolved items collapse by default.">
+          <GlassPanel title="Problem list">
             <ProblemCards
               problems={bundle.problems}
               patientId={bundle.patient.id}
@@ -281,7 +275,7 @@ export default async function PatientPage({
             ) : null}
           </GlassPanel>
 
-          <GlassPanel title="Task board" subtitle="Done tasks move into archived section automatically.">
+          <GlassPanel title="Task board">
             <TaskCards
               tasks={bundle.tasks}
               patient={bundle.patient}
@@ -369,7 +363,7 @@ export default async function PatientPage({
 
         <div className="space-y-4 md:space-y-6">
           {canEditClinical ? (
-            <GlassPanel title="Manual handover note" subtitle="เพิ่ม short note และคำสั่ง observe เพิ่มเติมได้">
+            <GlassPanel title="Manual handover note">
               <form action={saveHandoverAction} className="space-y-3">
                 <input type="hidden" name="patientId" value={bundle.patient.id} />
                 <input type="hidden" name="updatedAt" value={bundle.handover?.updatedAt ?? ""} />
@@ -394,10 +388,7 @@ export default async function PatientPage({
         </div>
       </div>
 
-      <GlassPanel
-        title="Activity timeline"
-        subtitle="แสดงรายการเปลี่ยนแปลงล่าสุดก่อน และกดขยายได้เมื่ออยากดูย้อนหลังเพิ่ม"
-      >
+      <GlassPanel title="Activity timeline">
         <Timeline items={bundle.activity} />
       </GlassPanel>
     </div>

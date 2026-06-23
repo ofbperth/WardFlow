@@ -23,7 +23,6 @@ export default async function AdminTaskTemplatesPage() {
       <GlassPanel
         headingLevel={1}
         title="Admin | Task templates"
-        subtitle="ตั้ง template งานที่ใช้บ่อย เพื่อให้ทีมสร้าง task ได้เร็วและสม่ำเสมอ"
         action={
           <Link
             href="/admin/wards"
@@ -36,7 +35,7 @@ export default async function AdminTaskTemplatesPage() {
         <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
           <TemplateCards templates={templates} />
 
-          <GlassPanel title="Create template" subtitle="ใช้ชื่อแบบ action เพื่อให้เลือกใช้ง่าย">
+          <GlassPanel title="Create template">
             <SectionLabel>New template</SectionLabel>
             <form action={saveTemplateAction} className="space-y-3">
               <Field label="Title">
