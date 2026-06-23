@@ -15,7 +15,7 @@ export function WardFlowLogo({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[18px] ring-1 ring-white/70 shadow-lg shadow-mint-500/15",
+        "relative overflow-hidden rounded-[18px] ring-1 ring-[color:var(--color-rule)] shadow-lg shadow-[color:var(--color-shadow-soft)]",
         className,
       )}
     >

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { saveTemplateAction } from "@/app/actions";
+import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import {
   Field,
   GlassPanel,
@@ -23,21 +23,29 @@ export default async function AdminTaskTemplatesPage() {
       <GlassPanel
         headingLevel={1}
         title="Admin | Task templates"
+        subtitle="Keep quick-entry and ward workflows consistent with reusable task defaults."
         action={
           <Link
             href="/admin/wards"
-            className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+            className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
           >
             กลับหน้าวอร์ด
           </Link>
         }
       >
         <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-          <TemplateCards templates={templates} />
+          <div className="space-y-4">
+            <div className="panel-muted rounded-full px-4 py-3">
+              <SectionLabel>Template library</SectionLabel>
+            </div>
+            <TemplateCards templates={templates} />
+          </div>
 
-          <GlassPanel title="Create template">
-            <SectionLabel>New template</SectionLabel>
-            <form action={saveTemplateAction} className="space-y-3">
+          <GlassPanel title="Create template" subtitle="Add new default work items for recurring ward routines.">
+            <div className="panel-muted rounded-full px-4 py-3">
+              <SectionLabel>New template</SectionLabel>
+            </div>
+            <form action={saveTemplateAction} className="mt-4 space-y-3">
               <Field label="Title">
                 <TextInput name="title" placeholder="Follow blood gas" required />
               </Field>

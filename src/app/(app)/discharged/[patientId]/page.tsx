@@ -34,14 +34,14 @@ export default async function DischargedPatientSummaryPage({
           payload ? (
             <a
               href={`/api/discharge-summaries/${payload.summary.id}`}
-              className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+              className="button-secondary rounded-full px-4 py-2 text-sm font-semibold"
             >
               Export Word
             </a>
           ) : (
             <Link
               href="/discharged"
-              className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+              className="button-secondary rounded-full px-4 py-2 text-sm font-semibold"
             >
               Back to discharged
             </Link>
@@ -83,7 +83,7 @@ export default async function DischargedPatientSummaryPage({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/70 p-4">
+    <div className="panel-subtle rounded-2xl p-4">
       <p className="text-xs uppercase tracking-[0.16em] text-muted">{label}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{value}</p>
     </div>

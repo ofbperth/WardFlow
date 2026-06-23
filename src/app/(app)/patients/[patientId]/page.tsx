@@ -1,4 +1,5 @@
-﻿import { redirect } from "next/navigation";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   dischargePatientWithSummaryAction,
   reorderProblemAction,
@@ -70,16 +71,15 @@ export default async function PatientPage({
     : "";
 
   const isAssignedWard = session.profile.wardAssignment === bundle.patient.wardId;
-  const canManagePatient =
-    session.profile.role === "admin" || session.profile.role === "resident";
+  const canManagePatient = session.profile.role === "admin" || session.profile.role === "resident";
   const canEditClinical =
-    session.profile.role === "admin" ||
-    session.profile.role === "resident" ||
-    isAssignedWard;
+    session.profile.role === "admin" || session.profile.role === "resident" || isAssignedWard;
   const canEditTaskWorkflow =
     session.profile.role === "admin" ||
     session.profile.role === "resident" ||
     (session.profile.role === "student" && isAssignedWard);
+  const activeProblemCount = bundle.problems.filter((problem) => problem.status !== "resolved").length;
+  const activeTaskCount = bundle.tasks.filter((task) => task.status !== "done").length;
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -97,12 +97,35 @@ export default async function PatientPage({
       <PageHeader
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/wards/${bundle.patient.wardId}`}
+              className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
+            >
+              Back to ward
+            </Link>
+            <Link
+              href="/handover"
+              className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
+            >
+              Open handover
+            </Link>
+          </div>
+        }
       />
 
-      <GlassPanel
-        title="Patient summary"
-        className="px-4 py-4 md:px-6 md:py-6"
-      >
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Clinical status" value={bundle.patient.status} />
+        <MetricCard label="Open problems" value={String(activeProblemCount)} />
+        <MetricCard label="Active tasks" value={String(activeTaskCount)} />
+        <MetricCard
+          label="Responsible"
+          value={bundle.patient.responsibleDoctorName ?? "Unassigned"}
+        />
+      </section>
+
+      <GlassPanel title="Patient summary" className="px-4 py-4 md:px-6 md:py-6">
         <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
         {canManagePatient ? (
@@ -170,26 +193,12 @@ export default async function PatientPage({
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
                   <input type="hidden" name="patientUpdatedAt" value={bundle.patient.lastUpdate} />
                   <div className="grid gap-3 md:grid-cols-3">
-                    <div className="rounded-[18px] border clinical-divider bg-white p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Admit date</p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {formatDateTime(dischargeDraft.admitDate)}
-                      </p>
-                    </div>
-                    <div className="rounded-[18px] border clinical-divider bg-white p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Discharge date</p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {formatDateTime(dischargeDraft.dischargeDate)}
-                      </p>
-                    </div>
-                    <div className="rounded-[18px] border clinical-divider bg-white p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                        Length of stay
-                      </p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {dischargeDraft.lengthOfStay || "-"}
-                      </p>
-                    </div>
+                    <SnapshotBox label="Admit date" value={formatDateTime(dischargeDraft.admitDate)} />
+                    <SnapshotBox
+                      label="Discharge date"
+                      value={formatDateTime(dischargeDraft.dischargeDate)}
+                    />
+                    <SnapshotBox label="Length of stay" value={dischargeDraft.lengthOfStay || "-"} />
                   </div>
                   <Field label="Primary diagnosis">
                     <TextInput
@@ -230,7 +239,7 @@ export default async function PatientPage({
             {canEditClinical ? (
               <div className="mt-4 border-t clinical-divider pt-4">
                 <ProblemCreator
-                  className="mt-0 w-full rounded-[22px] bg-mint-50/80"
+                  className="panel-accent mt-0 w-full rounded-[22px]"
                   buttonClassName="mt-0 ml-auto"
                   panelClassName="mt-0 w-full"
                   headerClassName="items-start"
@@ -288,7 +297,7 @@ export default async function PatientPage({
             {canEditTaskWorkflow ? (
               <div className="mt-4 border-t clinical-divider pt-4">
                 <TaskCreator
-                  className="mt-0 w-full rounded-[22px] bg-mint-50/80"
+                  className="panel-accent mt-0 w-full rounded-[22px]"
                   buttonClassName="mt-0 ml-auto"
                   panelClassName="mt-0 w-full"
                   headerClassName="items-start"
@@ -362,6 +371,15 @@ export default async function PatientPage({
         </div>
 
         <div className="space-y-4 md:space-y-6">
+          <GlassPanel title="Care snapshot">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SnapshotBox label="Code status" value={bundle.patient.codeStatus ?? "-"} />
+              <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
+              <SnapshotBox label="Allergy" value={bundle.patient.allergy ?? "-"} />
+              <SnapshotBox label="Ward" value={bundle.ward?.name ?? "-"} />
+            </div>
+          </GlassPanel>
+
           {canEditClinical ? (
             <GlassPanel title="Manual handover note">
               <form action={saveHandoverAction} className="space-y-3">
@@ -391,6 +409,24 @@ export default async function PatientPage({
       <GlassPanel title="Activity timeline">
         <Timeline items={bundle.activity} />
       </GlassPanel>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-tile px-4 py-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function SnapshotBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="panel-subtle rounded-[20px] p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

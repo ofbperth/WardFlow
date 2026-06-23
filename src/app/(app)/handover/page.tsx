@@ -27,6 +27,12 @@ export default async function HandoverPage({
   const selectedWardName =
     selectedBundles.length === 1 ? selectedBundles[0].ward.name : "All visible wards";
 
+  const patientCount = selectedBundles.reduce((total, bundle) => total + bundle.patients.length, 0);
+  const taskCount = selectedBundles.reduce(
+    (total, bundle) => total + bundle.patients.reduce((sum, patient) => sum + patient.tasks.length, 0),
+    0,
+  );
+
   return (
     <div className="space-y-6">
       <RealtimeRefresh
@@ -39,9 +45,27 @@ export default async function HandoverPage({
         ]}
       />
 
-      <GlassPanel headingLevel={1} title="Handover mode">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <ExpandableFilters title="Filter handover" className="w-full md:max-w-sm">
+      <GlassPanel
+        headingLevel={1}
+        title="Handover mode"
+        subtitle="Brief by exception: watch items, pending work, and clear observe instructions."
+        action={
+          <Link
+            href="/handover/tasks"
+            className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
+          >
+            Pending task handover
+          </Link>
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <MetricTile label="Visible wards" value={String(selectedBundles.length)} />
+          <MetricTile label="Patients in brief" value={String(patientCount)} />
+          <MetricTile label="Pending tasks" value={String(taskCount)} />
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <ExpandableFilters title="Filter handover" className="mb-0 h-fit">
             <form className="grid gap-3">
               <Field label="Ward">
                 <SelectBox name="wardId" defaultValue={wardId ?? ""}>
@@ -57,28 +81,34 @@ export default async function HandoverPage({
             </form>
           </ExpandableFilters>
 
-          <Link
-            href="/handover/tasks"
-            className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
-          >
-            Pending task handover
-          </Link>
-        </div>
-
-        {session.profile.role === "student" && !session.profile.wardAssignment ? (
-          <div className="mb-5">
+          {session.profile.role === "student" && !session.profile.wardAssignment ? (
             <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
-          </div>
-        ) : null}
-
-        {selectedBundles.length ? (
-          <HandoverCards bundles={selectedBundles} />
-        ) : (
-          <EmptyState title="Nothing to hand over" body="ยังไม่มีรายการใน scope นี้" />
-        )}
+          ) : null}
+        </div>
       </GlassPanel>
 
-      {structuredText ? <HandoverTextPanel text={structuredText} wardName={selectedWardName} /> : null}
+      {selectedBundles.length ? (
+        <div className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
+          <GlassPanel title="Live handover board" subtitle={selectedWardName}>
+            <HandoverCards bundles={selectedBundles} />
+          </GlassPanel>
+
+          {structuredText ? (
+            <HandoverTextPanel text={structuredText} wardName={selectedWardName} />
+          ) : null}
+        </div>
+      ) : (
+        <EmptyState title="Nothing to hand over" body="ยังไม่มีรายการใน scope นี้" />
+      )}
+    </div>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-tile px-4 py-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

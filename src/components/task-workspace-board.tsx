@@ -425,7 +425,7 @@ export function TaskWorkspaceBoard({
                       {patient.tasks.map((task) => (
                         <div key={task.id} className="rounded-2xl bg-[color:var(--color-paper-3)] px-3 py-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-slate-700">{task.title}</p>
+                            <p className="text-sm font-semibold text-[color:var(--color-ink)]">{task.title}</p>
                             <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
                           </div>
                         </div>

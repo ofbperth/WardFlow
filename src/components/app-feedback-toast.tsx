@@ -39,11 +39,11 @@ export function AppFeedbackToast({ toastKey }: { toastKey?: string }) {
     <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
       <div
         className={cn(
-          "glass-card flex items-center gap-3 rounded-full border border-mint-200/80 px-4 py-3 text-sm font-semibold text-foreground shadow-2xl",
+          "app-panel flex items-center gap-3 rounded-full border border-[color:var(--color-accent)]/20 px-4 py-3 text-sm font-semibold text-foreground shadow-2xl",
           "animate-[toast-in_180ms_ease-out]",
         )}
       >
-        <div className="rounded-full bg-mint-100 p-1 text-mint-700">
+        <div className="rounded-full bg-[color:var(--color-accent-soft)] p-1 text-[color:var(--color-accent-strong)]">
           <CheckCircle2 className="h-4 w-4" />
         </div>
         <span>{toastCopy[toastKey]}</span>

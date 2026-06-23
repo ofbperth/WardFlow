@@ -35,7 +35,7 @@ export default async function DischargedPage({
     <div className="space-y-6">
       <GlassPanel headingLevel={1} title="Discharged patients">
         <ExpandableFilters title="Filter discharged patients">
-          <form className="grid gap-3 rounded-[24px] bg-white/70 p-4 md:grid-cols-[1fr_1fr_auto]">
+          <form className="grid gap-3 rounded-[24px] bg-[color:var(--color-paper-3)] p-4 md:grid-cols-[1fr_1fr_auto]">
             <Field label="Ward">
               <SelectBox name="wardId" defaultValue={wardId ?? ""}>
                 <option value="">All wards</option>
@@ -74,7 +74,7 @@ export default async function DischargedPage({
                       q,
                       page: Math.max(1, directory.page - 1),
                     })}
-                    className="rounded-full border border-white/70 bg-white px-4 py-2 font-semibold text-foreground"
+                    className="button-secondary rounded-full px-4 py-2 font-semibold"
                   >
                     Previous
                   </Link>
@@ -87,7 +87,7 @@ export default async function DischargedPage({
                       q,
                       page: Math.min(directory.totalPages, directory.page + 1),
                     })}
-                    className="rounded-full border border-white/70 bg-white px-4 py-2 font-semibold text-foreground"
+                    className="button-secondary rounded-full px-4 py-2 font-semibold"
                   >
                     Next
                   </Link>

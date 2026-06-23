@@ -7,7 +7,7 @@ import {
 } from "@/app/actions";
 import { AdminFeedbackToast } from "@/components/admin-feedback-toast";
 import { AdminSectionTabs } from "@/components/admin-section-tabs";
-import { AdminCreator, AdminEditor } from "@/components/form-feedback";
+import { AdminCreator, AdminEditor, PendingSubmitButton } from "@/components/form-feedback";
 import {
   DangerZone,
   Field,
@@ -34,20 +34,22 @@ export default async function AdminWardsPage({
     <div className="space-y-6">
       <AdminFeedbackToast toastKey={params.toast} />
       <AdminSectionTabs />
+
       <GlassPanel
         headingLevel={1}
         title="Admin | Ward management"
+        subtitle="Control ward setup, student assignment entry points, and staff access from one operations surface."
         action={
           <div className="flex flex-wrap gap-2">
             <Link
               href="/admin/student-ward-assignment"
-              className="rounded-full border border-mint-200 bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700"
+              className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-[color:var(--color-accent-strong)]"
             >
               Student Ward Assignment
             </Link>
             <Link
               href="/admin/task-templates"
-              className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm font-semibold text-foreground"
+              className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
             >
               Task templates
             </Link>
@@ -56,18 +58,19 @@ export default async function AdminWardsPage({
       >
         <div className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
-            <div className="sticky top-4 z-20 rounded-full bg-white/75 px-4 py-3 backdrop-blur-xl">
+            <div className="panel-muted rounded-full px-4 py-3">
               <SectionLabel>Ward management</SectionLabel>
             </div>
+
             <div className="grid gap-3 xl:grid-cols-2">
               {summaries.map((summary) => (
-                <div key={summary.ward.id} className="rounded-[28px] bg-white/75 p-5">
+                <div key={summary.ward.id} className="panel-surface rounded-[28px] p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-muted">Ward</p>
                       <p className="mt-2 text-lg font-semibold text-foreground">{summary.ward.name}</p>
                     </div>
-                    <Pill tone="bg-white text-slate-700">
+                    <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-3)] text-[color:var(--color-ink-2)]">
                       {summary.patients.length} active patients
                     </Pill>
                   </div>
@@ -85,8 +88,8 @@ export default async function AdminWardsPage({
               ))}
             </div>
 
-            <GlassPanel title="Create ward">
-              <div className="sticky top-20 z-10 rounded-full bg-white/70 px-4 py-3 backdrop-blur-xl">
+            <GlassPanel title="Create ward" subtitle="Add a new clinical area without leaving this console.">
+              <div className="panel-muted rounded-full px-4 py-3">
                 <SectionLabel>New ward</SectionLabel>
               </div>
               <AdminCreator buttonLabel="Create new ward" panelTitle="Create ward">
@@ -107,7 +110,7 @@ export default async function AdminWardsPage({
                 {summaries.map((summary) => (
                   <div
                     key={`delete-${summary.ward.id}`}
-                    className="rounded-2xl bg-rose-100/40 p-4"
+                    className="rounded-2xl border border-[color:var(--color-danger)]/20 bg-white/85 p-4"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
@@ -117,8 +120,8 @@ export default async function AdminWardsPage({
                       <Pill
                         tone={
                           summary.patients.length === 0
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]"
+                            : "border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-foreground"
                         }
                       >
                         {summary.patients.length === 0 ? "Empty ward" : "Cannot delete yet"}
@@ -128,7 +131,9 @@ export default async function AdminWardsPage({
                     <div className="mt-3">
                       <form action={deleteWardAdminAction}>
                         <input type="hidden" name="wardId" value={summary.ward.id} />
-                        <SubmitButton pendingLabel="Deleting...">Delete ward</SubmitButton>
+                        <PendingSubmitButton pendingLabel="Deleting..." className="button-danger">
+                          Delete ward
+                        </PendingSubmitButton>
                       </form>
                     </div>
                   </div>
@@ -138,12 +143,10 @@ export default async function AdminWardsPage({
           </div>
 
           <div className="space-y-4">
-            <div className="sticky top-4 z-20 rounded-full bg-white/75 px-4 py-3 backdrop-blur-xl">
+            <div className="panel-muted rounded-full px-4 py-3">
               <SectionLabel>User roles</SectionLabel>
             </div>
-            <GlassPanel
-              title="User roles"
-            >
+            <GlassPanel title="User roles" subtitle="Adjust roles and ward assignment without leaving the admin shell.">
               <StaffRoleCards
                 profiles={profiles}
                 wards={summaries.map((summary) => summary.ward)}

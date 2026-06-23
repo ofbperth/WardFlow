@@ -50,7 +50,7 @@ export function GoogleLoginButton({
           }
         }}
         className={cn(
-          "inline-flex items-center justify-center rounded-full bg-mint-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-mint-500/25 transition hover:bg-mint-600 disabled:cursor-not-allowed disabled:opacity-70",
+          "button-accent inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold shadow-lg disabled:cursor-not-allowed disabled:opacity-70",
           className,
         )}
       >

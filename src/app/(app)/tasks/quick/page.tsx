@@ -39,30 +39,30 @@ export default async function QuickTaskEntryLandingPage({
                 <Link
                   key={summary.ward.id}
                   href={`/tasks/quick/${summary.ward.id}`}
-                  className="group rounded-[28px] border clinical-divider bg-white p-5 transition hover:border-mint-300 hover:bg-mint-50/20"
+                  className="group panel-surface rounded-[28px] p-5 transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/35"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <h3 className="text-[1.45rem] font-semibold text-foreground">{summary.ward.name}</h3>
                     </div>
-                    <div className="rounded-full border border-mint-200 bg-mint-50 px-3 py-1.5 text-xs font-semibold text-mint-700">
+                    <div className="rounded-full border border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--color-accent-strong)]">
                       {summary.patients.length} active
                     </div>
                   </div>
 
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-[22px] bg-[var(--surface-muted)] px-4 py-3">
+                    <div className="rounded-[22px] bg-[color:var(--color-paper-3)] px-4 py-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Patients</p>
                       <p className="mt-2 text-base font-semibold text-foreground">{summary.patients.length} ready now</p>
                     </div>
-                    <div className="rounded-[22px] bg-[var(--surface-muted)] px-4 py-3 md:col-span-2">
+                    <div className="rounded-[22px] bg-[color:var(--color-paper-3)] px-4 py-3 md:col-span-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Best for</p>
                       <p className="mt-2 text-sm leading-6 text-foreground/85">Follow-up, consult, procedure prep</p>
                     </div>
                   </div>
 
                   <div className="mt-5 flex items-center justify-between gap-3 border-t clinical-divider pt-4">
-                    <span className="inline-flex items-center rounded-full bg-mint-600 px-4 py-2 text-sm font-semibold text-white">
+                    <span className="button-accent inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold">
                       Enter workspace
                     </span>
                   </div>
@@ -86,7 +86,7 @@ function QuickEntryMetric({
   value: number | string;
 }) {
   return (
-    <div className="rounded-[24px] bg-[var(--surface-muted)] px-4 py-4">
+    <div className="rounded-[24px] bg-[color:var(--color-paper-3)] px-4 py-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
       <p className="mt-2 font-display text-[1.8rem] font-semibold leading-none text-foreground">{value}</p>
     </div>

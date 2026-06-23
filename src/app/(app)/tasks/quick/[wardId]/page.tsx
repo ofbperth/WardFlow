@@ -35,7 +35,7 @@ export default async function QuickTaskEntryWardPage({
         action={
           <Link
             href="/tasks/quick"
-            className="rounded-full border clinical-divider bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-[var(--surface-muted)]"
+            className="button-secondary rounded-full px-4 py-2 text-sm font-semibold"
           >
             Change ward
           </Link>
@@ -77,7 +77,7 @@ function WardEntryMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-[22px] bg-[var(--surface-muted)] px-4 py-3.5">
+    <div className="rounded-[22px] bg-[color:var(--color-paper-3)] px-4 py-3.5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
       <p className="mt-2 text-lg font-semibold leading-none text-foreground">{value}</p>
     </div>

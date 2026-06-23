@@ -88,7 +88,7 @@ export default async function WardsPage({
             canManagePatient
               ? (summary) => (
                   <AdmitPatientCreator
-                    className="mt-0 w-full rounded-[22px] bg-mint-50/80"
+                    className="panel-accent mt-0 w-full rounded-[22px]"
                     buttonClassName="mt-0 ml-auto"
                     panelClassName="mt-0 w-full"
                     headerClassName="items-start"

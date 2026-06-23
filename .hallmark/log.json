@@ -4,6 +4,14 @@
     "macrostructure": "Workbench",
     "theme": "deep-teal-clinical-minimal",
     "enrichment": "none",
+    "brief": "WardFlow workflow page refinement for patient detail handover and admin surfaces",
+    "scope": "app"
+  },
+  {
+    "date": "2026-06-23",
+    "macrostructure": "Workbench",
+    "theme": "deep-teal-clinical-minimal",
+    "enrichment": "none",
     "brief": "WardFlow multi-page redesign to minimal professional hospital-use shell",
     "scope": "app"
   },
