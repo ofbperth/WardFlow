@@ -35,8 +35,10 @@ body {
 html {
   --mobile-bottom-nav-height: 6rem;
   --mobile-bottom-nav-offset: 0.75rem;
+  --mobile-bottom-nav-buffer: 1.5rem;
   --mobile-bottom-nav-clearance: calc(
-    var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-offset) + env(safe-area-inset-bottom)
+    var(--mobile-bottom-nav-height) + var(--mobile-bottom-nav-offset) + var(--mobile-bottom-nav-buffer) +
+      env(safe-area-inset-bottom)
   );
   background:
     radial-gradient(circle at top left, oklch(0.96 0.012 200 / 0.45), transparent 28%),

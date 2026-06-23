@@ -39,7 +39,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="page-shell app-canvas pb-[calc(var(--mobile-bottom-nav-clearance)+1rem)] md:pb-8">
+    <div className="page-shell app-canvas pb-[calc(var(--mobile-bottom-nav-clearance)+1.5rem)] md:pb-8">
       <div className="app-shell-frame flex flex-col gap-4 md:gap-6">
         <header className="app-panel px-4 py-4 md:px-6 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
