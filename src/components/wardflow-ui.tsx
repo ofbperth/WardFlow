@@ -73,7 +73,7 @@ export function GlassPanel({
   const HeadingTag = `h${headingLevel}` as "h1" | "h2" | "h3";
 
   return (
-    <section className={cn("glass-card rounded-[28px] p-4 md:p-6", className)}>
+    <section className={cn("app-panel rounded-[28px] p-4 md:p-6", className)}>
       <div
         className={cn(
           "mb-4 flex items-start justify-between gap-4 border-b clinical-divider pb-4 md:mb-5",
@@ -83,13 +83,15 @@ export function GlassPanel({
         <div className={cn("min-w-0", titleBlockClassName)}>
           <HeadingTag
             className={cn(
-              "font-display font-semibold text-foreground",
+              "font-display font-semibold text-foreground text-balance",
               headingLevel === 1 ? "text-[1.95rem] md:text-[2.35rem]" : "text-xl md:text-[1.55rem]",
             )}
           >
             {title}
           </HeadingTag>
-          {subtitle ? <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-[color:var(--color-ink-2)]">{subtitle}</p>
+          ) : null}
         </div>
         {action ? <div className={cn("shrink-0", actionClassName)}>{action}</div> : null}
       </div>
@@ -101,7 +103,7 @@ export function GlassPanel({
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
-      <Cross className="h-3.5 w-3.5 text-mint-600" />
+      <Cross className="h-3.5 w-3.5 text-[color:var(--color-accent)]" />
       {children}
     </div>
   );
@@ -119,13 +121,15 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <section className={cn("glass-card rounded-[28px] px-4 py-5 md:px-6 md:py-6", className)}>
+    <section className={cn("app-panel rounded-[28px] px-4 py-5 md:px-6 md:py-6", className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0 max-w-4xl">
-          <h1 className="font-display text-[1.95rem] font-semibold text-foreground md:text-[2.35rem]">
+          <h1 className="font-display text-[1.95rem] font-semibold text-foreground text-balance md:text-[2.35rem]">
             {title}
           </h1>
-          {subtitle ? <p className="mt-2 text-sm leading-6 text-muted">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="mt-2 text-sm leading-6 text-[color:var(--color-ink-2)]">{subtitle}</p>
+          ) : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
@@ -145,13 +149,13 @@ export function ExpandableFilters({
   return (
     <details
       className={cn(
-        "mb-5 rounded-[22px] border clinical-divider bg-[var(--surface-muted)] p-3.5",
+        "panel-muted mb-5 rounded-[22px] p-3.5",
         className,
       )}
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[18px] bg-white/88 px-4 py-3 text-sm font-semibold text-foreground marker:content-none">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-foreground marker:content-none">
         <span>{title}</span>
-        <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
+        <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
       </summary>
       <div className="pt-3">{children}</div>
     </details>
@@ -163,7 +167,7 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold",
-        tone ?? "border-white/80 bg-white/88 text-foreground",
+        tone ?? "border-[color:var(--color-rule)] bg-white text-foreground",
       )}
     >
       {children}
@@ -185,7 +189,9 @@ export function PatientCensus({
           key={summary.ward.id}
           title={summary.ward.name}
           action={
-            <Pill tone="border-mint-200 bg-mint-50 text-mint-700">{summary.patients.length} ราย</Pill>
+            <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
+              {summary.patients.length} ราย
+            </Pill>
           }
           className="rounded-[28px] px-4 py-4 md:px-6 md:py-6"
         >
@@ -194,7 +200,7 @@ export function PatientCensus({
               <Link
                 key={patient.id}
                 href={`/patients/${patient.id}`}
-                className="group rounded-[20px] border clinical-divider bg-white p-4 shadow-sm transition hover:border-mint-300 hover:bg-mint-50/35"
+                className="group rounded-[20px] border clinical-divider bg-white p-4 shadow-sm transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50"
               >
                 <div className="flex items-start justify-between gap-2.5">
                   <div className="min-w-0 flex-1">
@@ -211,22 +217,24 @@ export function PatientCensus({
                     </h3>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-foreground/90">{patient.diagnosis}</p>
                   </div>
-                  <div className="rounded-full border clinical-divider bg-mint-50 p-2 text-mint-700">
+                  <div className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-2 text-[color:var(--color-accent-strong)]">
                     <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Pill tone="border-amber-200 bg-amber-50 text-amber-800">
+                  <Pill tone="border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-[color:var(--color-ink)]">
                     {patient.pendingTaskCount} งานค้าง
                   </Pill>
                   {patient.blockedTaskCount > 0 ? (
-                    <Pill tone="border-rose-200 bg-rose-50 text-rose-700">
+                    <Pill tone="border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] text-[color:var(--color-danger)]">
                       {patient.blockedTaskCount} งานติดปัญหา
                     </Pill>
                   ) : null}
                   {patient.lifecycle === "discharged" ? (
-                    <Pill tone="border-slate-200 bg-slate-50 text-slate-600">Discharged</Pill>
+                    <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-3)] text-[color:var(--color-ink-2)]">
+                      Discharged
+                    </Pill>
                   ) : null}
                 </div>
 
@@ -279,8 +287,8 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
           </div>
         ))}
 
-        <details className="sm:col-span-2 rounded-[20px] border clinical-divider bg-[var(--surface-muted)] p-3.5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-slate-700">
+        <details className="panel-muted sm:col-span-2 rounded-[20px] p-3.5">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
             Clinical details
           </summary>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
@@ -408,16 +416,16 @@ export function ProblemCards({
       ))}
 
       {resolved.length > 0 ? (
-        <details className="rounded-[22px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+        <details className="rounded-[22px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
             Resolved problems ({resolved.length})
           </summary>
           <div className="mt-3 space-y-3">
             {resolved.map((problem) => (
-              <div key={problem.id} className="rounded-2xl bg-white/75 p-3">
+              <div key={problem.id} className="rounded-2xl bg-white/85 p-3">
                 <div className="flex items-center gap-2">
                   <Pill tone={statusTone(problem.status)}>{labelForProblemStatus(problem.status)}</Pill>
-                  <p className="text-sm font-semibold text-slate-700">{problem.title}</p>
+                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">{problem.title}</p>
                 </div>
               </div>
             ))}
@@ -464,8 +472,8 @@ export function TaskCards({
       ))}
 
       {archived.length > 0 ? (
-        <details className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+        <details className="rounded-[24px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
             Archived done task ({archived.length})
           </summary>
           <div className="mt-3 space-y-3">
@@ -529,17 +537,17 @@ function TaskCard({
       </div>
 
       {task.blockedReason ? (
-        <div className="mt-2.5 flex items-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="mt-2.5 flex items-center gap-2 rounded-[18px] border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-3 py-2 text-sm text-[color:var(--color-danger)]">
           <AlertCircle className="h-4 w-4" />
           Blocked reason: {task.blockedReason}
         </div>
       ) : null}
 
       {!compact ? (
-        <details className="mt-3 rounded-[20px] border border-slate-200/80 bg-slate-50/70 p-3 md:mt-4">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-700">
+        <details className="mt-3 rounded-[20px] border clinical-divider bg-[color:var(--color-paper-3)] p-3 md:mt-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[color:var(--color-ink)]">
             <span>Expand details</span>
-            <ChevronDown className="h-4 w-4 text-slate-500 transition-transform details-open:rotate-180" />
+            <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
           </summary>
 
           <div className="mt-4 space-y-4">
@@ -553,7 +561,7 @@ function TaskCard({
             {task.updates.length > 0 ? (
               <div className="space-y-2">
                 {task.updates.slice(0, 3).map((update) => (
-                  <div key={update.id} className="rounded-[18px] border border-mint-200 bg-mint-50/70 px-3 py-2">
+                  <div key={update.id} className="rounded-[18px] border border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)]/70 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                       <span>{update.createdByName}</span>
                       <span>{formatRelative(update.createdAt)}</span>
@@ -673,8 +681,8 @@ export function Timeline({ items }: { items: ActivityLog[] }) {
         <TimelineRow key={item.id} item={item} />
       ))}
       {remainingItems.length > 0 ? (
-        <details className="rounded-[22px] border clinical-divider bg-slate-50/70 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+        <details className="rounded-[22px] border clinical-divider bg-[color:var(--color-paper-3)] p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
             ดู activity เพิ่มเติม ({remainingItems.length})
           </summary>
           <div className="mt-3 space-y-3">
@@ -691,7 +699,7 @@ export function Timeline({ items }: { items: ActivityLog[] }) {
 function TimelineRow({ item, compact = false }: { item: ActivityLog; compact?: boolean }) {
   return (
     <div className={cn("flex gap-3 rounded-[22px] border clinical-divider bg-white p-4", compact && "p-3")}>
-      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[18px] bg-mint-50 text-sm font-semibold text-mint-700">
+      <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-[18px] bg-[color:var(--color-accent-soft)] text-sm font-semibold text-[color:var(--color-accent-strong)]">
         {getInitials(item.actorName)}
       </div>
       <div className="min-w-0 flex-1">
@@ -791,7 +799,7 @@ export function TaskInbox({
     <div className="space-y-3">
       {items.map(({ task, patient }) => {
         const card = (
-          <div className="rounded-[22px] border clinical-divider bg-white p-4 transition hover:border-mint-300 hover:bg-mint-50/35">
+          <div className="rounded-[22px] border clinical-divider bg-white p-4 transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -837,7 +845,7 @@ export function DischargedPatientList({
       {items.map(({ patient, ward, summary }) => (
         <div
           key={patient.id}
-          className="rounded-[24px] border clinical-divider bg-white p-5 transition hover:border-mint-300 hover:bg-mint-50/35"
+          className="rounded-[24px] border clinical-divider bg-white p-5 transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50"
         >
           <Link
             href={`/discharged/${patient.id}`}
@@ -906,7 +914,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
+        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -918,7 +926,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={cn(
-        "min-h-24 w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
+        "min-h-24 w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -930,7 +938,7 @@ export function SelectBox(props: React.SelectHTMLAttributes<HTMLSelectElement>) 
     <select
       {...props}
       className={cn(
-        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-mint-400 focus:ring-4 focus:ring-mint-500/12",
+        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -955,10 +963,10 @@ export function EmptyState({
   body?: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-dashed clinical-divider bg-white/70 p-8 text-center">
-      <Clock3 className="mx-auto h-8 w-8 text-muted" />
+    <div className="rounded-[24px] border border-dashed clinical-divider bg-white/78 p-8 text-center">
+      <Clock3 className="mx-auto h-8 w-8 text-[color:var(--color-ink-2)]" />
       <h3 className="mt-3 font-display text-lg font-semibold text-foreground">{title}</h3>
-      {body ? <p className="mt-2 text-sm text-muted">{body}</p> : null}
+      {body ? <p className="mt-2 text-sm text-[color:var(--color-ink-2)]">{body}</p> : null}
     </div>
   );
 }
@@ -971,7 +979,7 @@ export function SetupNotice({
   body?: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-amber-200 bg-amber-50/85 p-4 text-sm text-amber-900">
+    <div className="rounded-[24px] border border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 p-4 text-sm text-foreground">
       <p className="font-semibold">{title}</p>
       {body ? <p className="mt-2 leading-6">{body}</p> : null}
     </div>
@@ -1012,7 +1020,7 @@ export function LoginSkeleton() {
               <SkeletonCard />
             </div>
           </div>
-          <div className="glass-card rounded-[28px] p-6">
+          <div className="app-panel rounded-[28px] p-6">
             <SkeletonBlock className="h-6 w-40" />
             <div className="mt-5 space-y-3">
               <SkeletonBlock className="h-14 w-full rounded-2xl" />
@@ -1071,13 +1079,15 @@ export function StaffRoleCards({
   return (
     <div className="grid gap-3 xl:grid-cols-2">
       {profiles.map((profile) => (
-        <div key={profile.id} className="rounded-[24px] bg-white/74 p-4">
+        <div key={profile.id} className="panel-subtle rounded-[24px] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold text-foreground">{profile.name}</p>
-              <p className="mt-1 text-sm text-muted">{profile.email}</p>
+              <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{profile.email}</p>
               <div className="mt-3">
-                <Pill tone="bg-white text-slate-700">{labelForRole(profile.role)}</Pill>
+                <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
+                  {labelForRole(profile.role)}
+                </Pill>
               </div>
             </div>
           </div>
@@ -1115,9 +1125,9 @@ export function StaffRoleCards({
               )}
             </form>
           </AdminEditor>
-          <div className="mt-4 border-t border-white/70 pt-4">
+          <div className="mt-4 border-t clinical-divider pt-4">
             {profile.role === "admin" ? (
-              <p className="text-sm font-medium text-muted">Admin user cannot be deleted.</p>
+              <p className="text-sm font-medium text-[color:var(--color-ink-2)]">Admin user cannot be deleted.</p>
             ) : (
               <form action={deleteUserAction} className="flex justify-end">
                 <input type="hidden" name="userId" value={profile.id} />
@@ -1141,7 +1151,7 @@ export { DangerZone };
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-mint-50/70 p-3">
+    <div className="rounded-2xl bg-[color:var(--color-accent-soft)]/70 p-3">
       <p className="text-xs uppercase tracking-[0.16em] text-muted">{label}</p>
       <p className="mt-2 text-sm text-foreground">{value}</p>
     </div>
@@ -1150,7 +1160,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function MiniList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-[24px] bg-mint-50/80 p-4">
+    <div className="rounded-[24px] bg-[color:var(--color-accent-soft)]/75 p-4">
       <p className="text-xs uppercase tracking-[0.18em] text-muted">{title}</p>
       <div className="mt-3 space-y-2">
         {items.length ? (
@@ -1169,7 +1179,7 @@ function MiniList({ title, items }: { title: string; items: string[] }) {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-[28px] border border-white/70 bg-white/72 p-4">
+    <div className="rounded-[28px] border clinical-divider bg-white/78 p-4">
       <SkeletonBlock className="h-4 w-24" />
       <SkeletonBlock className="mt-3 h-7 w-40" />
       <SkeletonBlock className="mt-3 h-4 w-full" />
@@ -1187,5 +1197,5 @@ function SkeletonCard() {
 }
 
 function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-2xl bg-mint-100/90", className)} />;
+  return <div className={cn("animate-pulse rounded-2xl bg-[color:var(--color-paper-3)]", className)} />;
 }

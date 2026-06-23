@@ -78,13 +78,13 @@ export function BulkTaskEntryBuilder({
       <input type="hidden" name="wardId" value={wardSummary.ward.id} />
 
       <div className="grid gap-3 xl:grid-cols-[0.86fr_1.14fr]">
-        <div className="rounded-[26px] border clinical-divider bg-white p-4">
+        <div className="panel-surface rounded-[26px] p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <SectionLabel>Ward focus</SectionLabel>
               <h3 className="text-lg font-semibold text-foreground">{wardSummary.ward.name}</h3>
             </div>
-            <div className="rounded-full bg-mint-50 px-3 py-1.5 text-xs font-semibold text-mint-700">
+            <div className="rounded-full bg-[color:var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--color-accent-strong)]">
               {wardSummary.patients.length} active
             </div>
           </div>
@@ -102,7 +102,7 @@ export function BulkTaskEntryBuilder({
           </div>
         </div>
 
-        <div className="rounded-[26px] border clinical-divider bg-white p-4">
+        <div className="panel-surface rounded-[26px] p-4">
           <SectionLabel>Default kit</SectionLabel>
           <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <label className="block text-sm font-medium text-foreground">
@@ -161,7 +161,7 @@ export function BulkTaskEntryBuilder({
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Patients in queue</p>
             <h3 className="mt-1 text-lg font-semibold text-foreground">{wardSummary.ward.name}</h3>
           </div>
-          <div className="rounded-full bg-[var(--surface-muted)] px-3.5 py-1.5 text-sm font-semibold text-foreground">
+          <div className="rounded-full bg-[color:var(--color-paper-3)] px-3.5 py-1.5 text-sm font-semibold text-foreground">
             {wardSummary.patients.length} active
           </div>
         </div>
@@ -171,20 +171,20 @@ export function BulkTaskEntryBuilder({
             const patientRows = rowsByPatient[patient.id] ?? [];
 
             return (
-              <div key={patient.id} className="rounded-[26px] border clinical-divider bg-white p-4">
+              <div key={patient.id} className="panel-surface rounded-[26px] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                        <span className="rounded-full bg-[color:var(--color-paper-3)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                         Bed {patient.bed}
                       </span>
                       {patient.pendingTaskCount ? (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-800">
+                          <span className="rounded-full border border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 px-3 py-1 text-[11px] font-semibold text-foreground">
                           {patient.pendingTaskCount} pending
                         </span>
                       ) : null}
                       {patient.blockedTaskCount ? (
-                        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-700">
+                          <span className="rounded-full border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-3 py-1 text-[11px] font-semibold text-[color:var(--color-danger)]">
                           {patient.blockedTaskCount} blocked
                         </span>
                       ) : null}
@@ -214,7 +214,7 @@ export function BulkTaskEntryBuilder({
                             ],
                           }))
                         }
-                        className="rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1.5 text-xs font-semibold text-mint-700 transition hover:bg-mint-100"
+                        className="rounded-full border border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--color-accent-strong)] transition hover:bg-white"
                       >
                         <span className="inline-flex items-center gap-1">
                           <Sparkles className="h-3.5 w-3.5" />
@@ -230,7 +230,7 @@ export function BulkTaskEntryBuilder({
                           [patient.id]: [...(current[patient.id] ?? []), makeDraftRow(patient.id, defaults)],
                         }))
                       }
-                      className="rounded-full border border-amber-400 bg-white px-2.5 py-1.5 text-xs font-semibold text-foreground transition hover:bg-amber-50"
+                        className="button-secondary rounded-full px-2.5 py-1.5 text-xs font-semibold"
                     >
                       <span className="inline-flex items-center gap-1">
                         <Plus className="h-3.5 w-3.5" />
@@ -242,7 +242,7 @@ export function BulkTaskEntryBuilder({
 
                 <div className="mt-3 space-y-2.5">
                   {patientRows.map((row) => (
-                    <div key={row.id} className="rounded-[22px] border clinical-divider bg-[var(--surface)] p-3.5 md:p-4">
+                    <div key={row.id} className="panel-muted rounded-[22px] p-3.5 md:p-4">
                       <div className="mb-3 flex items-center justify-between gap-3 border-b clinical-divider pb-2.5">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Task row</p>
                         <button
@@ -254,7 +254,7 @@ export function BulkTaskEntryBuilder({
                             }))
                           }
                           className={cn(
-                            "inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50",
+                            "button-danger inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold",
                           )}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -400,7 +400,7 @@ export function BulkTaskEntryBuilder({
                       <div className="mt-3 flex justify-end border-t clinical-divider pt-3">
                         <PendingSubmitButton
                           pendingLabel="Creating..."
-                          className="bg-mint-600 px-4 py-2 text-sm shadow-none hover:bg-mint-700"
+                          className="button-accent px-4 py-2 text-sm shadow-none"
                           name="payload"
                           value={serializeRow(row)}
                         >
@@ -414,7 +414,7 @@ export function BulkTaskEntryBuilder({
                   ))}
 
                   {!patientRows.length ? (
-                    <div className="rounded-[20px] border border-dashed clinical-divider bg-[var(--surface-muted)] px-4 py-3 text-sm font-medium text-foreground">
+                    <div className="rounded-[20px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] px-4 py-3 text-sm font-medium text-foreground">
                       No task rows yet
                     </div>
                   ) : null}
@@ -438,9 +438,9 @@ function WorkbenchMiniCard({
   value: string;
 }) {
   return (
-    <div className="rounded-[20px] bg-[var(--surface-muted)] px-4 py-3.5">
+    <div className="rounded-[20px] bg-[color:var(--color-paper-3)] px-4 py-3.5">
       <div className="flex items-center gap-2 text-muted">
-        <Icon className="h-4 w-4 text-mint-600" />
+        <Icon className="h-4 w-4 text-[color:var(--color-accent)]" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{label}</p>
       </div>
       <p className="mt-2 text-base font-semibold leading-none text-foreground">{value}</p>

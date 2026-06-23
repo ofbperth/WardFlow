@@ -2,6 +2,14 @@
   {
     "date": "2026-06-23",
     "macrostructure": "Workbench",
+    "theme": "deep-teal-clinical-minimal",
+    "enrichment": "none",
+    "brief": "WardFlow multi-page redesign to minimal professional hospital-use shell",
+    "scope": "app"
+  },
+  {
+    "date": "2026-06-23",
+    "macrostructure": "Workbench",
     "theme": "custom-hospital-green",
     "enrichment": "none",
     "brief": "Quick task entry workflow redesign within WardFlow app system",

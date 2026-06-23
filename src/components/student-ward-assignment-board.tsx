@@ -240,16 +240,18 @@ export function StudentWardAssignmentBoard() {
         <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
           <div
             className={cn(
-              "glass-card flex items-center gap-3 rounded-full border px-4 py-3 text-sm font-semibold shadow-2xl",
+              "app-panel flex items-center gap-3 rounded-full border px-4 py-3 text-sm font-semibold shadow-2xl",
               toast.tone === "success"
-                ? "border-mint-200/80 text-foreground"
-                : "border-rose-200 bg-rose-50/95 text-rose-800",
+                ? "border-[color:var(--color-accent)]/20 text-foreground"
+                : "border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] text-[color:var(--color-danger)]",
             )}
           >
             <div
               className={cn(
                 "rounded-full p-1",
-                toast.tone === "success" ? "bg-mint-100 text-mint-700" : "bg-rose-100 text-rose-700",
+                toast.tone === "success"
+                  ? "bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]"
+                  : "bg-white text-[color:var(--color-danger)]",
               )}
             >
               {toast.tone === "success" ? (
@@ -265,25 +267,25 @@ export function StudentWardAssignmentBoard() {
 
       <GlassPanel
         title="Student Ward Assignment"
-        className="border border-mint-100 bg-white/90"
+        className="border clinical-divider bg-white/92"
         action={
-          <div className="flex items-center gap-2 rounded-full bg-mint-50 px-4 py-2 text-sm font-semibold text-mint-700">
+          <div className="flex items-center gap-2 rounded-full bg-[color:var(--color-accent-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--color-accent-strong)]">
             <CheckCircle2 className="h-4 w-4" />
             Admin only
           </div>
         }
       >
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <label className="flex items-center gap-3 rounded-[22px] border border-mint-100 bg-mint-50/80 px-4 py-3">
-            <Search className="h-4 w-4 text-mint-700" />
+          <label className="flex items-center gap-3 rounded-[22px] border clinical-divider bg-[color:var(--color-paper-3)] px-4 py-3">
+            <Search className="h-4 w-4 text-[color:var(--color-accent-strong)]" />
             <TextInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="ค้นหาวอร์ดตามชื่อ"
-              className="border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
+            className="border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
             />
           </label>
-          <div className="rounded-[22px] border border-mint-100 bg-white/80 px-4 py-3 text-sm text-muted">
+          <div className="rounded-[22px] border clinical-divider bg-white/80 px-4 py-3 text-sm text-muted">
             {students.length} active students
           </div>
         </div>
@@ -294,10 +296,10 @@ export function StudentWardAssignmentBoard() {
           {Array.from({ length: 3 }).map((_, index) => (
             <div
               key={`loading-${index}`}
-              className="rounded-[30px] border border-mint-100 bg-mint-50/70 p-6 shadow-lg shadow-emerald-950/5"
+              className="rounded-[30px] border clinical-divider bg-[color:var(--color-paper-3)] p-6 shadow-lg"
             >
-              <div className="h-5 w-40 animate-pulse rounded-full bg-mint-100" />
-              <div className="mt-3 h-4 w-24 animate-pulse rounded-full bg-mint-100" />
+              <div className="h-5 w-40 animate-pulse rounded-full bg-white" />
+              <div className="mt-3 h-4 w-24 animate-pulse rounded-full bg-white" />
               <div className="mt-6 space-y-3">
                 <div className="h-12 animate-pulse rounded-2xl bg-white/80" />
                 <div className="h-12 animate-pulse rounded-2xl bg-white/80" />
@@ -324,11 +326,11 @@ export function StudentWardAssignmentBoard() {
             return (
               <section
                 key={ward.ward.id}
-                className="rounded-[30px] border border-mint-200 bg-mint-50/75 p-5 shadow-xl shadow-emerald-950/5"
+                className="rounded-[30px] border clinical-divider bg-white/92 p-5 shadow-xl shadow-[color:var(--color-shadow-soft)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-mint-700/80">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--color-ink-2)]">
                       Ward
                     </p>
                     <h3 className="mt-2 font-display text-xl font-semibold text-foreground">
@@ -338,14 +340,14 @@ export function StudentWardAssignmentBoard() {
                       {ward.ward.location?.trim() ? ward.ward.location : "Location not set"}
                     </p>
                   </div>
-                  <Pill tone="bg-white text-mint-700">
+                  <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
                     {filledStudentIds.length} {filledStudentIds.length === 1 ? "student" : "students"}
                   </Pill>
                 </div>
 
                 <div className="mt-5 space-y-3">
                   {draftRows.length === 0 ? (
-                    <div className="rounded-[24px] border border-dashed border-mint-200 bg-white/80 px-4 py-5 text-sm text-muted">
+                    <div className="rounded-[24px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] px-4 py-5 text-sm text-muted">
                       ยังไม่มีนักศึกษาในวอร์ดนี้
                     </div>
                   ) : null}
@@ -353,7 +355,7 @@ export function StudentWardAssignmentBoard() {
                   {draftRows.map((row, index) => (
                     <div
                       key={row.key}
-                      className="rounded-[24px] border border-mint-100 bg-white/90 p-3 shadow-sm"
+                      className="rounded-[24px] border clinical-divider bg-white p-3 shadow-sm"
                     >
                       <div className="flex items-center gap-3">
                         <div className="min-w-0 flex-1">
@@ -363,7 +365,7 @@ export function StudentWardAssignmentBoard() {
                           <select
                             value={row.studentId}
                             onChange={(event) => changeStudent(ward.ward.id, row.key, event.target.value)}
-                            className="w-full rounded-2xl border border-mint-200 bg-mint-50 px-3 py-3 text-sm text-foreground outline-none transition focus:border-mint-500 focus:bg-white"
+                            className="w-full rounded-2xl border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:bg-white"
                           >
                             <option value="">เลือกนักศึกษา</option>
                             {students.map((student) => {
@@ -380,7 +382,7 @@ export function StudentWardAssignmentBoard() {
                         <button
                           type="button"
                           onClick={() => removeRow(ward.ward.id, row.key)}
-                          className="mt-6 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                          className="button-danger mt-6 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
                           aria-label="ลบนักศึกษา"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -394,7 +396,7 @@ export function StudentWardAssignmentBoard() {
                   <button
                     type="button"
                     onClick={() => addRow(ward.ward.id)}
-                    className="inline-flex items-center gap-2 rounded-full border border-mint-200 bg-white px-4 py-2 text-sm font-semibold text-mint-700 transition hover:bg-mint-100"
+                    className="button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[color:var(--color-accent-strong)]"
                   >
                     <Plus className="h-4 w-4" />
                     Add Student
@@ -403,7 +405,7 @@ export function StudentWardAssignmentBoard() {
                     type="button"
                     onClick={() => saveWard(ward)}
                     disabled={isSaving}
-                    className="inline-flex items-center gap-2 rounded-full bg-mint-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-mint-700/20 transition hover:bg-mint-800 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="button-accent inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     {isSaving ? "กำลังบันทึก..." : "Save Assignment"}

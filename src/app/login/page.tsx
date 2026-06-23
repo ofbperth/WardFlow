@@ -15,40 +15,52 @@ export default async function LoginPage({
 
   return (
     <main className="page-shell flex min-h-screen items-center px-4 py-8">
-      <div className="mx-auto grid w-full max-w-6xl gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="glass-card rounded-[34px] px-6 py-8 md:px-8 md:py-10">
-          <h1 className="max-w-xl font-display text-4xl font-semibold text-foreground sm:text-5xl">
-            WardFlow
-          </h1>
+      <div className="mx-auto grid w-full max-w-6xl gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="app-panel soft-grid overflow-hidden rounded-[34px] px-6 py-8 md:px-8 md:py-10">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[color:var(--color-ink-2)]">
+              Ward management workspace
+            </p>
+            <h1 className="mt-4 max-w-xl font-display text-4xl font-semibold text-foreground text-balance sm:text-5xl">
+              Minimal ward coordination for real clinical shifts.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[color:var(--color-ink-2)] md:text-base">
+              One quiet surface for patient flow, pending work, and handover. Designed to stay readable at speed.
+            </p>
+          </div>
 
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <div className="rounded-[22px] border clinical-divider bg-white/88 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Patient board</p>
+            <div className="metric-tile p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Patient board</p>
               <p className="mt-2 text-2xl font-display font-semibold text-foreground">Live</p>
             </div>
-            <div className="rounded-[22px] border clinical-divider bg-white/88 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Task flow</p>
+            <div className="metric-tile p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Task flow</p>
               <p className="mt-2 text-2xl font-display font-semibold text-foreground">Track</p>
             </div>
-            <div className="rounded-[22px] border clinical-divider bg-white/88 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Handover</p>
+            <div className="metric-tile p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Handover</p>
               <p className="mt-2 text-2xl font-display font-semibold text-foreground">Ready</p>
             </div>
           </div>
         </section>
 
-        <section className="glass-card w-full rounded-[34px] px-8 py-10">
+        <section className="app-panel w-full rounded-[34px] px-8 py-10">
           <div className="mx-auto flex max-w-sm flex-col items-center">
             <WardFlowLogo
               className="h-32 w-32 sm:h-36 sm:w-36"
               sizes="144px"
               priority
-              imageClassName="object-contain drop-shadow-[0_18px_36px_rgba(61,181,144,0.14)]"
+              imageClassName="object-contain drop-shadow-[0_18px_36px_rgba(43,102,120,0.16)]"
             />
 
             <h2 className="mt-4 text-center font-display text-3xl font-semibold text-foreground">
               Sign in to continue
             </h2>
+
+            <p className="mt-3 text-center text-sm leading-6 text-[color:var(--color-ink-2)]">
+              Use the configured hospital login flow or open demo mode when enabled.
+            </p>
 
             <div className="mt-8 w-full">
             {params.error ? (
@@ -65,12 +77,12 @@ export default async function LoginPage({
             ) : null}
 
             {state.supportsGoogleLogin ? (
-              <GoogleLoginButton className="flex w-full items-center justify-center rounded-full border border-mint-600 bg-mint-600 px-5 py-3.5 text-base font-semibold text-white transition hover:bg-mint-700" />
+              <GoogleLoginButton className="button-accent flex w-full items-center justify-center rounded-full px-5 py-3.5 text-base font-semibold" />
             ) : state.supportsDemoLogin ? (
               <form action={startDemoSession}>
                 <PendingSubmitButton
                   pendingLabel="Opening demo..."
-                  className="flex w-full items-center justify-center rounded-full border border-mint-600 bg-mint-600 px-5 py-3.5 text-base font-semibold text-white transition hover:bg-mint-700"
+                  className="button-accent flex w-full items-center justify-center rounded-full px-5 py-3.5 text-base font-semibold"
                 >
                   Enter Demo
                 </PendingSubmitButton>

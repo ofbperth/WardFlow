@@ -18,7 +18,7 @@ export function AdminSectionTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-[26px] border border-mint-100 bg-white/70 p-2">
+    <div className="app-panel flex flex-wrap gap-2 rounded-[26px] p-2">
       {adminTabs.map((tab) => {
         const active = pathname === tab.href;
         return (
@@ -28,12 +28,12 @@ export function AdminSectionTabs() {
             className={cn(
               "rounded-2xl px-4 py-3 text-sm font-semibold transition",
               active
-                ? "bg-mint-600 text-white shadow-lg shadow-mint-600/20"
-                : "bg-mint-50/70 text-mint-700 hover:bg-mint-100",
+                ? "bg-[color:var(--color-accent)] text-white shadow-lg shadow-[color:var(--color-shadow)]"
+                : "bg-[color:var(--color-paper-3)] text-[color:var(--color-accent-strong)] hover:bg-white",
             )}
           >
             <span className="block">{tab.label}</span>
-            <span className={cn("block text-xs", active ? "text-white/85" : "text-mint-700/80")}>
+            <span className={cn("block text-xs", active ? "text-white/85" : "text-[color:var(--color-ink-2)]")}>
               {tab.thaiLabel}
             </span>
           </Link>

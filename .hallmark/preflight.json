@@ -1,0 +1,25 @@
+{
+  "scannedAt": "2026-06-23",
+  "designSystem": "design.md",
+  "fontStack": {
+    "display": "Space Grotesk",
+    "body": "Noto Sans Thai",
+    "source": "src/app/layout.tsx"
+  },
+  "palette": {
+    "source": "design.md + tokens.css",
+    "mode": "oklch clinical neutral with deep teal accent"
+  },
+  "motion": {
+    "mode": "motion-cut",
+    "source": "package.json"
+  },
+  "spacing": {
+    "mode": "4-point named scale",
+    "source": "tokens.css"
+  },
+  "framework": {
+    "name": "Next.js app router",
+    "source": "package.json + src/app"
+  }
+}
