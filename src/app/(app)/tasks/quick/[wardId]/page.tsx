@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { quickCreateTasksAction } from "@/app/actions";
 import { AppFeedbackToast } from "@/components/app-feedback-toast";
 import { BulkTaskEntryBuilder } from "@/components/bulk-task-entry-builder";
-import { GlassPanel, SetupNotice } from "@/components/wardflow-ui";
+import { PageHeader, SetupNotice } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { getBulkTaskEntryData } from "@/lib/wardflow";
 
@@ -25,30 +25,27 @@ export default async function QuickTaskEntryWardPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <AppFeedbackToast toastKey={query.toast} />
-
-      <GlassPanel
-        headingLevel={1}
+      <PageHeader
         title="Quick task entry"
         action={
           <Link href="/tasks/quick" className="button-secondary rounded-full px-4 py-2 text-sm font-semibold">
             Change ward
           </Link>
         }
-        className="overflow-hidden"
-      >
-        {data.blockedByMissingWard ? (
-          <SetupNotice title="Student ward assignment required" body="Ask admin to assign a ward first." />
-        ) : wardSummary ? (
-          <BulkTaskEntryBuilder
-            wardSummary={wardSummary}
-            templates={data.templates}
-            profiles={data.profilesByWard[wardSummary.ward.id] ?? []}
-            submitAction={quickCreateTasksAction}
-          />
-        ) : null}
-      </GlassPanel>
+      />
+
+      {data.blockedByMissingWard ? (
+        <SetupNotice title="Student ward assignment required" body="Ask admin to assign a ward first." />
+      ) : wardSummary ? (
+        <BulkTaskEntryBuilder
+          wardSummary={wardSummary}
+          templates={data.templates}
+          profiles={data.profilesByWard[wardSummary.ward.id] ?? []}
+          submitAction={quickCreateTasksAction}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { EmptyState, GlassPanel } from "@/components/wardflow-ui";
+import { EmptyState, GlassPanel, PageHeader } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import { getDischargeSummaryByPatientId, getPatientBundle } from "@/lib/wardflow";
@@ -26,10 +26,10 @@ export default async function DischargedPatientSummaryPage({
   }
 
   return (
-    <div className="space-y-6">
-      <GlassPanel
-        headingLevel={1}
-        title={`Discharge summary | ${bundle.patient.displayName}`}
+    <div className="space-y-4 md:space-y-6">
+      <PageHeader
+        title="Discharge summary"
+        subtitle={bundle.patient.displayName}
         action={
           payload ? (
             <a
@@ -39,44 +39,31 @@ export default async function DischargedPatientSummaryPage({
               Export Word
             </a>
           ) : (
-            <Link
-              href="/discharged"
-              className="button-secondary rounded-full px-4 py-2 text-sm font-semibold"
-            >
+            <Link href="/discharged" className="button-secondary rounded-full px-4 py-2 text-sm font-semibold">
               Back to discharged
             </Link>
           )
         }
-      >
-        {payload ? (
+      />
+
+      {payload ? (
+        <GlassPanel title="Summary details">
           <div className="grid gap-4 md:grid-cols-2">
             <SummaryRow label="Ward" value={payload.ward?.name ?? "-"} />
             <SummaryRow label="Bed" value={payload.patient.bed} />
             <SummaryRow label="Admit date" value={formatDateTime(payload.summary.admitDate)} />
-            <SummaryRow
-              label="Discharge date"
-              value={formatDateTime(payload.summary.dischargeDate)}
-            />
+            <SummaryRow label="Discharge date" value={formatDateTime(payload.summary.dischargeDate)} />
             <SummaryRow label="Length of stay" value={payload.summary.lengthOfStay || "-"} />
-            <SummaryRow
-              label="Primary diagnosis"
-              value={payload.summary.primaryDiagnosis || "-"}
-            />
-            <SummaryRow
-              label="Hospital course"
-              value={payload.summary.hospitalCourse || "-"}
-            />
+            <SummaryRow label="Primary diagnosis" value={payload.summary.primaryDiagnosis || "-"} />
+            <SummaryRow label="Hospital course" value={payload.summary.hospitalCourse || "-"} />
             <SummaryRow label="Plan" value={payload.summary.plan || "-"} />
-            <SummaryRow
-              label="Home medication"
-              value={payload.summary.homeMedication || "-"}
-            />
+            <SummaryRow label="Home medication" value={payload.summary.homeMedication || "-"} />
             <SummaryRow label="Created at" value={formatDateTime(payload.summary.createdAt)} />
           </div>
-        ) : (
-          <EmptyState title="No discharge summary yet" />
-        )}
-      </GlassPanel>
+        </GlassPanel>
+      ) : (
+        <EmptyState title="No discharge summary yet" />
+      )}
     </div>
   );
 }

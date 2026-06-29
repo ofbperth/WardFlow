@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, ClipboardList, Plus, Sparkles, Trash2, UserRound } from "lucide-react";
+import { Check, Plus, Sparkles, Trash2 } from "lucide-react";
 import { PendingSubmitButton } from "@/components/form-feedback";
-import { Field, SectionLabel, SelectBox, TextArea, TextInput } from "@/components/wardflow-ui";
+import { Field, SelectBox, TextArea, TextInput } from "@/components/wardflow-ui";
 import { cn, labelForRole, labelForTaskPriority, labelForTaskType } from "@/lib/utils";
 import type { BulkTaskDraft, TaskTemplate, UserProfile, WardSummary } from "@/lib/types";
 
@@ -77,34 +77,22 @@ export function BulkTaskEntryBuilder({
     <form action={submitAction} className="space-y-4">
       <input type="hidden" name="wardId" value={wardSummary.ward.id} />
 
-      <div className="grid gap-3 xl:grid-cols-[0.86fr_1.14fr]">
-        <div className="panel-surface rounded-[26px] p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <SectionLabel>Ward focus</SectionLabel>
+      <section className="panel-surface rounded-[26px] p-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Ward</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2.5">
               <h3 className="text-lg font-semibold text-foreground">{wardSummary.ward.name}</h3>
-            </div>
-            <div className="rounded-full bg-[color:var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--color-accent-strong)]">
-              {wardSummary.patients.length} active
+              <div className="rounded-full bg-[color:var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--color-accent-strong)]">
+                {wardSummary.patients.length} active
+              </div>
+              <div className="rounded-full border border-[color:var(--color-rule)] bg-white px-3 py-1.5 text-xs font-semibold text-muted">
+                {instantTemplates.length} instant templates
+              </div>
             </div>
           </div>
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-            <WorkbenchMiniCard
-              icon={ClipboardList}
-              label="Instant actions"
-              value={`${instantTemplates.length} templates`}
-            />
-            <WorkbenchMiniCard
-              icon={UserRound}
-              label="Assignable staff"
-              value={`${profiles.length} profiles`}
-            />
-          </div>
-        </div>
 
-        <div className="panel-surface rounded-[26px] p-4">
-          <SectionLabel>Default kit</SectionLabel>
-          <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] xl:min-w-[44rem]">
             <label className="block text-sm font-medium text-foreground">
               <span className="mb-1.5 flex items-start text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Responsible doctor
@@ -153,7 +141,7 @@ export function BulkTaskEntryBuilder({
             </label>
           </div>
         </div>
-      </div>
+      </section>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -425,25 +413,5 @@ export function BulkTaskEntryBuilder({
         </div>
       </section>
     </form>
-  );
-}
-
-function WorkbenchMiniCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof ClipboardList;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[20px] bg-[color:var(--color-paper-3)] px-4 py-3.5">
-      <div className="flex items-center gap-2 text-muted">
-        <Icon className="h-4 w-4 text-[color:var(--color-accent)]" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{label}</p>
-      </div>
-      <p className="mt-2 text-base font-semibold leading-none text-foreground">{value}</p>
-    </div>
   );
 }
