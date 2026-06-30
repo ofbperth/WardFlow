@@ -260,10 +260,6 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
           .filter(Boolean)
           .join(" | "),
       ),
-      ...activity
-        .slice(0, 5)
-        .reverse()
-        .map((item) => `${item.createdAt.slice(0, 10)} | ${item.actorName} | ${item.action}`),
     ]),
     activeProblems,
     resolvedProblems,
