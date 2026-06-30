@@ -911,9 +911,9 @@ function TaskCard({
               <input type="hidden" name="updatedAt" value={task.updatedAt} />
               <PendingGhostButton
                 pendingLabel="Updating..."
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full px-0"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] border-emerald-500 bg-emerald-50 px-0 text-emerald-600 hover:bg-emerald-100"
               >
-                <CheckSquare2 className="h-4 w-4" />
+                <CheckSquare2 className="h-4 w-4 fill-emerald-500 text-emerald-500" />
               </PendingGhostButton>
             </form>
           ) : (
@@ -1054,9 +1054,9 @@ function CompactLinkedTaskRow({
             <input type="hidden" name="updatedAt" value={task.updatedAt} />
             <PendingGhostButton
               pendingLabel="Updating..."
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full px-0"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] border-emerald-500 bg-emerald-50 px-0 text-emerald-600 hover:bg-emerald-100"
             >
-              <CheckSquare2 className="h-4 w-4" />
+              <CheckSquare2 className="h-4 w-4 fill-emerald-500 text-emerald-500" />
             </PendingGhostButton>
           </form>
         ) : (
