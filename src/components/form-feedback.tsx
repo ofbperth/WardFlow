@@ -156,6 +156,7 @@ export function InlineEditor({
   panelTitle,
   buttonIcon = "edit",
   iconOnly = false,
+  compactTrigger = false,
   buttonTitle,
   children,
   className,
@@ -168,6 +169,7 @@ export function InlineEditor({
   panelTitle: string;
   buttonIcon?: "edit" | "create";
   iconOnly?: boolean;
+  compactTrigger?: boolean;
   buttonTitle?: string;
   children: React.ReactNode;
   className?: string;
@@ -188,8 +190,14 @@ export function InlineEditor({
         aria-label={buttonTitle ?? buttonLabel}
         className={cn(
           iconOnly
-            ? "button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
-            : "button-secondary mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-[color:var(--color-accent-strong)] md:px-4",
+            ? cn(
+                "button-secondary inline-flex items-center justify-center rounded-full text-[color:var(--color-accent-strong)]",
+                compactTrigger ? "h-7 w-7" : "h-8 w-8",
+              )
+            : cn(
+                "button-secondary mt-4 inline-flex items-center gap-2 rounded-full text-sm font-semibold text-[color:var(--color-accent-strong)] md:px-4",
+                compactTrigger ? "px-3 py-2" : "px-4 py-2.5",
+              ),
           className,
           buttonClassName,
         )}
@@ -250,10 +258,12 @@ export function InlineEditor({
 export function ProblemEditor({
   children,
   iconOnly,
+  compactTrigger,
   buttonTitle,
 }: {
   children: React.ReactNode;
   iconOnly?: boolean;
+  compactTrigger?: boolean;
   buttonTitle?: string;
 }) {
   return (
@@ -261,6 +271,7 @@ export function ProblemEditor({
       buttonLabel="Edit problem detail"
       panelTitle="Edit problem detail"
       iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
     >
       {children}
@@ -271,10 +282,12 @@ export function ProblemEditor({
 export function ProgressEntryEditor({
   children,
   iconOnly,
+  compactTrigger,
   buttonTitle,
 }: {
   children: React.ReactNode;
   iconOnly?: boolean;
+  compactTrigger?: boolean;
   buttonTitle?: string;
 }) {
   return (
@@ -283,6 +296,7 @@ export function ProgressEntryEditor({
       panelTitle="Add progress update"
       buttonIcon="create"
       iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
     >
       {children}
@@ -293,10 +307,12 @@ export function ProgressEntryEditor({
 export function ProgressEntryHistoryEditor({
   children,
   iconOnly,
+  compactTrigger,
   buttonTitle,
 }: {
   children: React.ReactNode;
   iconOnly?: boolean;
+  compactTrigger?: boolean;
   buttonTitle?: string;
 }) {
   return (
@@ -305,6 +321,7 @@ export function ProgressEntryHistoryEditor({
       panelTitle="Edit progress update"
       buttonIcon="edit"
       iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
     >
       {children}
@@ -314,11 +331,23 @@ export function ProgressEntryHistoryEditor({
 
 export function TaskEditor({
   children,
+  iconOnly,
+  compactTrigger,
+  buttonTitle,
 }: {
   children: React.ReactNode;
+  iconOnly?: boolean;
+  compactTrigger?: boolean;
+  buttonTitle?: string;
 }) {
   return (
-    <InlineEditor buttonLabel="Edit task detail" panelTitle="Edit task detail">
+    <InlineEditor
+      buttonLabel="Edit task detail"
+      panelTitle="Edit task detail"
+      iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
+      buttonTitle={buttonTitle}
+    >
       {children}
     </InlineEditor>
   );
@@ -358,6 +387,7 @@ export function ProblemCreator({
   children,
   buttonLabel = "Create problem",
   iconOnly = false,
+  compactTrigger = false,
   buttonTitle,
   className,
   buttonClassName,
@@ -368,6 +398,7 @@ export function ProblemCreator({
   children: React.ReactNode;
   buttonLabel?: string;
   iconOnly?: boolean;
+  compactTrigger?: boolean;
   buttonTitle?: string;
   className?: string;
   buttonClassName?: string;
@@ -381,6 +412,7 @@ export function ProblemCreator({
       panelTitle="Create problem"
       buttonIcon="create"
       iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
       className={className}
       buttonClassName={buttonClassName}
@@ -397,6 +429,7 @@ export function TaskCreator({
   children,
   buttonLabel = "Create task",
   iconOnly = false,
+  compactTrigger = false,
   buttonTitle,
   className,
   buttonClassName,
@@ -407,6 +440,7 @@ export function TaskCreator({
   children: React.ReactNode;
   buttonLabel?: string;
   iconOnly?: boolean;
+  compactTrigger?: boolean;
   buttonTitle?: string;
   className?: string;
   buttonClassName?: string;
@@ -420,6 +454,7 @@ export function TaskCreator({
       panelTitle="Create task"
       buttonIcon="create"
       iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
       className={className}
       buttonClassName={buttonClassName}

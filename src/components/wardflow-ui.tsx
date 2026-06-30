@@ -1,6 +1,5 @@
 ﻿import Link from "next/link";
 import {
-  AlertCircle,
   ArrowUpRight,
   CheckSquare2,
   ChevronDown,
@@ -61,6 +60,7 @@ export function GlassPanel({
   action,
   children,
   headingLevel = 2,
+  compact = false,
   className,
   headerClassName,
   titleBlockClassName,
@@ -71,6 +71,7 @@ export function GlassPanel({
   action?: React.ReactNode;
   children: React.ReactNode;
   headingLevel?: 1 | 2 | 3;
+  compact?: boolean;
   className?: string;
   headerClassName?: string;
   titleBlockClassName?: string;
@@ -79,10 +80,18 @@ export function GlassPanel({
   const HeadingTag = `h${headingLevel}` as "h1" | "h2" | "h3";
 
   return (
-    <section className={cn("app-panel rounded-[28px] p-4 md:p-6", className)}>
+    <section
+      className={cn(
+        "app-panel rounded-[24px]",
+        compact ? "p-3.5 md:p-4" : "p-4 md:p-5",
+        className,
+      )}
+    >
       <div
         className={cn(
-          "mb-4 flex items-start justify-between gap-4 border-b clinical-divider pb-4 md:mb-5",
+          compact
+            ? "mb-3 flex items-start justify-between gap-3 border-b clinical-divider pb-3"
+            : "mb-4 flex items-start justify-between gap-4 border-b clinical-divider pb-4",
           headerClassName,
         )}
       >
@@ -90,13 +99,19 @@ export function GlassPanel({
           <HeadingTag
             className={cn(
               "font-display font-semibold text-foreground text-balance",
-              headingLevel === 1 ? "text-[1.95rem] md:text-[2.35rem]" : "text-xl md:text-[1.55rem]",
+              headingLevel === 1
+                ? compact
+                  ? "text-[1.55rem] md:text-[1.9rem]"
+                  : "text-[1.85rem] md:text-[2.15rem]"
+                : compact
+                  ? "text-[1.05rem] md:text-[1.2rem]"
+                  : "text-[1.15rem] md:text-[1.35rem]",
             )}
           >
             {title}
           </HeadingTag>
           {subtitle ? (
-            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-[color:var(--color-ink-2)]">{subtitle}</p>
+            <p className="mt-1 max-w-3xl text-sm leading-5 text-[color:var(--color-ink-2)]">{subtitle}</p>
           ) : null}
         </div>
         {action ? <div className={cn("shrink-0", actionClassName)}>{action}</div> : null}
@@ -119,22 +134,35 @@ export function PageHeader({
   title,
   subtitle,
   action,
+  compact = false,
   className,
 }: {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  compact?: boolean;
   className?: string;
 }) {
   return (
-    <section className={cn("app-panel rounded-[28px] px-4 py-5 md:px-6 md:py-6", className)}>
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <section
+      className={cn(
+        "app-panel rounded-[24px]",
+        compact ? "px-3.5 py-3.5 md:px-4 md:py-4" : "px-4 py-4 md:px-5 md:py-5",
+        className,
+      )}
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0 max-w-4xl">
-          <h1 className="font-display text-[1.95rem] font-semibold text-foreground text-balance md:text-[2.35rem]">
+          <h1
+            className={cn(
+              "font-display font-semibold text-foreground text-balance",
+              compact ? "text-[1.45rem] md:text-[1.85rem]" : "text-[1.75rem] md:text-[2.1rem]",
+            )}
+          >
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-2 text-sm leading-6 text-[color:var(--color-ink-2)]">{subtitle}</p>
+            <p className="mt-1.5 text-sm leading-5 text-[color:var(--color-ink-2)]">{subtitle}</p>
           ) : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
@@ -153,17 +181,12 @@ export function ExpandableFilters({
   className?: string;
 }) {
   return (
-    <details
-      className={cn(
-        "panel-muted mb-5 rounded-[22px] p-3.5",
-        className,
-      )}
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-foreground marker:content-none">
+    <details className={cn("panel-muted mb-4 rounded-[18px] p-2.5", className)}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[14px] bg-white px-3 py-2.5 text-sm font-semibold text-foreground marker:content-none">
         <span>{title}</span>
         <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
       </summary>
-      <div className="pt-3">{children}</div>
+      <div className="pt-2.5">{children}</div>
     </details>
   );
 }
@@ -172,7 +195,7 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
         tone ?? "border-[color:var(--color-rule)] bg-white text-foreground",
       )}
     >
@@ -189,24 +212,24 @@ export function PatientCensus({
   renderWardFooter?: (summary: WardSummary) => React.ReactNode;
 }) {
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-3.5 md:space-y-4">
       {summaries.map((summary) => (
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
+          compact
           action={
             <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
               {summary.patients.length} ราย
             </Pill>
           }
-          className="rounded-[28px] px-4 py-4 md:px-6 md:py-6"
         >
           <div className="grid gap-2.5 md:grid-cols-2 xl:gap-3 2xl:grid-cols-3">
             {summary.patients.map((patient) => (
               <Link
                 key={patient.id}
                 href={`/patients/${patient.id}`}
-                className="group rounded-[20px] border clinical-divider bg-white p-3.5 shadow-sm transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50"
+                className="group rounded-[16px] border clinical-divider bg-white p-3 transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -222,16 +245,16 @@ export function PatientCensus({
                         <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                       )}
                     </div>
-                    <h3 className="mt-1.5 line-clamp-1 text-base font-semibold text-foreground">
+                    <h3 className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">
                       {patient.displayName}
                     </h3>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-0.5 text-xs text-muted">
                       {patient.age ?? "-"} y / {patient.sex ?? "-"}
                     </p>
-                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-5 text-foreground/90">
+                    <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-5 text-foreground/90">
                       {patient.diagnosis}
                     </p>
-                    <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted">
+                    <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted">
                       {patient.highestPriorityProblem
                         ? `${patient.highestPriorityProblem.problemName} | ${
                             patient.highestPriorityProblem.currentStatus ?? "No status line"
@@ -239,12 +262,12 @@ export function PatientCensus({
                         : "No active problem flagged"}
                     </p>
                   </div>
-                  <div className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-2 text-[color:var(--color-accent-strong)]">
+                  <div className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-1.5 text-[color:var(--color-accent-strong)]">
                     <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
                   <Pill tone="border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-[color:var(--color-ink)]">
                     {patient.pendingTaskCount} open task
                   </Pill>
@@ -270,14 +293,14 @@ export function PatientCensus({
                   ) : null}
                 </div>
 
-                <div className="mt-3 border-t clinical-divider pt-2.5 text-xs text-muted">
+                <div className="mt-2.5 border-t clinical-divider pt-2 text-xs text-muted">
                   <span className="line-clamp-1">Responsible: {patient.responsibleDoctorName ?? "Unassigned"}</span>
                 </div>
               </Link>
             ))}
           </div>
           {renderWardFooter ? (
-            <div className="mt-4 flex justify-end border-t clinical-divider pt-4">
+            <div className="mt-3 flex justify-end border-t clinical-divider pt-3">
               {renderWardFooter(summary)}
             </div>
           ) : null}
@@ -344,35 +367,35 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
           <div
             key={item.label}
             className={cn(
-              "rounded-[20px] border clinical-divider bg-white p-3.5",
+              "rounded-[16px] border clinical-divider bg-white p-3",
               item.label === "Diagnosis" ? "sm:col-span-2" : "",
             )}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-foreground">{item.value}</p>
+            <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{item.value}</p>
           </div>
         ))}
 
-        <details className="panel-muted sm:col-span-2 rounded-[20px] p-3.5">
+        <details className="panel-muted sm:col-span-2 rounded-[16px] p-3">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
             Clinical details
           </summary>
-          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+          <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
             {secondaryItems.map((item) => (
-              <div key={item.label} className="rounded-[18px] border clinical-divider bg-white p-3">
+              <div key={item.label} className="rounded-[14px] border clinical-divider bg-white p-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-foreground">{item.value}</p>
+                <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{item.value}</p>
               </div>
             ))}
           </div>
         </details>
       </div>
 
-      <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+      <div className="hidden gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {allItems.map((item) => (
-          <div key={item.label} className="rounded-[20px] border clinical-divider bg-white p-4">
+          <div key={item.label} className="rounded-[16px] border clinical-divider bg-white p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-foreground">{item.value}</p>
+            <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{item.value}</p>
           </div>
         ))}
       </div>
@@ -417,7 +440,7 @@ export function ProblemCards({
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {active.map((problem) => {
         const linkedTasks = problem.linkedTasks;
         const incompleteTasks = linkedTasks.filter((task) => task.status !== "done");
@@ -431,46 +454,47 @@ export function ProblemCards({
           <details
             key={problem.id}
             open={defaultOpen}
-            className="rounded-[18px] border clinical-divider bg-white px-3 py-2.5 md:px-3.5 md:py-3"
+            className="rounded-[16px] border clinical-divider bg-white"
           >
-            <summary className="flex cursor-pointer list-none items-start justify-between gap-2 marker:content-none">
+            <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2.5 marker:content-none">
+              <Circle
+                className={cn(
+                  "mt-1 h-2.5 w-2.5 shrink-0",
+                  problem.priority === "ACTIVE_UNSTABLE"
+                    ? "fill-rose-500 text-rose-500"
+                    : problem.priority === "ACTIVE_STABLE"
+                      ? "fill-orange-500 text-orange-500"
+                      : "fill-amber-500 text-amber-500",
+                )}
+              />
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Circle
-                    className={cn(
-                      "h-2.5 w-2.5 shrink-0",
-                      problem.priority === "ACTIVE_UNSTABLE"
-                        ? "fill-rose-500 text-rose-500"
-                        : problem.priority === "ACTIVE_STABLE"
-                          ? "fill-orange-500 text-orange-500"
-                          : "fill-amber-500 text-amber-500",
-                    )}
-                  />
-                  <p className="truncate text-sm font-semibold text-foreground md:text-[15px]">
-                    {problem.problemName}
-                  </p>
-                  <span className="rounded-full border clinical-divider bg-[color:var(--color-paper-3)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
-                    {labelForProblemDiagnosisStatus(problem.diagnosisStatus)}
-                  </span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground md:text-[15px]">
+                      {problem.problemName}
+                    </p>
+                    <p className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-muted">
+                      {compactProblemStatus(problem)}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+                      <span>{labelForProblemDiagnosisStatus(problem.diagnosisStatus)}</span>
+                      <span>·</span>
+                      <span>
+                        {incompleteCount} task{incompleteCount === 1 ? "" : "s"}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
+                  </div>
                 </div>
-                <p className="mt-1 line-clamp-1 text-[13px] leading-5 text-muted md:text-sm">
-                  {compactProblemStatus(problem)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {incompleteCount ? (
-                  <span className="rounded-full border clinical-divider bg-[color:var(--color-paper-3)] px-2 py-1 text-[11px] font-semibold text-muted">
-                    {incompleteCount} task{incompleteCount > 1 ? "s" : ""}
-                  </span>
-                ) : null}
-                <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
               </div>
             </summary>
 
-            <div className="mt-3 space-y-3 border-t clinical-divider pt-3">
+            <div className="space-y-2.5 border-t clinical-divider px-3 pb-3 pt-2.5">
               {canEdit ? (
-                <div className="flex items-center justify-end gap-1 border-b clinical-divider pb-3">
-                  <ProblemEditor iconOnly buttonTitle="Edit problem master">
+                <div className="flex items-center justify-end gap-1">
+                  <ProblemEditor iconOnly compactTrigger buttonTitle="Edit problem">
                     <form action={saveProblemMasterAction} className="space-y-3">
                       <input type="hidden" name="id" value={problem.id} />
                       <input type="hidden" name="patientId" value={patientId} />
@@ -517,7 +541,7 @@ export function ProblemCards({
                     </form>
                   </ProblemEditor>
 
-                  <ProgressEntryEditor iconOnly buttonTitle="Add progress update">
+                  <ProgressEntryEditor iconOnly compactTrigger buttonTitle="Add progress">
                     <form action={saveProblemProgressEntryAction} className="space-y-3">
                       <input type="hidden" name="patientId" value={patientId} />
                       <input type="hidden" name="problemId" value={problem.id} />
@@ -565,6 +589,7 @@ export function ProblemCards({
                     panelClassName="mt-0 w-full"
                     headerClassName="items-start"
                     contentClassName="space-y-3"
+                    compactTrigger
                   >
                     <form action={saveTaskAction} className="space-y-3">
                       <input type="hidden" name="patientId" value={patientId} />
@@ -627,56 +652,25 @@ export function ProblemCards({
                 </div>
               ) : null}
 
-              <div className="grid gap-2 md:grid-cols-2">
-                <ProblemSection
-                  label="Current Summary"
-                  value={problem.currentStatusSummary ?? "No current summary yet"}
-                  className="md:col-span-2"
-                />
-                <ProblemSection label="Latest Update" value={compactProblemStatus(problem)} />
-                <ProblemSection label="Evidence" value={compactProblemEvidence(problem)} />
-                <ProblemSection label="Treatment" value={compactProblemTreatment(problem)} />
-                <ProblemSection label="Reasoning" value={compactProblemReasoning(problem)} />
-                <ProblemSection label="Today's Plan" value={compactProblemPlan(problem)} className="md:col-span-2" />
-              </div>
+              <CompactProblemBulletList problem={problem} />
 
-              <div className="rounded-[16px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
+              <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
                   <p className="text-xs text-muted">{incompleteCount} incomplete</p>
                 </div>
-                <div className="mt-3 space-y-2">
+                <div className="mt-2.5 space-y-1.5">
                   {linkedTasks.length > 0 ? (
-                    linkedTasks.map((task) => (
-                      <div
+                    [...incompleteTasks, ...linkedTasks.filter((task) => task.status === "done")].map((task) => (
+                      <CompactLinkedTaskRow
                         key={task.id}
-                        className="flex items-start justify-between gap-2 rounded-[14px] border clinical-divider bg-white px-3 py-2"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-semibold text-foreground">{task.title}</p>
-                          <p className="mt-1 line-clamp-1 text-xs text-muted">
-                            {task.ownerName ?? "Unassigned"}
-                            {task.dueAt ? ` · Due ${formatDateTime(task.dueAt)}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
-                          {canEdit && task.status !== "done" ? (
-                            <form action={updateStatusAction}>
-                              <input type="hidden" name="patientId" value={patientId} />
-                              <input type="hidden" name="taskId" value={task.id} />
-                              <input type="hidden" name="status" value="done" />
-                              <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                              <PendingGhostButton
-                                pendingLabel="Updating..."
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-full px-0"
-                              >
-                                <CheckSquare2 className="h-4 w-4" />
-                              </PendingGhostButton>
-                            </form>
-                          ) : null}
-                        </div>
-                      </div>
+                        task={task}
+                        patientId={patientId}
+                        updateStatusAction={updateStatusAction}
+                        saveTaskAction={saveTaskAction}
+                        profiles={profiles}
+                        canEdit={canEdit}
+                      />
                     ))
                   ) : (
                     <p className="text-sm text-muted">No linked tasks yet</p>
@@ -684,17 +678,17 @@ export function ProblemCards({
                 </div>
               </div>
 
-              <details className="rounded-[16px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
+              <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
                   <span>History</span>
                   <ChevronDown className="h-4 w-4 transition-transform details-open:rotate-180" />
                 </summary>
-                <div className="mt-3 space-y-2">
+                <div className="mt-2.5 space-y-1.5">
                   {olderHistory.length ? (
                     olderHistory.map((entry) => (
                       <div
                         key={entry.id}
-                        className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5"
+                        className="rounded-[12px] border clinical-divider bg-white px-3 py-2"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -706,7 +700,11 @@ export function ProblemCards({
                             </p>
                           </div>
                           {canEdit ? (
-                            <ProgressEntryHistoryEditor iconOnly buttonTitle="Edit history entry">
+                            <ProgressEntryHistoryEditor
+                              iconOnly
+                              compactTrigger
+                              buttonTitle="Edit history entry"
+                            >
                               <form action={saveProblemProgressEntryAction} className="space-y-3">
                                 <input type="hidden" name="id" value={entry.id} />
                                 <input type="hidden" name="patientId" value={patientId} />
@@ -767,14 +765,14 @@ export function ProblemCards({
       })}
 
       {resolved.length > 0 ? (
-        <details className="rounded-[22px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
+        <details className="rounded-[16px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-3">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
             Resolved / chronic ({resolved.length})
           </summary>
-          <div className="mt-3 space-y-2">
+          <div className="mt-2.5 space-y-1.5">
             {resolved.map((problem) => (
-              <div key={problem.id} className="rounded-[18px] border clinical-divider bg-white px-3 py-2.5">
-                <div className="flex flex-wrap items-center gap-2">
+              <div key={problem.id} className="rounded-[12px] border clinical-divider bg-white px-3 py-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Pill tone={problemPriorityTone(problem.priority)}>
                     {labelForProblemPriority(problem.priority)}
                   </Pill>
@@ -821,13 +819,13 @@ export function TaskCards({
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
 
   return (
-    <div className="space-y-4">
-      <div className="max-w-xs">
+    <div className="space-y-3">
+      <div className="max-w-[12rem]">
         <InfoBlock label="All incomplete" value={String(active.length)} />
       </div>
 
       {active.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {active.map((task) => (
             <TaskCard
               key={task.id}
@@ -843,17 +841,17 @@ export function TaskCards({
           ))}
         </div>
       ) : (
-        <div className="rounded-[18px] border clinical-divider bg-white px-3 py-3 text-sm text-muted">
+        <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5 text-sm text-muted">
           No incomplete task
         </div>
       )}
 
       {archived.length > 0 ? (
-        <details className="rounded-[24px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
+        <details className="rounded-[16px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-3">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
             Archived done task ({archived.length})
           </summary>
-          <div className="mt-3 space-y-3">
+          <div className="mt-2.5 space-y-2">
             {archived.map((task) => (
               <TaskCard
                 key={task.id}
@@ -896,63 +894,80 @@ function TaskCard({
   canEdit: boolean;
   compact?: boolean;
 }) {
+  const metaLine = compactTaskMeta(task, problem);
+  const hasExpandableContent =
+    !compact &&
+    (Boolean(task.note) || Boolean(task.blockedReason) || task.updates.length > 0 || canEdit);
+
   return (
-    <div className="rounded-[22px] border clinical-divider bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-semibold text-foreground">{task.title}</p>
-            <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
-            <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
-            <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
-          </div>
-          <div className="mt-1.5 space-y-1 text-sm text-muted">
-            <p>Problem: {problem?.problemName ?? "No linked problem"}</p>
-            <p>Owner: {task.ownerName ?? "Unassigned"}</p>
-            {task.dueAt ? <p>Due: {formatDateTime(task.dueAt)}</p> : null}
-            {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
-          </div>
+    <div className="rounded-[16px] border clinical-divider bg-white p-3">
+      <div className="flex items-start gap-2">
+        <div className="pt-0.5">
+          {canEdit && task.status !== "done" ? (
+            <form action={updateStatusAction}>
+              <input type="hidden" name="patientId" value={patient.id} />
+              <input type="hidden" name="taskId" value={task.id} />
+              <input type="hidden" name="status" value="done" />
+              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+              <PendingGhostButton
+                pendingLabel="Updating..."
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full px-0"
+              >
+                <CheckSquare2 className="h-4 w-4" />
+              </PendingGhostButton>
+            </form>
+          ) : (
+            <Circle
+              className={cn(
+                "mt-1 h-2.5 w-2.5",
+                task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
+              )}
+            />
+          )}
         </div>
-        <div className="text-right text-sm text-muted">
-          <p>{labelForTaskStatus(task.status)}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="line-clamp-1 text-sm font-semibold text-foreground">{task.title}</p>
+                <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
+              </div>
+              <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p>
+              {task.note ? <p className="mt-1 line-clamp-2 text-sm text-foreground/90">{task.note}</p> : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {!compact ? (
+                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+              ) : null}
+              {canEdit ? (
+                <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+                  <TaskEditorForm
+                    task={task}
+                    patientId={patient.id}
+                    saveTaskAction={saveTaskAction}
+                    profiles={profiles}
+                  />
+                </TaskEditor>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
-      {canEdit && !compact ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
-            <form action={updateStatusAction} key={status}>
-              <input type="hidden" name="patientId" value={patient.id} />
-              <input type="hidden" name="taskId" value={task.id} />
-              <input type="hidden" name="status" value={status} />
-              <input type="hidden" name="updatedAt" value={task.updatedAt} />
-              <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
-                {labelForTaskStatus(status)}
-              </PendingGhostButton>
-            </form>
-          ))}
-        </div>
-      ) : null}
-
-      {task.blockedReason ? (
-        <div className="mt-2.5 flex items-center gap-2 rounded-[18px] border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-3 py-2 text-sm text-[color:var(--color-danger)]">
-          <AlertCircle className="h-4 w-4" />
-          Blocked reason: {task.blockedReason}
-        </div>
-      ) : null}
-
-      {!compact ? (
-        <details className="mt-3 rounded-[20px] border clinical-divider bg-[color:var(--color-paper-3)] p-3 md:mt-4">
+      {hasExpandableContent ? (
+        <details className="mt-2 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[color:var(--color-ink)]">
-            <span>Expand details</span>
+            <span>Details</span>
             <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
           </summary>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-2.5 space-y-3">
+            <CompactTaskDetailList task={task} problem={problem} />
+
             {task.updates.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {task.updates.slice(0, 3).map((update) => (
-                  <div key={update.id} className="rounded-[18px] border border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)]/70 px-3 py-2">
+                  <div key={update.id} className="rounded-[12px] border border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)]/70 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                       <span>{update.createdByName}</span>
                       <span>{formatRelative(update.createdAt)}</span>
@@ -970,74 +985,19 @@ function TaskCard({
                   <TextArea
                     name="note"
                     placeholder="Short update for handover"
-                    className="min-h-20"
+                    className="min-h-16"
                     required
                   />
                 </Field>
                 <SubmitButton pendingLabel="Saving update...">Add update</SubmitButton>
               </form>
             ) : null}
-
-            {canEdit ? (
-              <TaskEditor>
-                <form action={saveTaskAction} className="space-y-3">
-                  <input type="hidden" name="id" value={task.id} />
-                  <input type="hidden" name="patientId" value={patient.id} />
-                  <input type="hidden" name="problemId" value={task.problemId ?? ""} />
-                  <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                  <Field label="Title">
-                    <TextInput name="title" defaultValue={task.title} required />
-                  </Field>
-                  <Field label="Owner">
-                    <SelectBox name="ownerId" defaultValue={task.ownerId ?? ""}>
-                      <StaffOptions profiles={profiles} />
-                    </SelectBox>
-                  </Field>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Status">
-                      <SelectBox name="status" defaultValue={task.status}>
-                        <option value="not_started">Not started</option>
-                        <option value="in_progress">In progress</option>
-                        <option value="done">Done</option>
-                        <option value="blocked">Blocked</option>
-                      </SelectBox>
-                    </Field>
-                    <Field label="Priority">
-                      <SelectBox name="priority" defaultValue={task.priority}>
-                        <option value="normal">Normal</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="emergency">Emergency</option>
-                      </SelectBox>
-                    </Field>
-                  </div>
-                  <Field label="Type">
-                    <SelectBox name="type" defaultValue={task.type}>
-                      <option value="lab">lab</option>
-                      <option value="imaging">imaging</option>
-                      <option value="consult">consult</option>
-                      <option value="procedure">procedure</option>
-                      <option value="family_talk">family_talk</option>
-                      <option value="discharge">discharge</option>
-                      <option value="medication">medication</option>
-                      <option value="other">other</option>
-                    </SelectBox>
-                  </Field>
-                  <Field label="Note">
-                    <TextArea name="note" defaultValue={task.note ?? ""} />
-                  </Field>
-                  <Field label="Blocked reason">
-                    <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
-                  </Field>
-                  <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
-                </form>
-              </TaskEditor>
-            ) : null}
           </div>
         </details>
       ) : null}
 
       {!compact ? (
-        <p className="mt-4 text-xs text-muted">
+        <p className="mt-2.5 text-xs text-muted">
           Updated by {task.updatedByName ?? "Unknown"} | {formatRelative(task.updatedAt)}
         </p>
       ) : null}
@@ -1045,26 +1005,192 @@ function TaskCard({
   );
 }
 
-function ProblemSection({
-  label,
-  value,
-  className,
+function CompactProblemBulletList({ problem }: { problem: Problem }) {
+  const entries = [
+    { label: "Summary", value: problem.currentStatusSummary ?? "" },
+    { label: "Evidence", value: compactProblemEvidence(problem) },
+    { label: "Treatment", value: compactProblemTreatment(problem) },
+    { label: "Reasoning", value: compactProblemReasoning(problem) },
+    { label: "Plan", value: compactProblemPlan(problem) },
+  ].filter((entry) => isMeaningfulValue(entry.value));
+
+  return (
+    <ul className="space-y-1.5 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
+      {entries.map((entry) => (
+        <li key={entry.label} className="grid gap-0.5 text-sm text-foreground md:grid-cols-[5.5rem_minmax(0,1fr)]">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+            {entry.label}
+          </span>
+          <span className="line-clamp-2">{entry.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CompactLinkedTaskRow({
+  task,
+  patientId,
+  updateStatusAction,
+  saveTaskAction,
+  profiles,
+  canEdit,
 }: {
-  label: string;
-  value: string;
-  className?: string;
+  task: TaskWithUpdates;
+  patientId: string;
+  updateStatusAction: (formData: FormData) => Promise<void>;
+  saveTaskAction: (formData: FormData) => Promise<void>;
+  profiles: UserProfile[];
+  canEdit: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-[16px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5",
-        className,
-      )}
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-5 text-foreground">{value}</p>
+    <div className="flex items-start gap-2 rounded-[12px] border clinical-divider bg-white px-3 py-2">
+      <div className="pt-0.5">
+        {canEdit && task.status !== "done" ? (
+          <form action={updateStatusAction}>
+            <input type="hidden" name="patientId" value={patientId} />
+            <input type="hidden" name="taskId" value={task.id} />
+            <input type="hidden" name="status" value="done" />
+            <input type="hidden" name="updatedAt" value={task.updatedAt} />
+            <PendingGhostButton
+              pendingLabel="Updating..."
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full px-0"
+            >
+              <CheckSquare2 className="h-4 w-4" />
+            </PendingGhostButton>
+          </form>
+        ) : (
+          <Circle
+            className={cn(
+              "mt-1 h-2.5 w-2.5",
+              task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
+            )}
+          />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={cn("line-clamp-1 text-sm font-semibold", task.status === "done" ? "text-muted" : "text-foreground")}>
+          {task.title}
+        </p>
+        <p className="mt-1 line-clamp-1 text-xs text-muted">{compactTaskMeta(task)}</p>
+      </div>
+      {canEdit ? (
+        <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+          <TaskEditorForm
+            task={task}
+            patientId={patientId}
+            saveTaskAction={saveTaskAction}
+            profiles={profiles}
+          />
+        </TaskEditor>
+      ) : null}
     </div>
   );
+}
+
+function CompactTaskDetailList({
+  task,
+  problem,
+}: {
+  task: TaskWithUpdates;
+  problem: Problem | null;
+}) {
+  const items = [
+    `Status: ${labelForTaskStatus(task.status)}`,
+    `Type: ${labelForTaskType(task.type)}`,
+    `Problem: ${problem?.problemName ?? "No linked problem"}`,
+    task.blockedReason ? `Blocked: ${task.blockedReason}` : null,
+  ].filter(Boolean);
+
+  return (
+    <ul className="space-y-1 text-sm text-foreground">
+      {items.map((item) => (
+        <li key={item} className="line-clamp-2">
+          • {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TaskEditorForm({
+  task,
+  patientId,
+  saveTaskAction,
+  profiles,
+}: {
+  task: TaskWithUpdates;
+  patientId: string;
+  saveTaskAction: (formData: FormData) => Promise<void>;
+  profiles: UserProfile[];
+}) {
+  return (
+    <form action={saveTaskAction} className="space-y-3">
+      <input type="hidden" name="id" value={task.id} />
+      <input type="hidden" name="patientId" value={patientId} />
+      <input type="hidden" name="problemId" value={task.problemId ?? ""} />
+      <input type="hidden" name="updatedAt" value={task.updatedAt} />
+      <Field label="Title">
+        <TextInput name="title" defaultValue={task.title} required />
+      </Field>
+      <Field label="Owner">
+        <SelectBox name="ownerId" defaultValue={task.ownerId ?? ""}>
+          <StaffOptions profiles={profiles} />
+        </SelectBox>
+      </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Status">
+          <SelectBox name="status" defaultValue={task.status}>
+            <option value="not_started">Not started</option>
+            <option value="in_progress">In progress</option>
+            <option value="done">Done</option>
+            <option value="blocked">Blocked</option>
+          </SelectBox>
+        </Field>
+        <Field label="Priority">
+          <SelectBox name="priority" defaultValue={task.priority}>
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+            <option value="emergency">Emergency</option>
+          </SelectBox>
+        </Field>
+      </div>
+      <Field label="Type">
+        <SelectBox name="type" defaultValue={task.type}>
+          <option value="lab">lab</option>
+          <option value="imaging">imaging</option>
+          <option value="consult">consult</option>
+          <option value="procedure">procedure</option>
+          <option value="family_talk">family_talk</option>
+          <option value="discharge">discharge</option>
+          <option value="medication">medication</option>
+          <option value="other">other</option>
+        </SelectBox>
+      </Field>
+      <Field label="Note">
+        <TextArea name="note" defaultValue={task.note ?? ""} />
+      </Field>
+      <Field label="Blocked reason">
+        <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
+      </Field>
+      <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
+    </form>
+  );
+}
+
+function compactTaskMeta(task: TaskWithUpdates, problem?: Problem | null) {
+  return [
+    problem?.problemName ?? null,
+    task.ownerName ?? "Unassigned",
+    task.dueAt ? `Due ${formatDateTime(task.dueAt)}` : null,
+    labelForTaskPriority(task.priority),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function isMeaningfulValue(value: string) {
+  return value.trim().length > 0 && !value.startsWith("No ");
 }
 
 export function Timeline({ items }: { items: ActivityLog[] }) {
@@ -1111,10 +1237,10 @@ function TimelineRow({ item, compact = false }: { item: ActivityLog; compact?: b
 
 export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {bundles.map((bundle) => (
-        <GlassPanel key={bundle.ward.id} title={bundle.ward.name}>
-          <div className="space-y-4">
+        <GlassPanel key={bundle.ward.id} title={bundle.ward.name} compact>
+          <div className="space-y-3">
             {bundle.patients
               .filter(
                 (patient) =>
@@ -1128,16 +1254,16 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                   ),
               )
               .map((patient) => (
-                <div key={patient.id} className="rounded-[24px] border clinical-divider bg-white p-5">
+                <div key={patient.id} className="rounded-[18px] border clinical-divider bg-white p-3.5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
-                      <h3 className="mt-1 text-lg font-semibold text-foreground">{patient.diagnosis}</h3>
+                      <h3 className="mt-1 text-base font-semibold text-foreground">{patient.diagnosis}</h3>
                     </div>
                     <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                   </div>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
                     <MiniList
                       title="Watch"
                       items={patient.problems
@@ -1182,13 +1308,14 @@ export function HandoverTextPanel({
   return (
     <GlassPanel
       title="Structured handover text"
+      compact
       action={<CopyTextButton text={text} />}
     >
       <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted">{wardName}</div>
       <textarea
         readOnly
         value={text}
-        className="min-h-72 w-full rounded-[22px] border clinical-divider bg-white px-4 py-4 text-sm text-foreground outline-none"
+        className="min-h-72 w-full rounded-[18px] border clinical-divider bg-white px-3 py-3 text-sm text-foreground outline-none"
       />
     </GlassPanel>
   );
@@ -1304,7 +1431,7 @@ export function Field({
     <label className={cn("block text-sm font-medium text-foreground", className)}>
       <span
         className={cn(
-          "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-muted",
+          "mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted",
           labelClassName,
         )}
       >
@@ -1320,7 +1447,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "w-full rounded-[16px] border clinical-divider bg-white px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
+        "w-full rounded-[14px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -1332,7 +1459,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={cn(
-        "min-h-20 w-full rounded-[16px] border clinical-divider bg-white px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
+        "min-h-16 w-full rounded-[14px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -1344,7 +1471,7 @@ export function SelectBox(props: React.SelectHTMLAttributes<HTMLSelectElement>) 
     <select
       {...props}
       className={cn(
-        "w-full rounded-[16px] border clinical-divider bg-white px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
+        "w-full rounded-[14px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -1369,10 +1496,10 @@ export function EmptyState({
   body?: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-dashed clinical-divider bg-white/78 p-8 text-center">
-      <Clock3 className="mx-auto h-8 w-8 text-[color:var(--color-ink-2)]" />
-      <h3 className="mt-3 font-display text-lg font-semibold text-foreground">{title}</h3>
-      {body ? <p className="mt-2 text-sm text-[color:var(--color-ink-2)]">{body}</p> : null}
+    <div className="rounded-[18px] border border-dashed clinical-divider bg-white/78 p-5 text-center">
+      <Clock3 className="mx-auto h-7 w-7 text-[color:var(--color-ink-2)]" />
+      <h3 className="mt-2.5 font-display text-base font-semibold text-foreground">{title}</h3>
+      {body ? <p className="mt-1.5 text-sm text-[color:var(--color-ink-2)]">{body}</p> : null}
     </div>
   );
 }
@@ -1385,9 +1512,9 @@ export function SetupNotice({
   body?: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 p-4 text-sm text-foreground">
+    <div className="rounded-[18px] border border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 p-3 text-sm text-foreground">
       <p className="font-semibold">{title}</p>
-      {body ? <p className="mt-2 leading-6">{body}</p> : null}
+      {body ? <p className="mt-1.5 leading-5">{body}</p> : null}
     </div>
   );
 }

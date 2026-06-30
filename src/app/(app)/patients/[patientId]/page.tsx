@@ -59,7 +59,7 @@ export default async function PatientPage({
   ]);
 
   if (!bundle) {
-    return <EmptyState title="Patient not found" body="ไม่พบข้อมูลหรือไม่มีสิทธิ์เข้าถึง" />;
+    return <EmptyState title="Patient not found" body="Patient is unavailable in your current scope." />;
   }
 
   if (bundle.patient.lifecycle === "discharged") {
@@ -85,7 +85,7 @@ export default async function PatientPage({
   const activeTaskCount = bundle.tasks.filter((task) => task.status !== "done").length;
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-5">
       <RealtimeRefresh
         channel={`patient-${patientId}`}
         filters={[
@@ -100,13 +100,14 @@ export default async function PatientPage({
 
       <PageHeader
         className="sticky top-3 z-20"
+        compact
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
         action={
           <div className="flex items-center gap-2">
             <Link
               href={`/patients/${bundle.patient.id}/summary-note`}
-              className="button-accent inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
+              className="button-accent inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold"
             >
               Summary Note
             </Link>
@@ -130,32 +131,21 @@ export default async function PatientPage({
         }
       />
 
-      <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
-        <div className="space-y-4 md:space-y-6">
+      <div className="grid gap-4 md:gap-5 2xl:grid-cols-[1.45fr_0.95fr]">
+        <div className="space-y-4 md:space-y-5">
           <GlassPanel
             title="Problems"
-            subtitle="Longitudinal updates with linked tasks."
-          >
-            <ProblemCards
-              problems={bundle.problems}
-              tasks={bundle.tasks}
-              patientId={bundle.patient.id}
-              reorderAction={reorderProblemAction}
-              saveProblemMasterAction={saveProblemMasterAction}
-              saveProblemProgressEntryAction={saveProblemProgressEntryAction}
-              saveTaskAction={saveTaskAction}
-              updateStatusAction={updateTaskStatusAction}
-              profiles={taskProfiles}
-              templates={templates}
-              defaultTaskOwnerId={defaultTaskOwnerId}
-              canEdit={canEditClinical}
-            />
-            {canEditClinical ? (
-              <div className="mt-4 border-t clinical-divider pt-4">
+            subtitle="Active problems first. Expand only when you need detail."
+            compact
+            action={
+              canEditClinical ? (
                 <ProblemCreator
+                  iconOnly
+                  compactTrigger
                   buttonLabel="Add problem"
-                  className="panel-accent mt-0 w-full rounded-[22px]"
-                  buttonClassName="mt-0 ml-auto"
+                  buttonTitle="Add problem"
+                  className="mt-0"
+                  buttonClassName="mt-0"
                   panelClassName="mt-0 w-full"
                   headerClassName="items-start"
                   contentClassName="space-y-3"
@@ -196,30 +186,38 @@ export default async function PatientPage({
                     </div>
                   </form>
                 </ProblemCreator>
-              </div>
-            ) : null}
+              ) : null
+            }
+          >
+            <ProblemCards
+              problems={bundle.problems}
+              tasks={bundle.tasks}
+              patientId={bundle.patient.id}
+              reorderAction={reorderProblemAction}
+              saveProblemMasterAction={saveProblemMasterAction}
+              saveProblemProgressEntryAction={saveProblemProgressEntryAction}
+              saveTaskAction={saveTaskAction}
+              updateStatusAction={updateTaskStatusAction}
+              profiles={taskProfiles}
+              templates={templates}
+              defaultTaskOwnerId={defaultTaskOwnerId}
+              canEdit={canEditClinical}
+            />
           </GlassPanel>
 
           <GlassPanel
             title="Tasks"
-            subtitle="Incomplete work linked to this patient."
-          >
-            <TaskCards
-              tasks={bundle.tasks}
-              patient={bundle.patient}
-              problems={bundle.problems}
-              updateStatusAction={updateTaskStatusAction}
-              saveTaskAction={saveTaskAction}
-              saveTaskUpdateAction={saveTaskUpdateAction}
-              profiles={taskProfiles}
-              canEdit={canEditTaskWorkflow}
-            />
-            {canEditTaskWorkflow ? (
-              <div className="mt-4 border-t clinical-divider pt-4">
+            subtitle="Incomplete work first. Mark complete with one tap."
+            compact
+            action={
+              canEditTaskWorkflow ? (
                 <TaskCreator
+                  iconOnly
+                  compactTrigger
                   buttonLabel="Add task"
-                  className="panel-accent mt-0 w-full rounded-[22px]"
-                  buttonClassName="mt-0 ml-auto"
+                  buttonTitle="Add task"
+                  className="mt-0"
+                  buttonClassName="mt-0"
                   panelClassName="mt-0 w-full"
                   headerClassName="items-start"
                   contentClassName="space-y-3"
@@ -298,13 +296,24 @@ export default async function PatientPage({
                     </div>
                   </form>
                 </TaskCreator>
-              </div>
-            ) : null}
+              ) : null
+            }
+          >
+            <TaskCards
+              tasks={bundle.tasks}
+              patient={bundle.patient}
+              problems={bundle.problems}
+              updateStatusAction={updateTaskStatusAction}
+              saveTaskAction={saveTaskAction}
+              saveTaskUpdateAction={saveTaskUpdateAction}
+              profiles={taskProfiles}
+              canEdit={canEditTaskWorkflow}
+            />
           </GlassPanel>
         </div>
 
-        <div className="space-y-4 md:space-y-6">
-          <GlassPanel title="Care snapshot">
+        <div className="space-y-4 md:space-y-5">
+          <GlassPanel title="Care snapshot" compact>
             <div className="grid gap-2.5 sm:grid-cols-2">
               <SnapshotBox label="Clinical status" value={bundle.patient.status} />
               <SnapshotBox label="Open problems" value={String(activeProblemCount)} />
@@ -323,7 +332,7 @@ export default async function PatientPage({
             </div>
           </GlassPanel>
 
-          <GlassPanel title="Patient summary" className="px-4 py-4 md:px-5 md:py-5">
+          <GlassPanel title="Patient summary" compact>
             <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
             {canManagePatient ? (
@@ -440,7 +449,7 @@ export default async function PatientPage({
           </GlassPanel>
 
           {canEditClinical ? (
-            <GlassPanel title="Manual handover note">
+            <GlassPanel title="Manual handover note" compact>
               <form action={saveHandoverAction} className="space-y-3">
                 <input type="hidden" name="patientId" value={bundle.patient.id} />
                 <input type="hidden" name="updatedAt" value={bundle.handover?.updatedAt ?? ""} />
@@ -465,7 +474,7 @@ export default async function PatientPage({
         </div>
       </div>
 
-      <GlassPanel title="Activity timeline">
+      <GlassPanel title="Activity timeline" compact>
         <Timeline items={bundle.activity} />
       </GlassPanel>
     </div>
@@ -474,9 +483,9 @@ export default async function PatientPage({
 
 function SnapshotBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="panel-subtle rounded-[20px] p-4">
+    <div className="panel-subtle rounded-[16px] p-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
+      <p className="mt-1.5 text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

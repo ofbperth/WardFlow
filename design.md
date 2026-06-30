@@ -30,6 +30,10 @@ modern-minimal
 
 ## Spacing
 4-point named scale, expressed through the app token layer in `globals.css`.
+- App pages default to compact vertical rhythm: 12-16px card padding on mobile,
+  16-20px on desktop, and short section gaps unless a control needs more room.
+- Problem and task surfaces should expose a one-line operational summary first;
+  longer context moves behind expand/collapse.
 
 ## Motion
 - Easings: restrained ease-out and ease-in-out only
@@ -41,6 +45,8 @@ modern-minimal
 - No decorative hover lift as the primary signal
 - Focus states visible immediately
 - Menus, filters, and drawers read as clinical controls, not promo UI
+- Secondary actions default to icon-only when context is already obvious
+- Expand/collapse is the main path to dense detail; default state stays short
 
 ## CTA voice
 - Primary CTA: deep teal, compact pill, direct verb copy
@@ -57,8 +63,11 @@ modern-minimal
 - Space Grotesk + Noto Sans Thai pairing
 - Rounded clinical control language
 - Calm panel rhythm, zero decorative glass, visible borders, document-grade spacing
+- Compact header rhythm with action-first metadata and minimal descriptive copy
+- Mobile-first hierarchy: sticky operational header, actionable list next, secondary detail later
 
 ## What pages MAY differ on
 - Density and panel grouping by workflow
 - Overview pages may use more patient/task summary cards
 - Read-only pages may feel more document-like, but keep the same tokens
+- Labeled primary CTAs may remain text when they unlock a high-value workflow

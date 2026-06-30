@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Archive } from "lucide-react";
 import { savePatientWardAction } from "@/app/actions";
 import { AppFeedbackToast } from "@/components/app-feedback-toast";
 import { AdmitPatientCreator } from "@/components/form-feedback";
@@ -63,13 +64,16 @@ export default async function WardsPage({
       />
 
       <PageHeader
+        compact
         title="Ward overview"
         action={
           <Link
             href="/discharged"
-            className="inline-flex w-full items-center justify-center rounded-full border clinical-divider bg-white px-4 py-2.5 text-sm font-semibold text-foreground md:w-auto"
+            aria-label="Open discharged patients"
+            title="Open discharged patients"
+            className="button-secondary inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
           >
-            Discharged
+            <Archive className="h-4 w-4" />
           </Link>
         }
       />
@@ -89,7 +93,7 @@ export default async function WardsPage({
             canManagePatient
               ? (summary) => (
                   <AdmitPatientCreator
-                    className="panel-accent mt-0 w-full rounded-[22px]"
+                    className="panel-accent mt-0 w-full rounded-[18px]"
                     buttonClassName="mt-0 ml-auto"
                     panelClassName="mt-0 w-full"
                     headerClassName="items-start"
