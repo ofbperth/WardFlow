@@ -162,6 +162,23 @@ export default async function PatientPage({
                   <TextInput name="diagnosis" defaultValue={bundle.patient.diagnosis} required />
                 </Field>
                 <div className="grid gap-3 md:grid-cols-3">
+                  <Field label="Age">
+                    <TextInput
+                      name="age"
+                      defaultValue={bundle.patient.age != null ? String(bundle.patient.age) : ""}
+                    />
+                  </Field>
+                  <Field label="Sex">
+                    <TextInput name="sex" defaultValue={bundle.patient.sex ?? ""} />
+                  </Field>
+                  <Field label="Underlying disease">
+                    <TextInput
+                      name="underlyingDisease"
+                      defaultValue={bundle.patient.underlyingDisease ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
                   <Field label="Status">
                     <SelectBox name="status" defaultValue={bundle.patient.status}>
                       <option value="stable">Stable</option>
@@ -441,6 +458,14 @@ export default async function PatientPage({
         <div className="space-y-4 md:space-y-6">
           <GlassPanel title="Care snapshot">
             <div className="grid gap-3 sm:grid-cols-2">
+              <SnapshotBox
+                label="Age / Sex"
+                value={`${bundle.patient.age ?? "-"} / ${bundle.patient.sex ?? "-"}`}
+              />
+              <SnapshotBox
+                label="Underlying disease"
+                value={bundle.patient.underlyingDisease ?? "-"}
+              />
               <SnapshotBox label="Code status" value={bundle.patient.codeStatus ?? "-"} />
               <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
               <SnapshotBox label="Allergy" value={bundle.patient.allergy ?? "-"} />

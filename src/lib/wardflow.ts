@@ -118,6 +118,7 @@ type PatientRow = {
   display_name: string;
   age: number | null;
   sex: string | null;
+  underlying_disease?: string | null;
   diagnosis: string;
   status: Patient["status"];
   responsible_doctor_id: string | null;
@@ -265,6 +266,9 @@ const patientSchema = z.object({
   wardId: z.string().min(1),
   bed: z.string().min(1),
   displayName: z.string().min(1),
+  ageText: z.string().optional().nullable(),
+  sex: z.string().optional().nullable(),
+  underlyingDisease: z.string().optional().nullable(),
   diagnosis: z.string().min(1),
   status: z.enum(["stable", "watch", "critical"]),
   responsibleDoctorId: z.string().optional().nullable(),
@@ -424,6 +428,16 @@ function textOrNull(value: FormDataEntryValue | null) {
   return trimmed.length ? trimmed : null;
 }
 
+function parseAgeInput(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed)) {
+    throw new Error("Age must be a number");
+  }
+  return parsed;
+}
+
 function buildStudentAssignmentsFromProfiles(profiles: UserProfile[]): StudentWardAssignment[] {
   return profiles
     .filter((profile) => profile.role === "student" && profile.wardAssignment)
@@ -503,12 +517,34 @@ function normalizeTaskRecord(task: Partial<WardTask>): WardTask {
   };
 }
 
+function normalizePatientRecord(patient: Partial<Patient>): Patient {
+  return {
+    id: patient.id ?? nextId("patient"),
+    wardId: patient.wardId ?? "",
+    bed: patient.bed ?? "",
+    displayName: patient.displayName ?? "Unknown patient",
+    age: patient.age ?? null,
+    sex: patient.sex ?? null,
+    underlyingDisease: patient.underlyingDisease ?? null,
+    diagnosis: patient.diagnosis ?? "",
+    status: patient.status ?? "stable",
+    responsibleDoctorId: patient.responsibleDoctorId ?? null,
+    responsibleDoctorName: patient.responsibleDoctorName ?? null,
+    allergy: patient.allergy ?? null,
+    precaution: patient.precaution ?? "none",
+    codeStatus: patient.codeStatus ?? null,
+    lifecycle: patient.lifecycle ?? "active",
+    dischargedAt: patient.dischargedAt ?? null,
+    lastUpdate: patient.lastUpdate ?? now(),
+  };
+}
+
 function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
   const seed = createSeedStore();
 
   return {
     wards: input?.wards ?? seed.wards,
-    patients: input?.patients ?? seed.patients,
+    patients: (input?.patients ?? seed.patients).map(normalizePatientRecord),
     problems: (input?.problems ?? seed.problems).map(normalizeProblemRecord),
     tasks: (input?.tasks ?? seed.tasks).map(normalizeTaskRecord),
     taskUpdates: input?.taskUpdates ?? seed.taskUpdates,
@@ -897,6 +933,7 @@ function mapPatientRow(row: PatientRow, profiles: Map<string, UserProfile>): Pat
     displayName: row.display_name,
     age: row.age,
     sex: row.sex,
+    underlyingDisease: row.underlying_disease ?? null,
     diagnosis: row.diagnosis,
     status: row.status,
     responsibleDoctorId: row.responsible_doctor_id,
@@ -1102,6 +1139,15 @@ function isRecoverableTaskProblemLinkError(error: { message: string } | null | u
   );
 }
 
+function isRecoverablePatientUnderlyingSchemaError(error: { message: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("patients") &&
+    message.includes("underlying_disease") &&
+    (message.includes("schema cache") || message.includes("column") || message.includes("does not exist"))
+  );
+}
+
 async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   return measureServerTiming("loadLiveStore", async () => {
     const supabase = await getLiveClient();
@@ -1129,9 +1175,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       supabase.from("profiles").select(profileColumns).order("name", { ascending: true }),
       supabase
         .from("patients")
-        .select(
-          "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, discharged_at, updated_by_id, created_at, updated_at",
-        )
+        .select("*")
         .order("updated_at", { ascending: false }),
       supabase
         .from("problems")
@@ -1345,9 +1389,7 @@ const getWardOverviewDataCached = cache(
 
       const patientsResult = await supabase
         .from("patients")
-        .select(
-          "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, discharged_at, updated_by_id, created_at, updated_at",
-        )
+        .select("*")
         .eq("lifecycle", "active")
         .in("ward_id", wardIds)
         .order("bed", { ascending: true });
@@ -1476,9 +1518,7 @@ function assertNoConflict(expected: string | null | undefined, actual: string, e
 async function fetchLivePatient(supabase: LiveClient, patientId: string) {
   const result = await supabase
     .from("patients")
-    .select(
-      "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, updated_by_id, discharged_at, created_at, updated_at",
-    )
+    .select("*")
     .eq("id", patientId)
     .maybeSingle();
 
@@ -2638,12 +2678,16 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     wardId: formData.get("wardId"),
     bed: formData.get("bed"),
     displayName: formData.get("displayName"),
+    ageText: textOrNull(formData.get("age")),
+    sex: textOrNull(formData.get("sex")),
+    underlyingDisease: textOrNull(formData.get("underlyingDisease")),
     diagnosis: formData.get("diagnosis"),
     status: formData.get("status"),
     responsibleDoctorId: textOrNull(formData.get("responsibleDoctorId")),
     precaution: formData.get("precaution"),
     updatedAt: textOrNull(formData.get("updatedAt")),
   });
+  const parsedAge = parseAgeInput(parsed.ageText);
 
   requireWardWriteAccess(session, parsed.wardId);
 
@@ -2671,6 +2715,9 @@ export async function savePatient(formData: FormData, session: SessionContext): 
       existing.wardId = parsed.wardId;
       existing.bed = parsed.bed;
       existing.displayName = parsed.displayName;
+      existing.age = parsedAge;
+      existing.sex = parsed.sex ?? null;
+      existing.underlyingDisease = parsed.underlyingDisease ?? null;
       existing.diagnosis = parsed.diagnosis;
       existing.status = parsed.status;
       existing.responsibleDoctorId = parsed.responsibleDoctorId ?? session.profile.id;
@@ -2693,8 +2740,9 @@ export async function savePatient(formData: FormData, session: SessionContext): 
         wardId: parsed.wardId,
         bed: parsed.bed,
         displayName: parsed.displayName,
-        age: null,
-        sex: null,
+        age: parsedAge,
+        sex: parsed.sex ?? null,
+        underlyingDisease: parsed.underlyingDisease ?? null,
         diagnosis: parsed.diagnosis,
         status: parsed.status,
         responsibleDoctorId: parsed.responsibleDoctorId ?? session.profile.id,
@@ -2733,20 +2781,40 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     requireWardWriteAccess(session, existing.ward_id);
     assertNoConflict(parsed.updatedAt, existing.updated_at, "patient");
 
-    const result = await supabase
-      .from("patients")
-      .update({
-        ward_id: parsed.wardId,
-        bed: parsed.bed,
-        display_name: parsed.displayName,
-        diagnosis: parsed.diagnosis,
-        status: parsed.status,
-        responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
-        precaution: parsed.precaution,
-        updated_by_id: session.profile.id,
-      })
-      .eq("id", parsed.id);
-    ensureNoError(result, "Failed to update patient");
+    const fullUpdatePayload = {
+      ward_id: parsed.wardId,
+      bed: parsed.bed,
+      display_name: parsed.displayName,
+      age: parsedAge,
+      sex: parsed.sex ?? null,
+      underlying_disease: parsed.underlyingDisease ?? null,
+      diagnosis: parsed.diagnosis,
+      status: parsed.status,
+      responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
+      precaution: parsed.precaution,
+      updated_by_id: session.profile.id,
+    };
+    const legacyUpdatePayload = {
+      ward_id: parsed.wardId,
+      bed: parsed.bed,
+      display_name: parsed.displayName,
+      age: parsedAge,
+      sex: parsed.sex ?? null,
+      diagnosis: parsed.diagnosis,
+      status: parsed.status,
+      responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
+      precaution: parsed.precaution,
+      updated_by_id: session.profile.id,
+    };
+    const result = await supabase.from("patients").update(fullUpdatePayload).eq("id", parsed.id);
+    if (result.error && isRecoverablePatientUnderlyingSchemaError(result.error)) {
+      ensureNoError(
+        await supabase.from("patients").update(legacyUpdatePayload).eq("id", parsed.id),
+        "Failed to update patient",
+      );
+    } else {
+      ensureNoError(result, "Failed to update patient");
+    }
 
     await insertActivityLog(supabase, {
       patient_id: existing.id,
@@ -2761,6 +2829,9 @@ export async function savePatient(formData: FormData, session: SessionContext): 
         ward_id: parsed.wardId,
         bed: parsed.bed,
         display_name: parsed.displayName,
+        age: parsedAge,
+        sex: parsed.sex ?? null,
+        underlying_disease: parsed.underlyingDisease ?? null,
         diagnosis: parsed.diagnosis,
         status: parsed.status,
         responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
@@ -2778,14 +2849,34 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     ward_id: parsed.wardId,
     bed: parsed.bed,
     display_name: parsed.displayName,
+    age: parsedAge,
+    sex: parsed.sex ?? null,
+    underlying_disease: parsed.underlyingDisease ?? null,
     diagnosis: parsed.diagnosis,
     status: parsed.status,
     responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
     precaution: parsed.precaution,
     updated_by_id: session.profile.id,
   };
-
-  ensureNoError(await supabase.from("patients").insert(inserted), "Failed to create patient");
+  const legacyInserted = {
+    id: patientId,
+    ward_id: parsed.wardId,
+    bed: parsed.bed,
+    display_name: parsed.displayName,
+    age: parsedAge,
+    sex: parsed.sex ?? null,
+    diagnosis: parsed.diagnosis,
+    status: parsed.status,
+    responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
+    precaution: parsed.precaution,
+    updated_by_id: session.profile.id,
+  };
+  const insertResult = await supabase.from("patients").insert(inserted);
+  if (insertResult.error && isRecoverablePatientUnderlyingSchemaError(insertResult.error)) {
+    ensureNoError(await supabase.from("patients").insert(legacyInserted), "Failed to create patient");
+  } else {
+    ensureNoError(insertResult, "Failed to create patient");
+  }
 
   await insertActivityLog(supabase, {
     patient_id: patientId,
@@ -3798,9 +3889,7 @@ export async function bulkCreateTasks(formData: FormData, session: SessionContex
   const patientIds = [...new Set(validRows.map((row) => row.patientId))];
   const patientsResult = await supabase
     .from("patients")
-    .select(
-      "id, ward_id, bed, display_name, age, sex, diagnosis, status, responsible_doctor_id, allergy, precaution, code_status, lifecycle, updated_by_id, discharged_at, created_at, updated_at",
-    )
+    .select("*")
     .in("id", patientIds);
   ensureNoError(patientsResult, "Failed to load patients for bulk create");
   const patients = new Map(

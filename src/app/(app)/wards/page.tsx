@@ -120,6 +120,17 @@ export default async function WardsPage({
                         <TextInput name="diagnosis" placeholder="Pneumonia with AKI" required />
                       </Field>
                       <div className="grid gap-3 md:grid-cols-3">
+                        <Field label="Age">
+                          <TextInput name="age" placeholder="71" />
+                        </Field>
+                        <Field label="Sex">
+                          <TextInput name="sex" placeholder="F" />
+                        </Field>
+                        <Field label="Underlying disease">
+                          <TextInput name="underlyingDisease" placeholder="DM, HT, CKD" />
+                        </Field>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-3">
                         <Field label="Precaution">
                           <SelectBox name="precaution" defaultValue="none">
                             <option value="none">None</option>

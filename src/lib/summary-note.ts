@@ -219,7 +219,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     summaryDate: makeSection("Summary Date", [`Date: ${dateLabel}`]),
     briefBackground: makeSection("Brief Background", [
       "Baseline function: -",
-      `Relevant underlying diseases: ${patient.diagnosis}`,
+      `Relevant underlying diseases: ${patient.underlyingDisease ?? "-"}`,
       `Important previous history: ${patient.codeStatus ?? "-"}`,
     ]),
     reasonForAdmission: makeSection("Reason for Admission", [

@@ -285,7 +285,9 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
   const primaryItems = [
     { label: "Ward", value: ward ?? "-" },
     { label: "Bed", value: patient.bed },
+    { label: "Age / Sex", value: `${patient.age ?? "-"} / ${patient.sex ?? "-"}` },
     { label: "Diagnosis", value: patient.diagnosis },
+    { label: "Underlying disease", value: patient.underlyingDisease ?? "-" },
     { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
     { label: "Status", value: labelForPatientStatus(patient.status) },
   ];

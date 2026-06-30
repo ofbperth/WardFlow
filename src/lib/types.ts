@@ -113,6 +113,7 @@ export type Patient = {
   displayName: string;
   age: number | null;
   sex: string | null;
+  underlyingDisease: string | null;
   diagnosis: string;
   status: PatientStatus;
   responsibleDoctorId: string | null;
