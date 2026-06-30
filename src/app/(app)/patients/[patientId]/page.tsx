@@ -35,7 +35,7 @@ import {
   Timeline,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
-import { formatDateTime, formatPatientSex, normalizePatientSexOption } from "@/lib/utils";
+import { formatDateTime, normalizePatientSexOption } from "@/lib/utils";
 import {
   getAssignableProfilesForWard,
   getDischargeDraft,
@@ -79,10 +79,6 @@ export default async function PatientPage({
     session.profile.role === "admin" ||
     session.profile.role === "resident" ||
     (session.profile.role === "student" && isAssignedWard);
-  const activeProblemCount = bundle.problems.filter(
-    (problem) => problem.priority !== "RESOLVED_CHRONIC" && !problem.resolvedAt,
-  ).length;
-  const activeTaskCount = bundle.tasks.filter((task) => task.status !== "done").length;
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -432,34 +428,11 @@ export default async function PatientPage({
           />
         </GlassPanel>
 
-        <GlassPanel
-          title="Care snapshot"
-          compact
-          className="order-4 2xl:order-none 2xl:col-start-2 2xl:row-start-2"
-        >
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            <SnapshotBox label="Clinical status" value={bundle.patient.status} />
-            <SnapshotBox label="Open problems" value={String(activeProblemCount)} />
-            <SnapshotBox label="Active tasks" value={String(activeTaskCount)} />
-            <SnapshotBox
-              label="Responsible"
-              value={bundle.patient.responsibleDoctorName ?? "Unassigned"}
-            />
-            <SnapshotBox
-              label="Age / Sex"
-              value={`${bundle.patient.age ?? "-"} / ${formatPatientSex(bundle.patient.sex)}`}
-            />
-            <SnapshotBox label="Code status" value={bundle.patient.codeStatus ?? "-"} />
-            <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
-            <SnapshotBox label="Ward" value={bundle.ward?.name ?? "-"} />
-          </div>
-        </GlassPanel>
-
         {canEditClinical ? (
           <GlassPanel
             title="Manual handover note"
             compact
-            className="order-5 2xl:order-none 2xl:col-start-2 2xl:row-start-3"
+            className="order-4 2xl:order-none 2xl:col-start-2 2xl:row-start-2"
           >
             <form action={saveHandoverAction} className="space-y-3">
               <input type="hidden" name="patientId" value={bundle.patient.id} />
