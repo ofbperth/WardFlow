@@ -36,20 +36,84 @@ where
 alter table public.problems
   alter column problem_name set not null;
 
-create table if not exists public.problem_progress_entries (
-  id text primary key default public.generate_prefixed_id('problem-progress'),
-  problem_id text not null references public.problems(id) on delete cascade,
-  date_time timestamptz not null default timezone('utc', now()),
-  author_id uuid references public.profiles(id) on delete set null,
-  status_update text,
-  new_evidence text,
-  treatment_change text,
-  reasoning_update text,
-  today_plan text,
-  pending_task_ids text[] not null default '{}',
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
+do $$
+declare
+  problem_id_type text;
+  progress_problem_id_type text;
+begin
+  select format_type(attribute.atttypid, attribute.atttypmod)
+  into problem_id_type
+  from pg_attribute attribute
+  join pg_class class on class.oid = attribute.attrelid
+  join pg_namespace namespace on namespace.oid = class.relnamespace
+  where namespace.nspname = 'public'
+    and class.relname = 'problems'
+    and attribute.attname = 'id'
+    and attribute.attnum > 0
+    and not attribute.attisdropped;
+
+  if problem_id_type is null then
+    raise exception 'public.problems.id type could not be resolved';
+  end if;
+
+  if to_regclass('public.problem_progress_entries') is null then
+    execute format(
+      $sql$
+        create table public.problem_progress_entries (
+          id text primary key default public.generate_prefixed_id('problem-progress'),
+          problem_id %1$s not null references public.problems(id) on delete cascade,
+          date_time timestamptz not null default timezone('utc', now()),
+          author_id uuid references public.profiles(id) on delete set null,
+          status_update text,
+          new_evidence text,
+          treatment_change text,
+          reasoning_update text,
+          today_plan text,
+          pending_task_ids text[] not null default '{}',
+          created_at timestamptz not null default timezone('utc', now()),
+          updated_at timestamptz not null default timezone('utc', now())
+        )
+      $sql$,
+      problem_id_type
+    );
+  else
+    select format_type(attribute.atttypid, attribute.atttypmod)
+    into progress_problem_id_type
+    from pg_attribute attribute
+    join pg_class class on class.oid = attribute.attrelid
+    join pg_namespace namespace on namespace.oid = class.relnamespace
+    where namespace.nspname = 'public'
+      and class.relname = 'problem_progress_entries'
+      and attribute.attname = 'problem_id'
+      and attribute.attnum > 0
+      and not attribute.attisdropped;
+
+    if progress_problem_id_type is null then
+      execute format(
+        'alter table public.problem_progress_entries add column problem_id %1$s',
+        problem_id_type
+      );
+    elsif progress_problem_id_type <> problem_id_type then
+      execute format(
+        'alter table public.problem_progress_entries alter column problem_id type %1$s using problem_id::%1$s',
+        problem_id_type
+      );
+    end if;
+
+    if not exists (
+      select 1
+      from pg_constraint
+      where conname = 'problem_progress_entries_problem_id_fkey'
+    ) then
+      alter table public.problem_progress_entries
+        add constraint problem_progress_entries_problem_id_fkey
+        foreign key (problem_id)
+        references public.problems(id)
+        on delete cascade;
+    end if;
+  end if;
+end
+$$;
 
 create index if not exists problem_progress_problem_datetime_idx
   on public.problem_progress_entries (problem_id, date_time desc);
