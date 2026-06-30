@@ -101,7 +101,7 @@ export default async function SummaryNotePage({
           <NoteSection title="Pending Issues" items={payload.pendingIssues} />
           <NoteSection title="Suggested Plan" items={payload.suggestedPlan} />
           <NoteSection title="Safety Alerts" items={payload.safetyAlerts} />
-          <NoteSection title="General Tasks" items={payload.generalTasks} />
+          <NoteSection title="Tasks" items={payload.tasks} />
         </div>
       </GlassPanel>
 

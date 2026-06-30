@@ -394,7 +394,7 @@ export default async function PatientPage({
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Problem link">
                         <SelectBox name="problemId" defaultValue="">
-                          <option value="">General task</option>
+                          <option value="">No linked problem</option>
                           {bundle.problems.map((problem) => (
                             <option key={problem.id} value={problem.id}>
                               {problem.title}

@@ -58,16 +58,46 @@ function getAdmitDate(activity: ActivityLog[]) {
   return created?.createdAt ?? activity[activity.length - 1]?.createdAt ?? null;
 }
 
-function formatTaskLine(task: TaskWithUpdates) {
-  const parts = [
-    task.title,
+function taskMetadataParts(task: TaskWithUpdates) {
+  return [
     labelForTaskPriority(task.priority),
     task.ownerName ? `Owner: ${task.ownerName}` : "Owner: Unassigned",
     task.dueAt ? `Due: ${task.dueAt.slice(0, 10)}` : null,
     task.blockedReason ? `Blocked: ${task.blockedReason}` : null,
   ];
+}
+
+function formatTaskLine(task: TaskWithUpdates) {
+  const parts = [task.title, ...taskMetadataParts(task)];
 
   return parts.filter(Boolean).join(" | ");
+}
+
+function formatTaskLineWithProblem(task: TaskWithUpdates, problemTitle: string) {
+  return [task.title, `Problem: ${problemTitle}`, ...taskMetadataParts(task)].filter(Boolean).join(" | ");
+}
+
+function buildOrderedTaskLines(tasks: TaskWithUpdates[], problems: Problem[]) {
+  const incompleteTasks = tasks.filter((task) => task.status !== "done");
+  const lines: string[] = [];
+  const linkedProblemIds = new Set<string>();
+
+  for (const problem of problems) {
+    linkedProblemIds.add(problem.id);
+    for (const task of incompleteTasks) {
+      if (task.problemId === problem.id) {
+        lines.push(formatTaskLineWithProblem(task, problem.title));
+      }
+    }
+  }
+
+  for (const task of incompleteTasks) {
+    if (!task.problemId || !linkedProblemIds.has(task.problemId)) {
+      lines.push(formatTaskLineWithProblem(task, "No linked problem"));
+    }
+  }
+
+  return lines;
 }
 
 function buildProblemEntry(problem: Problem, tasks: TaskWithUpdates[]): SummaryNoteProblemEntry {
@@ -151,8 +181,8 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
   }
   lines.push("");
 
-  lines.push("General Tasks:");
-  for (const bullet of withFallback(payload.generalTasks)) {
+  lines.push("Tasks:");
+  for (const bullet of withFallback(payload.tasks)) {
     lines.push(`- ${bullet}`);
   }
 
@@ -176,9 +206,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     .map((problem) => `${problem.title}${problem.currentStatus ? ` | ${problem.currentStatus}` : ""}`);
   const consultTasks = tasks.filter((task) => task.type === "consult");
   const incompleteTasks = tasks.filter((task) => task.status !== "done");
-  const generalTasks = incompleteTasks
-    .filter((task) => !task.problemId)
-    .map(formatTaskLine);
+  const orderedTasks = buildOrderedTaskLines(tasks, problems);
   const pendingIssues = [
     ...problems.flatMap((problem) => splitBullets(problem.pending)),
     ...incompleteTasks.map(formatTaskLine),
@@ -245,7 +273,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     pendingIssues,
     suggestedPlan,
     safetyAlerts,
-    generalTasks,
+    tasks: orderedTasks,
   };
 
   return {

@@ -245,7 +245,7 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
   insertSection("Pending Issues", payload.pendingIssues);
   insertSection("Suggested Plan", payload.suggestedPlan);
   insertSection("Safety Alerts", payload.safetyAlerts);
-  insertSection("General Tasks", payload.generalTasks);
+  insertSection("Tasks", payload.tasks);
 
   return requests;
 }

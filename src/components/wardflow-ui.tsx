@@ -684,42 +684,34 @@ export function TaskCards({
   const active = tasks.filter((task) => task.status !== "done");
   const archived = tasks.filter((task) => task.status === "done");
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
-  const linked = active.filter((task) => task.problemId);
-  const general = active.filter((task) => !task.problemId);
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2.5 md:grid-cols-3">
+      <div className="max-w-xs">
         <InfoBlock label="All incomplete" value={String(active.length)} />
-        <InfoBlock label="Problem-linked" value={String(linked.length)} />
-        <InfoBlock label="General tasks" value={String(general.length)} />
       </div>
 
-      <TaskBucket
-        title="Problem-linked tasks"
-        emptyLabel="No incomplete tasks linked to a problem"
-        tasks={linked}
-        patient={patient}
-        problemMap={problemMap}
-        profiles={profiles}
-        updateStatusAction={updateStatusAction}
-        saveTaskAction={saveTaskAction}
-        saveTaskUpdateAction={saveTaskUpdateAction}
-        canEdit={canEdit}
-      />
-
-      <TaskBucket
-        title="General tasks"
-        emptyLabel="No general incomplete task"
-        tasks={general}
-        patient={patient}
-        problemMap={problemMap}
-        profiles={profiles}
-        updateStatusAction={updateStatusAction}
-        saveTaskAction={saveTaskAction}
-        saveTaskUpdateAction={saveTaskUpdateAction}
-        canEdit={canEdit}
-      />
+      {active.length > 0 ? (
+        <div className="space-y-3">
+          {active.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              patient={patient}
+              problem={task.problemId ? problemMap.get(task.problemId) ?? null : null}
+              updateStatusAction={updateStatusAction}
+              saveTaskAction={saveTaskAction}
+              saveTaskUpdateAction={saveTaskUpdateAction}
+              profiles={profiles}
+              canEdit={canEdit}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[18px] border clinical-divider bg-white px-3 py-3 text-sm text-muted">
+          No incomplete task
+        </div>
+      )}
 
       {archived.length > 0 ? (
         <details className="rounded-[24px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
@@ -744,58 +736,6 @@ export function TaskCards({
           </div>
         </details>
       ) : null}
-    </div>
-  );
-}
-
-function TaskBucket({
-  title,
-  emptyLabel,
-  tasks,
-  patient,
-  problemMap,
-  profiles,
-  updateStatusAction,
-  saveTaskAction,
-  saveTaskUpdateAction,
-  canEdit,
-}: {
-  title: string;
-  emptyLabel: string;
-  tasks: TaskWithUpdates[];
-  patient: Patient;
-  problemMap: Map<string, Problem>;
-  profiles: UserProfile[];
-  updateStatusAction: (formData: FormData) => Promise<void>;
-  saveTaskAction: (formData: FormData) => Promise<void>;
-  saveTaskUpdateAction: (formData: FormData) => Promise<void>;
-  canEdit: boolean;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-[color:var(--color-ink)]">{title}</p>
-        <p className="text-xs text-muted">{tasks.length} task</p>
-      </div>
-      {tasks.length > 0 ? (
-        tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            patient={patient}
-            problem={task.problemId ? problemMap.get(task.problemId) ?? null : null}
-            updateStatusAction={updateStatusAction}
-            saveTaskAction={saveTaskAction}
-            saveTaskUpdateAction={saveTaskUpdateAction}
-            profiles={profiles}
-            canEdit={canEdit}
-          />
-        ))
-      ) : (
-        <div className="rounded-[18px] border clinical-divider bg-white px-3 py-3 text-sm text-muted">
-          {emptyLabel}
-        </div>
-      )}
     </div>
   );
 }
@@ -832,7 +772,7 @@ function TaskCard({
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
           <div className="mt-1.5 space-y-1 text-sm text-muted">
-            {problem ? <p>Problem: {problem.title}</p> : <p>Problem: General task</p>}
+            <p>Problem: {problem?.title ?? "No linked problem"}</p>
             <p>Owner: {task.ownerName ?? "Unassigned"}</p>
             {task.dueAt ? <p>Due: {formatDateTime(task.dueAt)}</p> : null}
             {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
@@ -842,6 +782,22 @@ function TaskCard({
           <p>{labelForTaskStatus(task.status)}</p>
         </div>
       </div>
+
+      {canEdit && !compact ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
+            <form action={updateStatusAction} key={status}>
+              <input type="hidden" name="patientId" value={patient.id} />
+              <input type="hidden" name="taskId" value={task.id} />
+              <input type="hidden" name="status" value={status} />
+              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+              <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
+                {labelForTaskStatus(status)}
+              </PendingGhostButton>
+            </form>
+          ))}
+        </div>
+      ) : null}
 
       {task.blockedReason ? (
         <div className="mt-2.5 flex items-center gap-2 rounded-[18px] border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] px-3 py-2 text-sm text-[color:var(--color-danger)]">
@@ -868,22 +824,6 @@ function TaskCard({
                     </div>
                     <p className="mt-1 text-sm text-foreground">{update.note}</p>
                   </div>
-                ))}
-              </div>
-            ) : null}
-
-            {canEdit ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {(["not_started", "in_progress", "done", "blocked"] as const).map((status) => (
-                  <form action={updateStatusAction} key={status}>
-                    <input type="hidden" name="patientId" value={patient.id} />
-                    <input type="hidden" name="taskId" value={task.id} />
-                    <input type="hidden" name="status" value={status} />
-                    <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                    <PendingGhostButton active={task.status === status} pendingLabel="Updating...">
-                      {labelForTaskStatus(status)}
-                    </PendingGhostButton>
-                  </form>
                 ))}
               </div>
             ) : null}
