@@ -11,6 +11,7 @@ import {
   deleteWard,
   dischargePatient,
   dischargePatientWithSummary,
+  exportSummaryNoteDocument,
   hardDeletePatient,
   moveProblem,
   saveHandover,
@@ -221,4 +222,22 @@ export async function hardDeletePatientAction(formData: FormData) {
   const session = await requireAppSession();
   await hardDeletePatient(String(formData.get("patientId")), session);
   redirect("/discharged");
+}
+
+export async function exportSummaryNoteGoogleDocsAction(formData: FormData) {
+  const session = await requireAppSession();
+  const patientId = String(formData.get("patientId"));
+
+  try {
+    const result = await exportSummaryNoteDocument(session, patientId);
+    redirect(
+      `/patients/${patientId}/summary-note?export=success&docUrl=${encodeURIComponent(result.documentUrl)}`,
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to export summary note to Google Docs";
+    redirect(
+      `/patients/${patientId}/summary-note?export=error&message=${encodeURIComponent(message)}`,
+    );
+  }
 }

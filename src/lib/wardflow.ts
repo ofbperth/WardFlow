@@ -6,7 +6,11 @@ import { z } from "zod";
 import { measureServerTiming } from "@/lib/dev-timing";
 import { hasLiveSupabase } from "@/lib/env";
 import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
-import { labelForTaskPriority, labelForTaskStatus } from "@/lib/utils";
+import {
+  compareProblemPriority,
+  labelForTaskPriority,
+  labelForTaskStatus,
+} from "@/lib/utils";
 import {
   demoActivitySeed,
   demoDischargeSummarySeed,
@@ -30,8 +34,11 @@ import type {
   Patient,
   PatientBundle,
   Problem,
+  ProblemPriority,
   Role,
   SessionContext,
+  SummaryNoteExportResult,
+  SummaryNotePayload,
   Student,
   StudentWardAssignment,
   StudentWardAssignmentBoardData,
@@ -44,9 +51,12 @@ import type {
   TaskWorkspaceGroup,
   UserProfile,
   Ward,
+  WardPatientSummary,
   WardSummary,
   WardTask,
 } from "@/lib/types";
+import { exportSummaryNoteToGoogleDocs } from "@/lib/google-docs";
+import { buildSummaryNotePayload } from "@/lib/summary-note";
 
 type DemoStore = {
   wards: Ward[];
@@ -126,6 +136,12 @@ type ProblemRow = {
   patient_id: string;
   title: string;
   status: Problem["status"];
+  priority?: ProblemPriority | null;
+  current_status?: string | null;
+  evidence?: string | null;
+  treatment?: string | null;
+  reasoning?: string | null;
+  today_plan?: string | null;
   key_data: string | null;
   plan: string | null;
   pending: string | null;
@@ -140,6 +156,7 @@ type ProblemRow = {
 type TaskRow = {
   id: string;
   patient_id: string;
+  problem_id?: string | null;
   title: string;
   note: string | null;
   owner_id: string | null;
@@ -260,6 +277,12 @@ const problemSchema = z.object({
   patientId: z.string().min(1),
   title: z.string().min(1),
   status: z.enum(["active", "improving", "worsening", "resolved"]),
+  priority: z.enum(["ACTIVE_UNSTABLE", "ACTIVE_STABLE", "MONITORING", "RESOLVED_CHRONIC"]),
+  currentStatus: z.string().optional().nullable(),
+  evidence: z.string().optional().nullable(),
+  treatment: z.string().optional().nullable(),
+  reasoning: z.string().optional().nullable(),
+  todayPlan: z.string().optional().nullable(),
   keyData: z.string().optional().nullable(),
   plan: z.string().optional().nullable(),
   pending: z.string().optional().nullable(),
@@ -271,6 +294,7 @@ const problemSchema = z.object({
 const taskSchema = z.object({
   id: z.string().optional(),
   patientId: z.string().min(1),
+  problemId: z.string().optional().nullable(),
   title: z.string().min(1),
   ownerId: z.string().optional().nullable(),
   status: z.enum(["not_started", "in_progress", "done", "blocked"]),
@@ -437,14 +461,56 @@ function createSeedStore(): DemoStore {
 
 let store: DemoStore = createSeedStore();
 
+function normalizeProblemRecord(problem: Partial<Problem>): Problem {
+  return {
+    id: problem.id ?? nextId("problem"),
+    patientId: problem.patientId ?? "",
+    title: problem.title ?? "Untitled problem",
+    status: problem.status ?? "active",
+    priority: problem.priority ?? defaultProblemPriority(problem.status ?? "active"),
+    currentStatus: problem.currentStatus ?? problem.keyData ?? null,
+    evidence: problem.evidence ?? problem.keyData ?? null,
+    treatment: problem.treatment ?? null,
+    reasoning: problem.reasoning ?? null,
+    todayPlan: problem.todayPlan ?? problem.plan ?? null,
+    keyData: problem.keyData ?? null,
+    plan: problem.plan ?? null,
+    pending: problem.pending ?? null,
+    watchOut: problem.watchOut ?? null,
+    includeInHandover: problem.includeInHandover ?? true,
+    sortOrder: problem.sortOrder ?? 0,
+    updatedAt: problem.updatedAt ?? now(),
+  };
+}
+
+function normalizeTaskRecord(task: Partial<WardTask>): WardTask {
+  return {
+    id: task.id ?? nextId("task"),
+    patientId: task.patientId ?? "",
+    problemId: task.problemId ?? null,
+    title: task.title ?? "Untitled task",
+    note: task.note ?? null,
+    ownerId: task.ownerId ?? null,
+    ownerName: task.ownerName ?? null,
+    status: task.status ?? "not_started",
+    priority: task.priority ?? "normal",
+    type: task.type ?? "other",
+    dueAt: task.dueAt ?? null,
+    blockedReason: task.blockedReason ?? null,
+    updatedById: task.updatedById ?? null,
+    updatedByName: task.updatedByName ?? null,
+    updatedAt: task.updatedAt ?? now(),
+  };
+}
+
 function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
   const seed = createSeedStore();
 
   return {
     wards: input?.wards ?? seed.wards,
     patients: input?.patients ?? seed.patients,
-    problems: input?.problems ?? seed.problems,
-    tasks: input?.tasks ?? seed.tasks,
+    problems: (input?.problems ?? seed.problems).map(normalizeProblemRecord),
+    tasks: (input?.tasks ?? seed.tasks).map(normalizeTaskRecord),
     taskUpdates: input?.taskUpdates ?? seed.taskUpdates,
     handovers: input?.handovers ?? seed.handovers,
     dischargeSummaries: input?.dischargeSummaries ?? seed.dischargeSummaries,
@@ -588,6 +654,27 @@ function compareBed(left: string, right: string) {
   return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
 }
 
+function defaultProblemPriority(status: Problem["status"]): ProblemPriority {
+  switch (status) {
+    case "worsening":
+      return "ACTIVE_UNSTABLE";
+    case "active":
+      return "ACTIVE_STABLE";
+    case "improving":
+      return "MONITORING";
+    case "resolved":
+    default:
+      return "RESOLVED_CHRONIC";
+  }
+}
+
+function summaryLine(...values: Array<string | null | undefined>) {
+  return values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join(" | ");
+}
+
 function compareTaskPriority(left: WardTask["priority"], right: WardTask["priority"]) {
   const weight = (priority: WardTask["priority"]) =>
     priority === "emergency" ? 0 : priority === "urgent" ? 1 : 2;
@@ -632,6 +719,43 @@ function refreshDemoPatient(patientId: string) {
   }
 }
 
+function summarizeWardPatient(
+  patient: Patient,
+  tasks: WardTask[],
+  problems: Problem[],
+  referenceTime = now(),
+): WardPatientSummary {
+  const activeProblems = problems
+    .filter((problem) => problem.priority !== "RESOLVED_CHRONIC")
+    .sort((left, right) => {
+      const priorityDiff = compareProblemPriority(left.priority, right.priority);
+      if (priorityDiff !== 0) return priorityDiff;
+      return left.sortOrder - right.sortOrder;
+    });
+
+  const highestPriorityProblem = activeProblems[0]
+    ? {
+        id: activeProblems[0].id,
+        title: activeProblems[0].title,
+        priority: activeProblems[0].priority,
+        currentStatus: activeProblems[0].currentStatus ?? activeProblems[0].keyData,
+      }
+    : null;
+
+  const pendingTasks = tasks.filter((task) => task.status !== "done");
+
+  return {
+    ...patient,
+    pendingTaskCount: pendingTasks.length,
+    blockedTaskCount: pendingTasks.filter((task) => task.status === "blocked").length,
+    overdueTaskCount: pendingTasks.filter(
+      (task) => task.dueAt && new Date(task.dueAt).getTime() < new Date(referenceTime).getTime(),
+    ).length,
+    urgentTaskCount: pendingTasks.filter((task) => task.priority !== "normal").length,
+    highestPriorityProblem,
+  };
+}
+
 function buildWardSummary(
   input: DemoStore,
   session: SessionContext,
@@ -645,14 +769,13 @@ function buildWardSummary(
       ward,
       patients: input.patients
         .filter((patient) => patient.wardId === ward.id && patient.lifecycle === lifecycle)
-        .map((patient) => {
-          const tasks = input.tasks.filter((task) => task.patientId === patient.id);
-          return {
-            ...patient,
-            pendingTaskCount: tasks.filter((task) => task.status !== "done").length,
-            blockedTaskCount: tasks.filter((task) => task.status === "blocked").length,
-          };
-        })
+        .map((patient) =>
+          summarizeWardPatient(
+            patient,
+            input.tasks.filter((task) => task.patientId === patient.id),
+            input.problems.filter((problem) => problem.patientId === patient.id),
+          ),
+        )
         .sort((left, right) => compareBed(left.bed, right.bed)),
     }))
     .filter((summary) => summary.patients.length > 0 || lifecycle === "active");
@@ -790,11 +913,21 @@ function mapPatientRow(row: PatientRow, profiles: Map<string, UserProfile>): Pat
 }
 
 function mapProblemRow(row: ProblemRow): Problem {
+  const priority = row.priority ?? defaultProblemPriority(row.status);
+  const currentStatus = row.current_status ?? row.key_data;
+  const evidence = row.evidence ?? row.key_data;
+  const todayPlan = row.today_plan ?? row.plan;
   return {
     id: row.id,
     patientId: row.patient_id,
     title: row.title,
     status: row.status,
+    priority,
+    currentStatus,
+    evidence,
+    treatment: row.treatment ?? null,
+    reasoning: row.reasoning ?? null,
+    todayPlan,
     keyData: row.key_data,
     plan: row.plan,
     pending: row.pending,
@@ -809,6 +942,7 @@ function mapTaskRow(row: TaskRow, profiles: Map<string, UserProfile>): WardTask 
   return {
     id: row.id,
     patientId: row.patient_id,
+    problemId: row.problem_id ?? null,
     title: row.title,
     note: row.note,
     ownerId: row.owner_id,
@@ -944,6 +1078,30 @@ function isRecoverableStudentAssignmentReadError(error: { message: string } | nu
   );
 }
 
+function isRecoverableProblemSchemaError(error: { message: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("problem") &&
+    (message.includes("priority") ||
+      message.includes("current_status") ||
+      message.includes("evidence") ||
+      message.includes("treatment") ||
+      message.includes("reasoning") ||
+      message.includes("today_plan") ||
+      message.includes("schema cache") ||
+      message.includes("column"))
+  );
+}
+
+function isRecoverableTaskProblemLinkError(error: { message: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("ward_tasks") &&
+    message.includes("problem_id") &&
+    (message.includes("schema cache") || message.includes("column") || message.includes("does not exist"))
+  );
+}
+
 async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
   return measureServerTiming("loadLiveStore", async () => {
     const supabase = await getLiveClient();
@@ -977,15 +1135,11 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
         .order("updated_at", { ascending: false }),
       supabase
         .from("problems")
-        .select(
-          "id, patient_id, title, status, key_data, plan, pending, watch_out, include_in_handover, sort_order, updated_by_id, created_at, updated_at",
-        )
+        .select("*")
         .order("sort_order", { ascending: true }),
       supabase
         .from("ward_tasks")
-        .select(
-          "id, patient_id, title, note, owner_id, status, priority, type, due_at, blocked_reason, updated_by_id, created_at, updated_at",
-        )
+        .select("*")
         .order("updated_at", { ascending: false }),
       supabase
         .from("handover_notes")
@@ -1095,7 +1249,8 @@ async function getStoreForSession(session: SessionContext) {
 function buildWardOverviewSummaries(
   wards: Ward[],
   patients: PatientRow[],
-  taskCounts: Map<string, { pending: number; blocked: number }>,
+  problemsByPatientId: Map<string, Problem[]>,
+  taskCounts: Map<string, { pending: number; blocked: number; overdue: number; urgent: number }>,
   profiles: Map<string, UserProfile>,
 ) {
   return wards
@@ -1104,11 +1259,35 @@ function buildWardOverviewSummaries(
       patients: patients
         .filter((patient) => patient.ward_id === ward.id)
         .map((patient) => {
-          const counts = taskCounts.get(patient.id) ?? { pending: 0, blocked: 0 };
+          const counts = taskCounts.get(patient.id) ?? {
+            pending: 0,
+            blocked: 0,
+            overdue: 0,
+            urgent: 0,
+          };
+          const mappedPatient = mapPatientRow(patient, profiles);
+          const patientProblems = (problemsByPatientId.get(patient.id) ?? [])
+            .filter((problem) => problem.priority !== "RESOLVED_CHRONIC")
+            .sort((left, right) => {
+              const priorityDiff = compareProblemPriority(left.priority, right.priority);
+              if (priorityDiff !== 0) return priorityDiff;
+              return left.sortOrder - right.sortOrder;
+            });
+          const highestPriorityProblem = patientProblems[0] ?? null;
           return {
-            ...mapPatientRow(patient, profiles),
+            ...mappedPatient,
             pendingTaskCount: counts.pending,
             blockedTaskCount: counts.blocked,
+            overdueTaskCount: counts.overdue,
+            urgentTaskCount: counts.urgent,
+            highestPriorityProblem: highestPriorityProblem
+              ? {
+                  id: highestPriorityProblem.id,
+                  title: highestPriorityProblem.title,
+                  priority: highestPriorityProblem.priority,
+                  currentStatus: highestPriorityProblem.currentStatus ?? highestPriorityProblem.keyData,
+                }
+              : null,
           };
         })
         .sort((left, right) => compareBed(left.bed, right.bed)),
@@ -1182,10 +1361,19 @@ const getWardOverviewDataCached = cache(
           .filter((doctorId): doctorId is string => Boolean(doctorId)),
       )];
 
+      const problemsResult = patientIds.length
+        ? await supabase
+            .from("problems")
+            .select("*")
+            .in("patient_id", patientIds)
+            .order("sort_order", { ascending: true })
+        : { data: [], error: null };
+      ensureNoError(problemsResult, "Failed to load ward overview problems");
+
       const tasksResult = patientIds.length
         ? await supabase
             .from("ward_tasks")
-            .select("patient_id, status")
+            .select("patient_id, status, priority, due_at")
             .in("patient_id", patientIds)
         : { data: [], error: null };
       ensureNoError(tasksResult, "Failed to load ward overview tasks");
@@ -1212,12 +1400,36 @@ const getWardOverviewDataCached = cache(
 
       const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
       const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
-      const taskCounts = new Map<string, { pending: number; blocked: number }>();
+      const taskCounts = new Map<
+        string,
+        { pending: number; blocked: number; overdue: number; urgent: number }
+      >();
+      const problemsByPatientId = new Map<string, Problem[]>();
 
-      for (const task of ((tasksResult.data ?? []) as Array<Pick<TaskRow, "patient_id" | "status">>)) {
-        const current = taskCounts.get(task.patient_id) ?? { pending: 0, blocked: 0 };
+      for (const row of (problemsResult.data ?? []) as ProblemRow[]) {
+        const mapped = mapProblemRow(row);
+        const existing = problemsByPatientId.get(mapped.patientId) ?? [];
+        existing.push(mapped);
+        problemsByPatientId.set(mapped.patientId, existing);
+      }
+
+      for (const task of ((tasksResult.data ?? []) as Array<
+        Pick<TaskRow, "patient_id" | "status" | "priority" | "due_at">
+      >)) {
+        const current = taskCounts.get(task.patient_id) ?? {
+          pending: 0,
+          blocked: 0,
+          overdue: 0,
+          urgent: 0,
+        };
         if (task.status !== "done") {
           current.pending += 1;
+          if (task.priority !== "normal") {
+            current.urgent += 1;
+          }
+          if (task.due_at && new Date(task.due_at).getTime() < Date.now()) {
+            current.overdue += 1;
+          }
         }
         if (task.status === "blocked") {
           current.blocked += 1;
@@ -1226,7 +1438,7 @@ const getWardOverviewDataCached = cache(
       }
 
       return {
-        summaries: buildWardOverviewSummaries(wards, patients, taskCounts, profileMap),
+        summaries: buildWardOverviewSummaries(wards, patients, problemsByPatientId, taskCounts, profileMap),
         profiles: profiles.filter((profile) => isProfileVisibleToSession(profile, session)),
       };
     });
@@ -1277,9 +1489,7 @@ async function fetchLivePatient(supabase: LiveClient, patientId: string) {
 async function fetchLiveProblem(supabase: LiveClient, problemId: string) {
   const result = await supabase
     .from("problems")
-    .select(
-      "id, patient_id, title, status, key_data, plan, pending, watch_out, include_in_handover, sort_order, updated_by_id, created_at, updated_at",
-    )
+    .select("*")
     .eq("id", problemId)
     .maybeSingle();
 
@@ -1290,9 +1500,7 @@ async function fetchLiveProblem(supabase: LiveClient, problemId: string) {
 async function fetchLiveTask(supabase: LiveClient, taskId: string) {
   const result = await supabase
     .from("ward_tasks")
-    .select(
-      "id, patient_id, title, note, owner_id, status, priority, type, due_at, blocked_reason, updated_by_id, created_at, updated_at",
-    )
+    .select("*")
     .eq("id", taskId)
     .maybeSingle();
 
@@ -1538,18 +1746,52 @@ export async function getPatientBundle(
     ward: input.wards.find((ward) => ward.id === patient.wardId) ?? null,
     problems: input.problems
       .filter((problem) => problem.patientId === patientId)
-      .sort((left, right) => left.sortOrder - right.sortOrder),
+      .sort((left, right) => {
+        const priorityDiff = compareProblemPriority(left.priority, right.priority);
+        if (priorityDiff !== 0) return priorityDiff;
+        return left.sortOrder - right.sortOrder;
+      }),
     tasks: attachTaskUpdates(
       input,
       input.tasks
         .filter((task) => task.patientId === patientId)
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+        .sort((left, right) => {
+          const priorityDiff = compareTaskPriority(left.priority, right.priority);
+          if (priorityDiff !== 0) return priorityDiff;
+          const dueDiff = (left.dueAt ?? "").localeCompare(right.dueAt ?? "");
+          if (dueDiff !== 0) return dueDiff;
+          return right.updatedAt.localeCompare(left.updatedAt);
+        }),
     ),
     handover: input.handovers.find((handover) => handover.patientId === patientId) ?? null,
     activity: input.activity
       .filter((activity) => activity.patientId === patientId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
   };
+}
+
+export async function getSummaryNotePayloadByPatientId(
+  session: SessionContext,
+  patientId: string,
+): Promise<SummaryNotePayload | null> {
+  const bundle = await getPatientBundle(session, patientId);
+  if (!bundle) {
+    return null;
+  }
+
+  return buildSummaryNotePayload(bundle);
+}
+
+export async function exportSummaryNoteDocument(
+  session: SessionContext,
+  patientId: string,
+): Promise<SummaryNoteExportResult> {
+  const payload = await getSummaryNotePayloadByPatientId(session, patientId);
+  if (!payload) {
+    throw new Error("Patient not found");
+  }
+
+  return exportSummaryNoteToGoogleDocs(payload);
 }
 
 export async function getProfiles(session: SessionContext) {
@@ -2768,6 +3010,12 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     patientId: formData.get("patientId"),
     title: formData.get("title"),
     status: formData.get("status"),
+    priority: formData.get("priority"),
+    currentStatus: textOrNull(formData.get("currentStatus")),
+    evidence: textOrNull(formData.get("evidence")),
+    treatment: textOrNull(formData.get("treatment")),
+    reasoning: textOrNull(formData.get("reasoning")),
+    todayPlan: textOrNull(formData.get("todayPlan")),
     keyData: textOrNull(formData.get("keyData")),
     plan: textOrNull(formData.get("plan")),
     pending: textOrNull(formData.get("pending")),
@@ -2775,6 +3023,8 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     includeInHandover: formData.get("includeInHandover") === "on",
     updatedAt: textOrNull(formData.get("updatedAt")),
   });
+  const derivedKeyData = parsed.keyData ?? summaryLine(parsed.currentStatus, parsed.evidence);
+  const derivedPlan = parsed.plan ?? parsed.todayPlan;
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -2790,8 +3040,14 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
       const before = structuredClone(existing);
       existing.title = parsed.title;
       existing.status = parsed.status;
-      existing.keyData = parsed.keyData ?? null;
-      existing.plan = parsed.plan ?? null;
+      existing.priority = parsed.priority;
+      existing.currentStatus = parsed.currentStatus ?? null;
+      existing.evidence = parsed.evidence ?? null;
+      existing.treatment = parsed.treatment ?? null;
+      existing.reasoning = parsed.reasoning ?? null;
+      existing.todayPlan = parsed.todayPlan ?? null;
+      existing.keyData = derivedKeyData ?? null;
+      existing.plan = derivedPlan ?? null;
       existing.pending = parsed.pending ?? null;
       existing.watchOut = parsed.watchOut ?? null;
       existing.includeInHandover = parsed.includeInHandover;
@@ -2811,8 +3067,14 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
         patientId: parsed.patientId,
         title: parsed.title,
         status: parsed.status,
-        keyData: parsed.keyData ?? null,
-        plan: parsed.plan ?? null,
+        priority: parsed.priority,
+        currentStatus: parsed.currentStatus ?? null,
+        evidence: parsed.evidence ?? null,
+        treatment: parsed.treatment ?? null,
+        reasoning: parsed.reasoning ?? null,
+        todayPlan: parsed.todayPlan ?? null,
+        keyData: derivedKeyData ?? null,
+        plan: derivedPlan ?? null,
         pending: parsed.pending ?? null,
         watchOut: parsed.watchOut ?? null,
         includeInHandover: parsed.includeInHandover,
@@ -2850,22 +3112,41 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     if (!existing) throw new Error("Problem not found");
     assertNoConflict(parsed.updatedAt, existing.updated_at, "problem");
 
-    ensureNoError(
-      await supabase
-        .from("problems")
-        .update({
-          title: parsed.title,
-          status: parsed.status,
-          key_data: parsed.keyData ?? null,
-          plan: parsed.plan ?? null,
-          pending: parsed.pending ?? null,
-          watch_out: parsed.watchOut ?? null,
-          include_in_handover: parsed.includeInHandover,
-          updated_by_id: session.profile.id,
-        })
-        .eq("id", parsed.id),
-      "Failed to update problem",
-    );
+    const fullUpdatePayload = {
+      title: parsed.title,
+      status: parsed.status,
+      priority: parsed.priority,
+      current_status: parsed.currentStatus ?? null,
+      evidence: parsed.evidence ?? null,
+      treatment: parsed.treatment ?? null,
+      reasoning: parsed.reasoning ?? null,
+      today_plan: parsed.todayPlan ?? null,
+      key_data: derivedKeyData ?? null,
+      plan: derivedPlan ?? null,
+      pending: parsed.pending ?? null,
+      watch_out: parsed.watchOut ?? null,
+      include_in_handover: parsed.includeInHandover,
+      updated_by_id: session.profile.id,
+    };
+    const legacyUpdatePayload = {
+      title: parsed.title,
+      status: parsed.status,
+      key_data: derivedKeyData ?? null,
+      plan: derivedPlan ?? null,
+      pending: parsed.pending ?? null,
+      watch_out: parsed.watchOut ?? null,
+      include_in_handover: parsed.includeInHandover,
+      updated_by_id: session.profile.id,
+    };
+    const updateResult = await supabase.from("problems").update(fullUpdatePayload).eq("id", parsed.id);
+    if (updateResult.error && isRecoverableProblemSchemaError(updateResult.error)) {
+      ensureNoError(
+        await supabase.from("problems").update(legacyUpdatePayload).eq("id", parsed.id),
+        "Failed to update problem",
+      );
+    } else {
+      ensureNoError(updateResult, "Failed to update problem");
+    }
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -2879,8 +3160,14 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
         ...existing,
         title: parsed.title,
         status: parsed.status,
-        key_data: parsed.keyData ?? null,
-        plan: parsed.plan ?? null,
+        priority: parsed.priority,
+        current_status: parsed.currentStatus ?? null,
+        evidence: parsed.evidence ?? null,
+        treatment: parsed.treatment ?? null,
+        reasoning: parsed.reasoning ?? null,
+        today_plan: parsed.todayPlan ?? null,
+        key_data: derivedKeyData ?? null,
+        plan: derivedPlan ?? null,
         pending: parsed.pending ?? null,
         watch_out: parsed.watchOut ?? null,
         include_in_handover: parsed.includeInHandover,
@@ -2897,22 +3184,47 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
 
     const problemId = nextId("problem");
     const sortOrder = ((sortOrderResult.data?.[0] as { sort_order?: number } | undefined)?.sort_order ?? 0) + 1;
-    ensureNoError(
-      await supabase.from("problems").insert({
-        id: problemId,
-        patient_id: parsed.patientId,
-        title: parsed.title,
-        status: parsed.status,
-        key_data: parsed.keyData ?? null,
-        plan: parsed.plan ?? null,
-        pending: parsed.pending ?? null,
-        watch_out: parsed.watchOut ?? null,
-        include_in_handover: parsed.includeInHandover,
-        sort_order: sortOrder,
-        updated_by_id: session.profile.id,
-      }),
-      "Failed to create problem",
-    );
+    const fullInsertPayload = {
+      id: problemId,
+      patient_id: parsed.patientId,
+      title: parsed.title,
+      status: parsed.status,
+      priority: parsed.priority,
+      current_status: parsed.currentStatus ?? null,
+      evidence: parsed.evidence ?? null,
+      treatment: parsed.treatment ?? null,
+      reasoning: parsed.reasoning ?? null,
+      today_plan: parsed.todayPlan ?? null,
+      key_data: derivedKeyData ?? null,
+      plan: derivedPlan ?? null,
+      pending: parsed.pending ?? null,
+      watch_out: parsed.watchOut ?? null,
+      include_in_handover: parsed.includeInHandover,
+      sort_order: sortOrder,
+      updated_by_id: session.profile.id,
+    };
+    const legacyInsertPayload = {
+      id: problemId,
+      patient_id: parsed.patientId,
+      title: parsed.title,
+      status: parsed.status,
+      key_data: derivedKeyData ?? null,
+      plan: derivedPlan ?? null,
+      pending: parsed.pending ?? null,
+      watch_out: parsed.watchOut ?? null,
+      include_in_handover: parsed.includeInHandover,
+      sort_order: sortOrder,
+      updated_by_id: session.profile.id,
+    };
+    const insertResult = await supabase.from("problems").insert(fullInsertPayload);
+    if (insertResult.error && isRecoverableProblemSchemaError(insertResult.error)) {
+      ensureNoError(
+        await supabase.from("problems").insert(legacyInsertPayload),
+        "Failed to create problem",
+      );
+    } else {
+      ensureNoError(insertResult, "Failed to create problem");
+    }
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -2925,6 +3237,7 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
       after_json: {
         title: parsed.title,
         status: parsed.status,
+        priority: parsed.priority,
         sort_order: sortOrder,
       },
     });
@@ -3037,6 +3350,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
   const parsed = taskSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
+    problemId: textOrNull(formData.get("problemId")),
     title: formData.get("title"),
     ownerId: textOrNull(formData.get("ownerId")),
     status: formData.get("status"),
@@ -3053,6 +3367,14 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     const patient = patientById(store, parsed.patientId);
     if (!patient) throw new Error("Patient not found");
     requireTaskWorkflowWriteAccess(session, patient.wardId);
+    if (
+      parsed.problemId &&
+      !store.problems.some(
+        (problem) => problem.id === parsed.problemId && problem.patientId === parsed.patientId,
+      )
+    ) {
+      throw new Error("Selected problem is not linked to this patient");
+    }
 
     const owner = resolveAssignableOwnerFromProfiles(
       getProfilesForWard(store, patient.wardId),
@@ -3065,6 +3387,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       assertNoConflict(parsed.updatedAt, existing.updatedAt, "task");
 
       const before = structuredClone(existing);
+      existing.problemId = parsed.problemId ?? null;
       existing.title = parsed.title;
       existing.note = parsed.note ?? null;
       existing.ownerId = parsed.ownerId ?? null;
@@ -3090,6 +3413,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       const task: WardTask = {
         id: nextId("task"),
         patientId: parsed.patientId,
+        problemId: parsed.problemId ?? null,
         title: parsed.title,
         note: parsed.note ?? null,
         ownerId: parsed.ownerId ?? null,
@@ -3117,6 +3441,12 @@ export async function saveTask(formData: FormData, session: SessionContext) {
   const patient = await fetchLivePatient(supabase, parsed.patientId);
   if (!patient) throw new Error("Patient not found");
   requireTaskWorkflowWriteAccess(session, patient.ward_id);
+  if (parsed.problemId) {
+    const linkedProblem = await fetchLiveProblem(supabase, parsed.problemId);
+    if (!linkedProblem || linkedProblem.patient_id !== parsed.patientId) {
+      throw new Error("Selected problem is not linked to this patient");
+    }
+  }
   const owner = resolveAssignableOwnerFromProfiles(
     await getLiveAssignableProfilesForWard(supabase, patient.ward_id ?? ""),
     parsed.ownerId,
@@ -3127,23 +3457,41 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     if (!existing) throw new Error("Task not found");
     assertNoConflict(parsed.updatedAt, existing.updated_at, "task");
 
-    ensureNoError(
-      await supabase
-        .from("ward_tasks")
-        .update({
-          title: parsed.title,
-          note: parsed.note ?? null,
-          owner_id: owner?.id ?? null,
-          status: parsed.status,
-          priority: parsed.priority,
-          type: parsed.type,
-          due_at: parsed.dueAt ?? null,
-          blocked_reason: parsed.blockedReason ?? null,
-          updated_by_id: session.profile.id,
-        })
-        .eq("id", parsed.id),
-      "Failed to update task",
-    );
+    const fullTaskUpdatePayload = {
+      problem_id: parsed.problemId ?? null,
+      title: parsed.title,
+      note: parsed.note ?? null,
+      owner_id: owner?.id ?? null,
+      status: parsed.status,
+      priority: parsed.priority,
+      type: parsed.type,
+      due_at: parsed.dueAt ?? null,
+      blocked_reason: parsed.blockedReason ?? null,
+      updated_by_id: session.profile.id,
+    };
+    const legacyTaskUpdatePayload = {
+      title: parsed.title,
+      note: parsed.note ?? null,
+      owner_id: owner?.id ?? null,
+      status: parsed.status,
+      priority: parsed.priority,
+      type: parsed.type,
+      due_at: parsed.dueAt ?? null,
+      blocked_reason: parsed.blockedReason ?? null,
+      updated_by_id: session.profile.id,
+    };
+    const updateResult = await supabase
+      .from("ward_tasks")
+      .update(fullTaskUpdatePayload)
+      .eq("id", parsed.id);
+    if (updateResult.error && isRecoverableTaskProblemLinkError(updateResult.error)) {
+      ensureNoError(
+        await supabase.from("ward_tasks").update(legacyTaskUpdatePayload).eq("id", parsed.id),
+        "Failed to update task",
+      );
+    } else {
+      ensureNoError(updateResult, "Failed to update task");
+    }
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -3155,6 +3503,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       before_json: existing,
       after_json: {
         ...existing,
+        problem_id: parsed.problemId ?? null,
         title: parsed.title,
         note: parsed.note ?? null,
         owner_id: owner?.id ?? null,
@@ -3167,22 +3516,42 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     });
   } else {
     const taskId = nextId("task");
-    ensureNoError(
-      await supabase.from("ward_tasks").insert({
-        id: taskId,
-        patient_id: parsed.patientId,
-        title: parsed.title,
-        note: parsed.note ?? null,
-        owner_id: owner?.id ?? null,
-        status: parsed.status,
-        priority: parsed.priority,
-        type: parsed.type,
-        due_at: parsed.dueAt ?? null,
-        blocked_reason: parsed.blockedReason ?? null,
-        updated_by_id: session.profile.id,
-      }),
-      "Failed to create task",
-    );
+    const fullTaskInsertPayload = {
+      id: taskId,
+      patient_id: parsed.patientId,
+      problem_id: parsed.problemId ?? null,
+      title: parsed.title,
+      note: parsed.note ?? null,
+      owner_id: owner?.id ?? null,
+      status: parsed.status,
+      priority: parsed.priority,
+      type: parsed.type,
+      due_at: parsed.dueAt ?? null,
+      blocked_reason: parsed.blockedReason ?? null,
+      updated_by_id: session.profile.id,
+    };
+    const legacyTaskInsertPayload = {
+      id: taskId,
+      patient_id: parsed.patientId,
+      title: parsed.title,
+      note: parsed.note ?? null,
+      owner_id: owner?.id ?? null,
+      status: parsed.status,
+      priority: parsed.priority,
+      type: parsed.type,
+      due_at: parsed.dueAt ?? null,
+      blocked_reason: parsed.blockedReason ?? null,
+      updated_by_id: session.profile.id,
+    };
+    const insertResult = await supabase.from("ward_tasks").insert(fullTaskInsertPayload);
+    if (insertResult.error && isRecoverableTaskProblemLinkError(insertResult.error)) {
+      ensureNoError(
+        await supabase.from("ward_tasks").insert(legacyTaskInsertPayload),
+        "Failed to create task",
+      );
+    } else {
+      ensureNoError(insertResult, "Failed to create task");
+    }
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -3194,6 +3563,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       before_json: null,
       after_json: {
         title: parsed.title,
+        problem_id: parsed.problemId ?? null,
         status: parsed.status,
         priority: parsed.priority,
       },
@@ -3391,6 +3761,7 @@ export async function bulkCreateTasks(formData: FormData, session: SessionContex
       const task: WardTask = {
         id: nextId("task"),
         patientId: patient.id,
+        problemId: null,
         title: row.title,
         note: row.note,
         ownerId: owner?.id ?? null,
@@ -3460,6 +3831,7 @@ export async function bulkCreateTasks(formData: FormData, session: SessionContex
     inserts.push({
       id: taskId,
       patient_id: patient.id,
+      problem_id: null,
       title: row.title,
       note: row.note,
       owner_id: owner?.id ?? null,

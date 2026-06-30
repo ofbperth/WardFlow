@@ -5,6 +5,7 @@ import type {
   PatientLifecycle,
   PatientStatus,
   Precaution,
+  ProblemPriority,
   ProblemStatus,
   Role,
   TaskPriority,
@@ -76,6 +77,20 @@ export function priorityTone(priority: TaskPriority) {
   }
 }
 
+export function problemPriorityTone(priority: ProblemPriority) {
+  switch (priority) {
+    case "ACTIVE_UNSTABLE":
+      return "border-rose-200 bg-rose-100 text-rose-700";
+    case "ACTIVE_STABLE":
+      return "border-orange-200 bg-orange-100 text-orange-700";
+    case "MONITORING":
+      return "border-amber-200 bg-amber-100 text-amber-700";
+    case "RESOLVED_CHRONIC":
+    default:
+      return "border-emerald-200 bg-emerald-100 text-emerald-700";
+  }
+}
+
 export function labelForTaskPriority(priority: TaskPriority) {
   switch (priority) {
     case "emergency":
@@ -85,6 +100,20 @@ export function labelForTaskPriority(priority: TaskPriority) {
     case "normal":
     default:
       return "Normal";
+  }
+}
+
+export function labelForProblemPriority(priority: ProblemPriority) {
+  switch (priority) {
+    case "ACTIVE_UNSTABLE":
+      return "Active unstable";
+    case "ACTIVE_STABLE":
+      return "Active stable";
+    case "MONITORING":
+      return "Monitoring";
+    case "RESOLVED_CHRONIC":
+    default:
+      return "Resolved / chronic";
   }
 }
 
@@ -166,4 +195,22 @@ export function labelForActivityAction(action: string) {
       "handover.updated": "บันทึก handover",
     }[action] ?? action
   );
+}
+
+export function compareProblemPriority(left: ProblemPriority, right: ProblemPriority) {
+  const weight = (priority: ProblemPriority) => {
+    switch (priority) {
+      case "ACTIVE_UNSTABLE":
+        return 0;
+      case "ACTIVE_STABLE":
+        return 1;
+      case "MONITORING":
+        return 2;
+      case "RESOLVED_CHRONIC":
+      default:
+        return 3;
+    }
+  };
+
+  return weight(left) - weight(right);
 }

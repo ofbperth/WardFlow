@@ -78,7 +78,9 @@ export default async function PatientPage({
     session.profile.role === "admin" ||
     session.profile.role === "resident" ||
     (session.profile.role === "student" && isAssignedWard);
-  const activeProblemCount = bundle.problems.filter((problem) => problem.status !== "resolved").length;
+  const activeProblemCount = bundle.problems.filter(
+    (problem) => problem.priority !== "RESOLVED_CHRONIC",
+  ).length;
   const activeTaskCount = bundle.tasks.filter((task) => task.status !== "done").length;
 
   return (
@@ -95,10 +97,17 @@ export default async function PatientPage({
       />
 
       <PageHeader
+        className="sticky top-3 z-20"
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
-        subtitle={`Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
+        subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
         action={
           <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/patients/${bundle.patient.id}/summary-note`}
+              className="button-accent inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
+            >
+              Summary Note
+            </Link>
             <Link
               href={`/wards/${bundle.patient.wardId}`}
               className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
@@ -228,12 +237,21 @@ export default async function PatientPage({
 
       <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
         <div className="space-y-4 md:space-y-6">
-          <GlassPanel title="Problem list">
+          <GlassPanel
+            title="Problem-oriented ward card"
+            subtitle="Priority-sorted clinical cards for fast bedside review."
+          >
             <ProblemCards
               problems={bundle.problems}
+              tasks={bundle.tasks}
               patientId={bundle.patient.id}
               reorderAction={reorderProblemAction}
               saveProblemAction={saveProblemAction}
+              saveTaskAction={saveTaskAction}
+              updateStatusAction={updateTaskStatusAction}
+              profiles={taskProfiles}
+              templates={templates}
+              defaultTaskOwnerId={defaultTaskOwnerId}
               canEdit={canEditClinical}
             />
             {canEditClinical ? (
@@ -248,29 +266,63 @@ export default async function PatientPage({
                   <SectionLabel>Problem</SectionLabel>
                   <form action={saveProblemAction} className="space-y-3">
                     <input type="hidden" name="patientId" value={bundle.patient.id} />
-                    <Field label="Title">
-                      <TextInput name="title" required placeholder="Hypoxemia overnight" />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Field label="Problem name">
+                        <TextInput name="title" required placeholder="Diffuse alveolar hemorrhage" />
+                      </Field>
+                      <Field label="Priority">
+                        <SelectBox name="priority" defaultValue="ACTIVE_STABLE">
+                          <option value="ACTIVE_UNSTABLE">Active unstable</option>
+                          <option value="ACTIVE_STABLE">Active stable</option>
+                          <option value="MONITORING">Monitoring</option>
+                          <option value="RESOLVED_CHRONIC">Resolved / chronic</option>
+                        </SelectBox>
+                      </Field>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Field label="Status tag">
+                        <SelectBox name="status" defaultValue="active">
+                          <option value="active">Active</option>
+                          <option value="improving">Improving</option>
+                          <option value="worsening">Worsening</option>
+                          <option value="resolved">Resolved</option>
+                        </SelectBox>
+                      </Field>
+                      <Field label="Handover key line">
+                        <TextInput name="keyData" placeholder="Stable after PLEX" />
+                      </Field>
+                    </div>
+                    <Field label="Current status">
+                      <TextArea name="currentStatus" placeholder="Short current bedside status" />
                     </Field>
-                    <Field label="Status">
-                      <SelectBox name="status" defaultValue="active">
-                        <option value="active">Active</option>
-                        <option value="improving">Improving</option>
-                        <option value="worsening">Worsening</option>
-                        <option value="resolved">Resolved</option>
-                      </SelectBox>
+                    <Field label="Evidence">
+                      <TextArea name="evidence" placeholder="Key labs, imaging, exam, procedure" />
                     </Field>
-                    <Field label="Key data">
-                      <TextArea name="keyData" placeholder="O2 requirement up to 5L/min" />
+                    <Field label="Treatment">
+                      <TextArea name="treatment" placeholder="Medication, procedure, supportive care" />
                     </Field>
-                    <Field label="Plan">
-                      <TextArea name="plan" placeholder="Repeat CXR and monitor saturation trend" />
+                    <Field label="Reasoning">
+                      <TextArea name="reasoning" placeholder="Supporting and opposing evidence" />
                     </Field>
-                    <Field label="Pending">
-                      <TextArea name="pending" placeholder="Await ABG" />
+                    <Field label="Today's plan">
+                      <TextArea name="todayPlan" placeholder="Plan for today; each item can become a task" />
                     </Field>
-                    <Field label="Watch out">
-                      <TextArea name="watchOut" placeholder="Desaturation during transfer" />
-                    </Field>
+                    <details className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
+                      <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
+                        Handover extras
+                      </summary>
+                      <div className="mt-3 space-y-3">
+                        <Field label="Pending issues">
+                          <TextArea name="pending" placeholder="Await ABG / consultant reply" />
+                        </Field>
+                        <Field label="Watch out">
+                          <TextArea name="watchOut" placeholder="Desaturation during transfer" />
+                        </Field>
+                        <Field label="Legacy plan line">
+                          <TextArea name="plan" placeholder="Repeat CXR and monitor saturation trend" />
+                        </Field>
+                      </div>
+                    </details>
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input type="checkbox" name="includeInHandover" defaultChecked />
                       Include in handover
@@ -284,10 +336,14 @@ export default async function PatientPage({
             ) : null}
           </GlassPanel>
 
-          <GlassPanel title="Task board">
+          <GlassPanel
+            title="All Tasks"
+            subtitle="Incomplete work across all problems and general ward tasks."
+          >
             <TaskCards
               tasks={bundle.tasks}
               patient={bundle.patient}
+              problems={bundle.problems}
               updateStatusAction={updateTaskStatusAction}
               saveTaskAction={saveTaskAction}
               saveTaskUpdateAction={saveTaskUpdateAction}
@@ -318,11 +374,23 @@ export default async function PatientPage({
                         <option key={template.id} value={template.title} />
                       ))}
                     </datalist>
-                    <Field label="Owner">
-                      <SelectBox name="ownerId" defaultValue={defaultTaskOwnerId}>
-                        <StaffOptions profiles={taskProfiles} />
-                      </SelectBox>
-                    </Field>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Field label="Problem link">
+                        <SelectBox name="problemId" defaultValue="">
+                          <option value="">General task</option>
+                          {bundle.problems.map((problem) => (
+                            <option key={problem.id} value={problem.id}>
+                              {problem.title}
+                            </option>
+                          ))}
+                        </SelectBox>
+                      </Field>
+                      <Field label="Owner">
+                        <SelectBox name="ownerId" defaultValue={defaultTaskOwnerId}>
+                          <StaffOptions profiles={taskProfiles} />
+                        </SelectBox>
+                      </Field>
+                    </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Status">
                         <SelectBox name="status" defaultValue="not_started">
@@ -342,7 +410,7 @@ export default async function PatientPage({
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Type">
-                        <SelectBox name="type" defaultValue="lab">
+                        <SelectBox name="type" defaultValue="other">
                           <option value="lab">lab</option>
                           <option value="imaging">imaging</option>
                           <option value="consult">consult</option>

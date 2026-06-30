@@ -3,6 +3,12 @@ export const patientStatusValues = ["stable", "watch", "critical"] as const;
 export const patientLifecycleValues = ["active", "discharged"] as const;
 export const precautionValues = ["none", "contact", "droplet", "airborne"] as const;
 export const problemStatusValues = ["active", "improving", "worsening", "resolved"] as const;
+export const problemPriorityValues = [
+  "ACTIVE_UNSTABLE",
+  "ACTIVE_STABLE",
+  "MONITORING",
+  "RESOLVED_CHRONIC",
+] as const;
 export const taskStatusValues = [
   "not_started",
   "in_progress",
@@ -26,6 +32,7 @@ export type PatientStatus = (typeof patientStatusValues)[number];
 export type PatientLifecycle = (typeof patientLifecycleValues)[number];
 export type Precaution = (typeof precautionValues)[number];
 export type ProblemStatus = (typeof problemStatusValues)[number];
+export type ProblemPriority = (typeof problemPriorityValues)[number];
 export type TaskStatus = (typeof taskStatusValues)[number];
 export type TaskPriority = (typeof taskPriorityValues)[number];
 export type TaskType = (typeof taskTypeValues)[number];
@@ -123,6 +130,12 @@ export type Problem = {
   patientId: string;
   title: string;
   status: ProblemStatus;
+  priority: ProblemPriority;
+  currentStatus: string | null;
+  evidence: string | null;
+  treatment: string | null;
+  reasoning: string | null;
+  todayPlan: string | null;
   keyData: string | null;
   plan: string | null;
   pending: string | null;
@@ -135,6 +148,7 @@ export type Problem = {
 export type WardTask = {
   id: string;
   patientId: string;
+  problemId: string | null;
   title: string;
   note: string | null;
   ownerId: string | null;
@@ -206,14 +220,22 @@ export type TaskTemplate = {
   defaultPriority: TaskPriority;
 };
 
+export type WardPatientSummary = Patient & {
+  pendingTaskCount: number;
+  blockedTaskCount: number;
+  overdueTaskCount: number;
+  urgentTaskCount: number;
+  highestPriorityProblem: {
+    id: string;
+    title: string;
+    priority: ProblemPriority;
+    currentStatus: string | null;
+  } | null;
+};
+
 export type WardSummary = {
   ward: Ward;
-  patients: Array<
-    Patient & {
-      pendingTaskCount: number;
-      blockedTaskCount: number;
-    }
-  >;
+  patients: WardPatientSummary[];
 };
 
 export type PatientBundle = {
@@ -280,4 +302,48 @@ export type TaskWorkspaceGroup = {
 export type SessionContext = {
   profile: UserProfile;
   mode: "demo" | "live";
+};
+
+export type SummaryNoteProblemEntry = {
+  id: string;
+  title: string;
+  priority: ProblemPriority;
+  status: string[];
+  evidence: string[];
+  treatment: string[];
+  reasoning: string[];
+  todayPlan: string[];
+  pendingTasks: string[];
+};
+
+export type SummaryNoteSection = {
+  heading: string;
+  bullets: string[];
+};
+
+export type SummaryNotePayload = {
+  patientId: string;
+  patientLabel: string;
+  fileLabel: string;
+  dateLabel: string;
+  heading: string;
+  patientFacts: SummaryNoteSection;
+  summaryDate: SummaryNoteSection;
+  briefBackground: SummaryNoteSection;
+  reasonForAdmission: SummaryNoteSection;
+  hospitalCourse: SummaryNoteSection;
+  activeProblems: SummaryNoteProblemEntry[];
+  resolvedProblems: string[];
+  consultations: string[];
+  pendingIssues: string[];
+  suggestedPlan: string[];
+  safetyAlerts: string[];
+  generalTasks: string[];
+  plainText: string;
+};
+
+export type SummaryNoteExportResult = {
+  documentId: string;
+  documentUrl: string;
+  title: string;
 };
