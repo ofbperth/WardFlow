@@ -313,25 +313,6 @@ export default async function PatientPage({
         </div>
 
         <div className="space-y-4 md:space-y-5">
-          <GlassPanel title="Care snapshot" compact>
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <SnapshotBox label="Clinical status" value={bundle.patient.status} />
-              <SnapshotBox label="Open problems" value={String(activeProblemCount)} />
-              <SnapshotBox label="Active tasks" value={String(activeTaskCount)} />
-              <SnapshotBox
-                label="Responsible"
-                value={bundle.patient.responsibleDoctorName ?? "Unassigned"}
-              />
-              <SnapshotBox
-                label="Age / Sex"
-                value={`${bundle.patient.age ?? "-"} / ${formatPatientSex(bundle.patient.sex)}`}
-              />
-              <SnapshotBox label="Code status" value={bundle.patient.codeStatus ?? "-"} />
-              <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
-              <SnapshotBox label="Ward" value={bundle.ward?.name ?? "-"} />
-            </div>
-          </GlassPanel>
-
           <GlassPanel title="Patient summary" compact>
             <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
@@ -446,6 +427,25 @@ export default async function PatientPage({
                 ) : null}
               </div>
             ) : null}
+          </GlassPanel>
+
+          <GlassPanel title="Care snapshot" compact>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <SnapshotBox label="Clinical status" value={bundle.patient.status} />
+              <SnapshotBox label="Open problems" value={String(activeProblemCount)} />
+              <SnapshotBox label="Active tasks" value={String(activeTaskCount)} />
+              <SnapshotBox
+                label="Responsible"
+                value={bundle.patient.responsibleDoctorName ?? "Unassigned"}
+              />
+              <SnapshotBox
+                label="Age / Sex"
+                value={`${bundle.patient.age ?? "-"} / ${formatPatientSex(bundle.patient.sex)}`}
+              />
+              <SnapshotBox label="Code status" value={bundle.patient.codeStatus ?? "-"} />
+              <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
+              <SnapshotBox label="Ward" value={bundle.ward?.name ?? "-"} />
+            </div>
           </GlassPanel>
 
           {canEditClinical ? (
