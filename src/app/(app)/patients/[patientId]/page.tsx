@@ -136,7 +136,7 @@ export default async function PatientPage({
           title="Problems"
           subtitle="Active problems first. Expand only when you need detail."
           compact
-          className="2xl:col-start-1 2xl:row-start-1"
+          className="order-2 2xl:order-none 2xl:col-start-1 2xl:row-start-1"
           action={
             canEditClinical ? (
               <ProblemCreator
@@ -205,7 +205,11 @@ export default async function PatientPage({
           />
         </GlassPanel>
 
-        <GlassPanel title="Patient summary" compact className="2xl:col-start-2 2xl:row-start-1">
+        <GlassPanel
+          title="Patient summary"
+          compact
+          className="order-1 2xl:order-none 2xl:col-start-2 2xl:row-start-1"
+        >
             <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
             {canManagePatient ? (
@@ -325,7 +329,7 @@ export default async function PatientPage({
           title="Tasks"
           subtitle="Incomplete work first. Mark complete with one tap."
           compact
-          className="2xl:col-start-1 2xl:row-start-2"
+          className="order-3 2xl:order-none 2xl:col-start-1 2xl:row-start-2"
           action={
             canEditTaskWorkflow ? (
               <TaskCreator
@@ -428,7 +432,11 @@ export default async function PatientPage({
           />
         </GlassPanel>
 
-        <GlassPanel title="Care snapshot" compact className="2xl:col-start-2 2xl:row-start-2">
+        <GlassPanel
+          title="Care snapshot"
+          compact
+          className="order-4 2xl:order-none 2xl:col-start-2 2xl:row-start-2"
+        >
           <div className="grid gap-2.5 sm:grid-cols-2">
             <SnapshotBox label="Clinical status" value={bundle.patient.status} />
             <SnapshotBox label="Open problems" value={String(activeProblemCount)} />
@@ -448,7 +456,11 @@ export default async function PatientPage({
         </GlassPanel>
 
         {canEditClinical ? (
-          <GlassPanel title="Manual handover note" compact className="2xl:col-start-2 2xl:row-start-3">
+          <GlassPanel
+            title="Manual handover note"
+            compact
+            className="order-5 2xl:order-none 2xl:col-start-2 2xl:row-start-3"
+          >
             <form action={saveHandoverAction} className="space-y-3">
               <input type="hidden" name="patientId" value={bundle.patient.id} />
               <input type="hidden" name="updatedAt" value={bundle.handover?.updatedAt ?? ""} />
