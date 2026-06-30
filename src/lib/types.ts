@@ -9,6 +9,11 @@ export const problemPriorityValues = [
   "MONITORING",
   "RESOLVED_CHRONIC",
 ] as const;
+export const problemDiagnosisStatusValues = [
+  "SUSPECTED",
+  "CONFIRMED",
+  "RULED_OUT",
+] as const;
 export const taskStatusValues = [
   "not_started",
   "in_progress",
@@ -33,6 +38,7 @@ export type PatientLifecycle = (typeof patientLifecycleValues)[number];
 export type Precaution = (typeof precautionValues)[number];
 export type ProblemStatus = (typeof problemStatusValues)[number];
 export type ProblemPriority = (typeof problemPriorityValues)[number];
+export type ProblemDiagnosisStatus = (typeof problemDiagnosisStatusValues)[number];
 export type TaskStatus = (typeof taskStatusValues)[number];
 export type TaskPriority = (typeof taskPriorityValues)[number];
 export type TaskType = (typeof taskTypeValues)[number];
@@ -126,24 +132,40 @@ export type Patient = {
   lastUpdate: string;
 };
 
-export type Problem = {
+export type ProblemMaster = {
   id: string;
   patientId: string;
-  title: string;
-  status: ProblemStatus;
+  problemName: string;
   priority: ProblemPriority;
-  currentStatus: string | null;
-  evidence: string | null;
-  treatment: string | null;
-  reasoning: string | null;
-  todayPlan: string | null;
-  keyData: string | null;
-  plan: string | null;
-  pending: string | null;
-  watchOut: string | null;
+  currentStatusSummary: string | null;
+  diagnosisStatus: ProblemDiagnosisStatus;
   includeInHandover: boolean;
   sortOrder: number;
+  createdAt: string;
   updatedAt: string;
+  resolvedAt: string | null;
+};
+
+export type ProblemProgressEntry = {
+  id: string;
+  problemId: string;
+  dateTime: string;
+  authorId: string | null;
+  authorName: string | null;
+  statusUpdate: string | null;
+  newEvidence: string | null;
+  treatmentChange: string | null;
+  reasoningUpdate: string | null;
+  todayPlan: string | null;
+  pendingTaskIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Problem = ProblemMaster & {
+  latestEntry: ProblemProgressEntry | null;
+  historyEntries: ProblemProgressEntry[];
+  linkedTasks: TaskWithUpdates[];
 };
 
 export type WardTask = {
@@ -228,7 +250,7 @@ export type WardPatientSummary = Patient & {
   urgentTaskCount: number;
   highestPriorityProblem: {
     id: string;
-    title: string;
+    problemName: string;
     priority: ProblemPriority;
     currentStatus: string | null;
   } | null;
@@ -307,13 +329,16 @@ export type SessionContext = {
 
 export type SummaryNoteProblemEntry = {
   id: string;
-  title: string;
+  problemName: string;
   priority: ProblemPriority;
-  status: string[];
+  diagnosisStatus: ProblemDiagnosisStatus;
+  currentSummary: string[];
+  latestUpdate: string[];
   evidence: string[];
   treatment: string[];
   reasoning: string[];
   todayPlan: string[];
+  history: string[];
   pendingTasks: string[];
 };
 

@@ -3,6 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import type {
   PatientLifecycle,
+  ProblemDiagnosisStatus,
   PatientStatus,
   Precaution,
   ProblemPriority,
@@ -131,6 +132,14 @@ export function labelForProblemPriority(priority: ProblemPriority) {
   }
 }
 
+export function labelForProblemDiagnosisStatus(status: ProblemDiagnosisStatus) {
+  return {
+    SUSPECTED: "Suspected",
+    CONFIRMED: "Confirmed",
+    RULED_OUT: "Ruled out",
+  }[status];
+}
+
 export function labelForTaskType(type: TaskType) {
   return {
     lab: "Lab",
@@ -203,6 +212,8 @@ export function labelForActivityAction(action: string) {
       "problem.created": "เพิ่ม problem list",
       "problem.updated": "อัปเดต problem list",
       "problem.reordered": "จัดลำดับ problem list",
+      "problem_progress.created": "เพิ่ม progress update",
+      "problem_progress.updated": "แก้ไข progress update",
       "task.created": "สร้าง task",
       "task.updated": "อัปเดต task",
       "task.status_changed": "เปลี่ยนสถานะ task",

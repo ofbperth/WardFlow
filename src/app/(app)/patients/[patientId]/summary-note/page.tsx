@@ -5,7 +5,7 @@ import { CopyTextButton } from "@/components/form-feedback";
 import { EmptyState, GlassPanel, PageHeader, SetupNotice } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { getSummaryNotePayloadByPatientId } from "@/lib/wardflow";
-import { labelForProblemPriority } from "@/lib/utils";
+import { labelForProblemDiagnosisStatus, labelForProblemPriority } from "@/lib/utils";
 
 export default async function SummaryNotePage({
   params,
@@ -75,18 +75,21 @@ export default async function SummaryNotePage({
                 <div key={problem.id} className="rounded-[22px] border clinical-divider bg-white p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-base font-semibold text-foreground">
-                      {index + 1}. {problem.title}
+                      {index + 1}. {problem.problemName}
                     </p>
                     <span className="inline-flex rounded-full border border-[color:var(--color-rule)] bg-[color:var(--color-paper-3)] px-3 py-1 text-xs font-semibold text-[color:var(--color-ink)]">
-                      {labelForProblemPriority(problem.priority)}
+                      {labelForProblemPriority(problem.priority)} |{" "}
+                      {labelForProblemDiagnosisStatus(problem.diagnosisStatus)}
                     </span>
                   </div>
                   <div className="mt-3 space-y-3">
-                    <NoteMini title="Status" items={problem.status} />
+                    <NoteMini title="Current Summary" items={problem.currentSummary} />
+                    <NoteMini title="Latest Update" items={problem.latestUpdate} />
                     <NoteMini title="Evidence" items={problem.evidence} />
                     <NoteMini title="Treatment" items={problem.treatment} />
                     <NoteMini title="Reasoning" items={problem.reasoning} />
                     <NoteMini title="Today's Plan" items={problem.todayPlan} />
+                    <NoteMini title="History" items={problem.history} />
                     <NoteMini title="Pending Tasks" items={problem.pendingTasks} />
                   </div>
                 </div>

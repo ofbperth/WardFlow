@@ -2,8 +2,10 @@
 import {
   AlertCircle,
   ArrowUpRight,
+  CheckSquare2,
   ChevronDown,
   Clock3,
+  Circle,
   Cross,
 } from "lucide-react";
 import {
@@ -14,6 +16,7 @@ import {
   getInitials,
   labelForActivityAction,
   labelForLifecycle,
+  labelForProblemDiagnosisStatus,
   labelForProblemPriority,
   labelForPatientStatus,
   labelForPrecaution,
@@ -33,6 +36,8 @@ import {
   PendingGhostButton,
   PendingSubmitButton,
   ProblemEditor,
+  ProgressEntryEditor,
+  ProgressEntryHistoryEditor,
   TaskCreator,
   TaskEditor,
 } from "@/components/form-feedback";
@@ -228,7 +233,7 @@ export function PatientCensus({
                     </p>
                     <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted">
                       {patient.highestPriorityProblem
-                        ? `${patient.highestPriorityProblem.title} | ${
+                        ? `${patient.highestPriorityProblem.problemName} | ${
                             patient.highestPriorityProblem.currentStatus ?? "No status line"
                           }`
                         : "No active problem flagged"}
@@ -280,6 +285,41 @@ export function PatientCensus({
       ))}
     </div>
   );
+}
+
+function compactProblemStatus(problem: Problem) {
+  return problem.latestEntry?.statusUpdate ?? problem.currentStatusSummary ?? "No status line yet";
+}
+
+function compactProblemEvidence(problem: Problem) {
+  return problem.latestEntry?.newEvidence ?? "No key evidence yet";
+}
+
+function compactProblemTreatment(problem: Problem) {
+  return problem.latestEntry?.treatmentChange ?? "No treatment change documented";
+}
+
+function compactProblemReasoning(problem: Problem) {
+  return problem.latestEntry?.reasoningUpdate ?? "No reasoning update documented";
+}
+
+function compactProblemPlan(problem: Problem) {
+  return problem.latestEntry?.todayPlan ?? "No today's plan documented";
+}
+
+function formatProgressHistoryLine(problem: Problem, entry: Problem["historyEntries"][number]) {
+  const selectedPendingTasks = problem.linkedTasks
+    .filter((task) => entry.pendingTaskIds.includes(task.id) && task.status !== "done")
+    .map((task) => task.title);
+  return [
+    formatDateTime(entry.dateTime),
+    entry.statusUpdate,
+    entry.newEvidence,
+    entry.treatmentChange,
+    selectedPendingTasks.length ? `Tasks: ${selectedPendingTasks.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
@@ -346,7 +386,8 @@ export function ProblemCards({
   tasks,
   patientId,
   reorderAction,
-  saveProblemAction,
+  saveProblemMasterAction,
+  saveProblemProgressEntryAction,
   saveTaskAction,
   updateStatusAction,
   profiles,
@@ -358,7 +399,8 @@ export function ProblemCards({
   tasks: TaskWithUpdates[];
   patientId: string;
   reorderAction: (formData: FormData) => Promise<void>;
-  saveProblemAction: (formData: FormData) => Promise<void>;
+  saveProblemMasterAction: (formData: FormData) => Promise<void>;
+  saveProblemProgressEntryAction: (formData: FormData) => Promise<void>;
   saveTaskAction: (formData: FormData) => Promise<void>;
   updateStatusAction: (formData: FormData) => Promise<void>;
   profiles: UserProfile[];
@@ -367,127 +409,151 @@ export function ProblemCards({
   canEdit: boolean;
 }) {
   void reorderAction;
-  const active = problems.filter((problem) => problem.priority !== "RESOLVED_CHRONIC");
-  const resolved = problems.filter((problem) => problem.priority === "RESOLVED_CHRONIC");
-  const tasksByProblem = new Map<string, TaskWithUpdates[]>();
-
-  for (const task of tasks) {
-    if (!task.problemId) continue;
-    const current = tasksByProblem.get(task.problemId) ?? [];
-    current.push(task);
-    tasksByProblem.set(task.problemId, current);
-  }
+  void tasks;
+  const active = problems.filter(
+    (problem) => problem.priority !== "RESOLVED_CHRONIC" && !problem.resolvedAt,
+  );
+  const resolved = problems.filter(
+    (problem) => problem.priority === "RESOLVED_CHRONIC" || Boolean(problem.resolvedAt),
+  );
 
   return (
     <div className="space-y-3">
       {active.map((problem) => {
-        const linkedTasks = [...(tasksByProblem.get(problem.id) ?? [])].sort((left, right) => {
-          if (left.status === "done" && right.status !== "done") return 1;
-          if (left.status !== "done" && right.status === "done") return -1;
-          return right.updatedAt.localeCompare(left.updatedAt);
-        });
-        const incompleteCount = linkedTasks.filter((task) => task.status !== "done").length;
+        const linkedTasks = problem.linkedTasks;
+        const incompleteTasks = linkedTasks.filter((task) => task.status !== "done");
+        const olderHistory = problem.historyEntries.slice(1);
+        const incompleteCount = incompleteTasks.length;
         const defaultOpen =
           problem.priority === "ACTIVE_UNSTABLE" ||
-          linkedTasks.some((task) => task.status !== "done" && task.priority !== "normal");
+          incompleteTasks.some((task) => task.priority !== "normal");
 
         return (
           <details
             key={problem.id}
             open={defaultOpen}
-            className="rounded-[22px] border clinical-divider bg-white p-3.5 md:p-4"
+            className="rounded-[20px] border clinical-divider bg-white px-3 py-2.5 md:px-3.5 md:py-3"
           >
-            <summary className="flex cursor-pointer list-none items-start justify-between gap-3 marker:content-none">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 marker:content-none">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill tone={problemPriorityTone(problem.priority)}>
-                    {labelForProblemPriority(problem.priority)}
-                  </Pill>
-                  <p className="text-base font-semibold text-foreground">{problem.title}</p>
-                  <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-3)] text-[color:var(--color-ink)]">
-                    {incompleteCount} task
-                  </Pill>
+                <div className="flex items-center gap-2">
+                  <Circle
+                    className={cn(
+                      "h-2.5 w-2.5 shrink-0",
+                      problem.priority === "ACTIVE_UNSTABLE"
+                        ? "fill-rose-500 text-rose-500"
+                        : problem.priority === "ACTIVE_STABLE"
+                          ? "fill-orange-500 text-orange-500"
+                          : "fill-amber-500 text-amber-500",
+                    )}
+                  />
+                  <p className="truncate text-sm font-semibold text-foreground md:text-[15px]">
+                    {problem.problemName}
+                  </p>
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted">
-                  {problem.currentStatus ?? problem.keyData ?? "No status line yet"}
+                <p className="mt-1 truncate text-xs leading-5 text-muted md:text-sm">
+                  {compactProblemStatus(problem)}
+                  {incompleteCount ? ` · ${incompleteCount} task${incompleteCount > 1 ? "s" : ""}` : ""}
                 </p>
               </div>
-              <ChevronDown className="mt-1 h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
             </summary>
 
-            <div className="mt-4 space-y-3">
-              <ProblemSection
-                label="Status"
-                value={problem.currentStatus ?? problem.keyData ?? "No current status yet"}
-              />
-              <ProblemSection
-                label="Evidence"
-                value={problem.evidence ?? problem.keyData ?? "No key evidence yet"}
-              />
-              <ProblemSection
-                label="Treatment"
-                value={problem.treatment ?? "No active treatment documented"}
-              />
-              <details className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
-                <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
-                  Reasoning
-                </summary>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  {problem.reasoning ?? "No concise reasoning documented"}
-                </p>
-              </details>
-              <ProblemSection
-                label="Today's Plan"
-                value={problem.todayPlan ?? problem.plan ?? "No plan documented"}
-              />
-
-              <div className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
-                  <p className="text-xs text-muted">{incompleteCount} incomplete</p>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {linkedTasks.length > 0 ? (
-                    linkedTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="rounded-[16px] border clinical-divider bg-white px-3 py-2.5"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-foreground">{task.title}</p>
-                              <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
-                              <Pill tone={priorityTone(task.priority)}>
-                                {labelForTaskPriority(task.priority)}
-                              </Pill>
-                            </div>
-                            <p className="mt-1 text-xs text-muted">
-                              {task.ownerName ?? "Unassigned"}
-                              {task.dueAt ? ` | Due ${formatDateTime(task.dueAt)}` : ""}
-                            </p>
-                          </div>
-                          {canEdit && task.status !== "done" ? (
-                            <form action={updateStatusAction}>
-                              <input type="hidden" name="patientId" value={patientId} />
-                              <input type="hidden" name="taskId" value={task.id} />
-                              <input type="hidden" name="status" value="done" />
-                              <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                              <PendingGhostButton pendingLabel="Updating...">Mark done</PendingGhostButton>
-                            </form>
-                          ) : null}
-                        </div>
+            <div className="mt-3 space-y-3">
+              {canEdit ? (
+                <div className="flex items-center justify-end gap-1">
+                  <ProblemEditor iconOnly buttonTitle="Edit problem master">
+                    <form action={saveProblemMasterAction} className="space-y-3">
+                      <input type="hidden" name="id" value={problem.id} />
+                      <input type="hidden" name="patientId" value={patientId} />
+                      <input type="hidden" name="updatedAt" value={problem.updatedAt} />
+                      <input type="hidden" name="resolvedAt" value={problem.resolvedAt ?? ""} />
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Field label="Problem name">
+                          <TextInput name="problemName" defaultValue={problem.problemName} required />
+                        </Field>
+                        <Field label="Priority">
+                          <SelectBox name="priority" defaultValue={problem.priority}>
+                            <option value="ACTIVE_UNSTABLE">Active unstable</option>
+                            <option value="ACTIVE_STABLE">Active stable</option>
+                            <option value="MONITORING">Monitoring</option>
+                            <option value="RESOLVED_CHRONIC">Resolved / chronic</option>
+                          </SelectBox>
+                        </Field>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted">No linked tasks yet</p>
-                  )}
-                </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Field label="Diagnosis status">
+                          <SelectBox name="diagnosisStatus" defaultValue={problem.diagnosisStatus}>
+                            <option value="SUSPECTED">Suspected</option>
+                            <option value="CONFIRMED">Confirmed</option>
+                            <option value="RULED_OUT">Ruled out</option>
+                          </SelectBox>
+                        </Field>
+                        <Field label="Current summary">
+                          <TextInput
+                            name="currentStatusSummary"
+                            defaultValue={problem.currentStatusSummary ?? ""}
+                            placeholder="Stable after PLEX"
+                          />
+                        </Field>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          name="includeInHandover"
+                          defaultChecked={problem.includeInHandover}
+                        />
+                        Include in handover
+                      </label>
+                      <SubmitButton pendingLabel="Updating problem...">Save problem</SubmitButton>
+                    </form>
+                  </ProblemEditor>
 
-                {canEdit ? (
+                  <ProgressEntryEditor iconOnly buttonTitle="Add progress update">
+                    <form action={saveProblemProgressEntryAction} className="space-y-3">
+                      <input type="hidden" name="patientId" value={patientId} />
+                      <input type="hidden" name="problemId" value={problem.id} />
+                      <Field label="Latest update">
+                        <TextArea name="statusUpdate" placeholder="Hb dropped today" />
+                      </Field>
+                      <Field label="Evidence">
+                        <TextArea name="newEvidence" placeholder="Cr improved" />
+                      </Field>
+                      <Field label="Treatment">
+                        <TextArea name="treatmentChange" placeholder="Antibiotic changed" />
+                      </Field>
+                      <Field label="Reasoning">
+                        <TextArea name="reasoningUpdate" placeholder="Waiting for culture" />
+                      </Field>
+                      <Field label="Today's plan">
+                        <TextArea name="todayPlan" placeholder="Plan discharge tomorrow" />
+                      </Field>
+                      {incompleteTasks.length ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-foreground">Linked pending tasks</p>
+                          <div className="space-y-2">
+                            {incompleteTasks.map((task) => (
+                              <label
+                                key={task.id}
+                                className="flex items-start gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
+                              >
+                                <input type="checkbox" name="pendingTaskIds" value={task.id} />
+                                <span>{task.title}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <SubmitButton pendingLabel="Saving update...">Add update</SubmitButton>
+                    </form>
+                  </ProgressEntryEditor>
+
                   <TaskCreator
-                    className="panel-accent mt-3 w-full rounded-[18px]"
-                    buttonClassName="mt-0 ml-auto"
+                    iconOnly
+                    buttonLabel="Add task"
+                    buttonTitle="Add task"
+                    className="mt-0"
+                    buttonClassName="mt-0"
                     panelClassName="mt-0 w-full"
                     headerClassName="items-start"
                     contentClassName="space-y-3"
@@ -547,89 +613,137 @@ export function ProblemCards({
                       <Field label="Note">
                         <TextArea name="note" placeholder="Short task note" />
                       </Field>
-                      <div className="flex justify-end">
-                        <SubmitButton>Create task under problem</SubmitButton>
-                      </div>
+                      <SubmitButton>Create task</SubmitButton>
                     </form>
                   </TaskCreator>
-                ) : null}
+                </div>
+              ) : null}
+
+              <ProblemSection label="Current Summary" value={problem.currentStatusSummary ?? "No current summary yet"} />
+              <ProblemSection label="Latest Update" value={compactProblemStatus(problem)} />
+              <ProblemSection label="Evidence" value={compactProblemEvidence(problem)} />
+              <ProblemSection label="Treatment" value={compactProblemTreatment(problem)} />
+              <ProblemSection label="Reasoning" value={compactProblemReasoning(problem)} />
+              <ProblemSection label="Today's Plan" value={compactProblemPlan(problem)} />
+
+              <div className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
+                  <p className="text-xs text-muted">{incompleteCount} incomplete</p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {linkedTasks.length > 0 ? (
+                    linkedTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-foreground">{task.title}</p>
+                          <p className="mt-1 truncate text-xs text-muted">
+                            {task.ownerName ?? "Unassigned"}
+                            {task.dueAt ? ` · Due ${formatDateTime(task.dueAt)}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
+                          {canEdit && task.status !== "done" ? (
+                            <form action={updateStatusAction}>
+                              <input type="hidden" name="patientId" value={patientId} />
+                              <input type="hidden" name="taskId" value={task.id} />
+                              <input type="hidden" name="status" value="done" />
+                              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+                              <PendingGhostButton
+                                pendingLabel="Updating..."
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full px-0"
+                              >
+                                <CheckSquare2 className="h-4 w-4" />
+                              </PendingGhostButton>
+                            </form>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted">No linked tasks yet</p>
+                  )}
+                </div>
               </div>
 
-              {canEdit ? (
-                <ProblemEditor>
-                  <form action={saveProblemAction} className="space-y-3">
-                    <input type="hidden" name="id" value={problem.id} />
-                    <input type="hidden" name="patientId" value={patientId} />
-                    <input type="hidden" name="updatedAt" value={problem.updatedAt} />
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Field label="Problem name">
-                        <TextInput name="title" defaultValue={problem.title} required />
-                      </Field>
-                      <Field label="Priority">
-                        <SelectBox name="priority" defaultValue={problem.priority}>
-                          <option value="ACTIVE_UNSTABLE">Active unstable</option>
-                          <option value="ACTIVE_STABLE">Active stable</option>
-                          <option value="MONITORING">Monitoring</option>
-                          <option value="RESOLVED_CHRONIC">Resolved / chronic</option>
-                        </SelectBox>
-                      </Field>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Field label="Status tag">
-                        <SelectBox name="status" defaultValue={problem.status}>
-                          <option value="active">Active</option>
-                          <option value="improving">Improving</option>
-                          <option value="worsening">Worsening</option>
-                          <option value="resolved">Resolved</option>
-                        </SelectBox>
-                      </Field>
-                      <Field label="Handover key line">
-                        <TextInput name="keyData" defaultValue={problem.keyData ?? ""} />
-                      </Field>
-                    </div>
-                    <Field label="Current status">
-                      <TextArea name="currentStatus" defaultValue={problem.currentStatus ?? ""} />
-                    </Field>
-                    <Field label="Evidence">
-                      <TextArea name="evidence" defaultValue={problem.evidence ?? ""} />
-                    </Field>
-                    <Field label="Treatment">
-                      <TextArea name="treatment" defaultValue={problem.treatment ?? ""} />
-                    </Field>
-                    <Field label="Reasoning">
-                      <TextArea name="reasoning" defaultValue={problem.reasoning ?? ""} />
-                    </Field>
-                    <Field label="Today's plan">
-                      <TextArea name="todayPlan" defaultValue={problem.todayPlan ?? problem.plan ?? ""} />
-                    </Field>
-                    <details className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
-                      <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
-                        Handover extras
-                      </summary>
-                      <div className="mt-3 space-y-3">
-                        <Field label="Pending issues">
-                          <TextArea name="pending" defaultValue={problem.pending ?? ""} />
-                        </Field>
-                        <Field label="Watch out">
-                          <TextArea name="watchOut" defaultValue={problem.watchOut ?? ""} />
-                        </Field>
-                        <Field label="Legacy plan line">
-                          <TextArea name="plan" defaultValue={problem.plan ?? ""} />
-                        </Field>
+              <details className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
+                  <span>History</span>
+                  <ChevronDown className="h-4 w-4 transition-transform details-open:rotate-180" />
+                </summary>
+                <div className="mt-3 space-y-2">
+                  {olderHistory.length ? (
+                    olderHistory.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-[16px] border clinical-divider bg-white px-3 py-2.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 text-sm text-foreground">
+                              {formatProgressHistoryLine(problem, entry)}
+                            </p>
+                          </div>
+                          {canEdit ? (
+                            <ProgressEntryHistoryEditor iconOnly buttonTitle="Edit history entry">
+                              <form action={saveProblemProgressEntryAction} className="space-y-3">
+                                <input type="hidden" name="id" value={entry.id} />
+                                <input type="hidden" name="patientId" value={patientId} />
+                                <input type="hidden" name="problemId" value={problem.id} />
+                                <input type="hidden" name="dateTime" value={entry.dateTime} />
+                                <input type="hidden" name="updatedAt" value={entry.updatedAt} />
+                                <Field label="Latest update">
+                                  <TextArea name="statusUpdate" defaultValue={entry.statusUpdate ?? ""} />
+                                </Field>
+                                <Field label="Evidence">
+                                  <TextArea name="newEvidence" defaultValue={entry.newEvidence ?? ""} />
+                                </Field>
+                                <Field label="Treatment">
+                                  <TextArea name="treatmentChange" defaultValue={entry.treatmentChange ?? ""} />
+                                </Field>
+                                <Field label="Reasoning">
+                                  <TextArea name="reasoningUpdate" defaultValue={entry.reasoningUpdate ?? ""} />
+                                </Field>
+                                <Field label="Today's plan">
+                                  <TextArea name="todayPlan" defaultValue={entry.todayPlan ?? ""} />
+                                </Field>
+                                {incompleteTasks.length ? (
+                                  <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-foreground">Linked pending tasks</p>
+                                    <div className="space-y-2">
+                                      {incompleteTasks.map((task) => (
+                                        <label
+                                          key={task.id}
+                                          className="flex items-start gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            name="pendingTaskIds"
+                                            value={task.id}
+                                            defaultChecked={entry.pendingTaskIds.includes(task.id)}
+                                          />
+                                          <span>{task.title}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <SubmitButton pendingLabel="Saving update...">Save history edit</SubmitButton>
+                              </form>
+                            </ProgressEntryHistoryEditor>
+                          ) : null}
+                        </div>
                       </div>
-                    </details>
-                    <label className="flex items-center gap-2 text-sm text-foreground">
-                      <input
-                        type="checkbox"
-                        name="includeInHandover"
-                        defaultChecked={problem.includeInHandover}
-                      />
-                      Include in handover
-                    </label>
-                    <SubmitButton pendingLabel="Updating problem...">Update problem</SubmitButton>
-                  </form>
-                </ProblemEditor>
-              ) : null}
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted">No older history yet</p>
+                  )}
+                </div>
+              </details>
             </div>
           </details>
         );
@@ -647,10 +761,15 @@ export function ProblemCards({
                   <Pill tone={problemPriorityTone(problem.priority)}>
                     {labelForProblemPriority(problem.priority)}
                   </Pill>
-                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">{problem.title}</p>
+                  <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
+                    {labelForProblemDiagnosisStatus(problem.diagnosisStatus)}
+                  </Pill>
+                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">
+                    {problem.problemName}
+                  </p>
                 </div>
-                {problem.currentStatus ? (
-                  <p className="mt-1 text-sm text-muted">{problem.currentStatus}</p>
+                {compactProblemStatus(problem) ? (
+                  <p className="mt-1 text-sm text-muted">{compactProblemStatus(problem)}</p>
                 ) : null}
               </div>
             ))}
@@ -771,7 +890,7 @@ function TaskCard({
             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
           </div>
           <div className="mt-1.5 space-y-1 text-sm text-muted">
-            <p>Problem: {problem?.title ?? "No linked problem"}</p>
+            <p>Problem: {problem?.problemName ?? "No linked problem"}</p>
             <p>Owner: {task.ownerName ?? "Unassigned"}</p>
             {task.dueAt ? <p>Due: {formatDateTime(task.dueAt)}</p> : null}
             {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
@@ -971,7 +1090,12 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                 (patient) =>
                   patient.status !== "stable" ||
                   patient.tasks.some((task) => task.status !== "done") ||
-                  patient.problems.some((problem) => problem.watchOut || problem.pending),
+                  patient.problems.some(
+                    (problem) =>
+                      Boolean(problem.currentStatusSummary) ||
+                      Boolean(problem.latestEntry?.newEvidence) ||
+                      problem.linkedTasks.some((task) => task.status !== "done"),
+                  ),
               )
               .map((patient) => (
                 <div key={patient.id} className="rounded-[24px] border clinical-divider bg-white p-5">
@@ -987,15 +1111,20 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                     <MiniList
                       title="Watch"
                       items={patient.problems
-                        .map((problem) => problem.watchOut)
+                        .map((problem) =>
+                          [problem.problemName, compactProblemStatus(problem)].filter(Boolean).join(" | "),
+                        )
                         .filter((value): value is string => Boolean(value))}
                     />
                     <MiniList
                       title="Pending"
                       items={[
                         ...patient.problems
-                          .map((problem) => problem.pending)
-                          .filter((value): value is string => Boolean(value)),
+                          .flatMap((problem) =>
+                            problem.linkedTasks
+                              .filter((task) => task.status !== "done")
+                              .map((task) => `${problem.problemName}: ${task.title}`),
+                          ),
                         ...patient.tasks.map((task) => task.title),
                       ]}
                     />

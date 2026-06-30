@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { SummaryNoteExportResult, SummaryNotePayload } from "@/lib/types";
-import { labelForProblemPriority } from "@/lib/utils";
+import { labelForProblemDiagnosisStatus, labelForProblemPriority } from "@/lib/utils";
 
 type GoogleDocsAdapter = {
   exportSummaryNote(payload: SummaryNotePayload): Promise<SummaryNoteExportResult>;
@@ -227,13 +227,18 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
     insertBullets(["None"]);
   } else {
     for (const problem of payload.activeProblems) {
-      insertParagraph(`${problem.title} [${labelForProblemPriority(problem.priority)}]`, "HEADING_3");
+      insertParagraph(
+        `${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
+        "HEADING_3",
+      );
       insertBullets([
-        `Status: ${problem.status.join(" | ")}`,
+        `Current Summary: ${problem.currentSummary.join(" | ")}`,
+        `Latest Update: ${problem.latestUpdate.join(" | ")}`,
         `Evidence: ${problem.evidence.join(" | ")}`,
         `Treatment: ${problem.treatment.join(" | ")}`,
         `Reasoning: ${problem.reasoning.join(" | ")}`,
         `Today's Plan: ${problem.todayPlan.join(" | ")}`,
+        `History: ${problem.history.join(" || ")}`,
         `Pending Tasks: ${problem.pendingTasks.join(" | ")}`,
       ]);
     }

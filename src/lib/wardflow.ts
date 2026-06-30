@@ -16,7 +16,8 @@ import {
   demoDischargeSummarySeed,
   demoHandoverSeed,
   demoPatientsSeed,
-  demoProblemsSeed,
+  demoProblemMastersSeed,
+  demoProblemProgressEntriesSeed,
   demoProfiles,
   demoTaskUpdatesSeed,
   demoTasksSeed,
@@ -34,11 +35,15 @@ import type {
   Patient,
   PatientBundle,
   Problem,
+  ProblemDiagnosisStatus,
+  ProblemMaster,
+  ProblemProgressEntry,
   ProblemPriority,
-  Role,
   SessionContext,
   SummaryNoteExportResult,
   SummaryNotePayload,
+  ProblemStatus,
+  Role,
   Student,
   StudentWardAssignment,
   StudentWardAssignmentBoardData,
@@ -61,7 +66,8 @@ import { buildSummaryNotePayload } from "@/lib/summary-note";
 type DemoStore = {
   wards: Ward[];
   patients: Patient[];
-  problems: Problem[];
+  problemMasters: ProblemMaster[];
+  problemProgressEntries: ProblemProgressEntry[];
   tasks: WardTask[];
   taskUpdates: TaskUpdate[];
   handovers: HandoverNote[];
@@ -135,9 +141,13 @@ type PatientRow = {
 type ProblemRow = {
   id: string;
   patient_id: string;
-  title: string;
-  status: Problem["status"];
+  problem_name?: string | null;
+  title?: string | null;
+  status?: ProblemStatus | null;
   priority?: ProblemPriority | null;
+  current_status_summary?: string | null;
+  diagnosis_status?: ProblemDiagnosisStatus | null;
+  resolved_at?: string | null;
   current_status?: string | null;
   evidence?: string | null;
   treatment?: string | null;
@@ -150,6 +160,21 @@ type ProblemRow = {
   include_in_handover: boolean;
   sort_order: number;
   updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProblemProgressEntryRow = {
+  id: string;
+  problem_id: string;
+  date_time: string;
+  author_id: string | null;
+  pending_task_ids?: string[] | null;
+  status_update: string | null;
+  new_evidence: string | null;
+  treatment_change: string | null;
+  reasoning_update: string | null;
+  today_plan: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -276,23 +301,47 @@ const patientSchema = z.object({
   updatedAt: z.string().optional().nullable(),
 });
 
-const problemSchema = z.object({
+const problemMasterSchema = z.object({
   id: z.string().optional(),
   patientId: z.string().min(1),
-  title: z.string().min(1),
-  status: z.enum(["active", "improving", "worsening", "resolved"]),
+  problemName: z.string().min(1),
   priority: z.enum(["ACTIVE_UNSTABLE", "ACTIVE_STABLE", "MONITORING", "RESOLVED_CHRONIC"]),
-  currentStatus: z.string().optional().nullable(),
-  evidence: z.string().optional().nullable(),
-  treatment: z.string().optional().nullable(),
-  reasoning: z.string().optional().nullable(),
-  todayPlan: z.string().optional().nullable(),
-  keyData: z.string().optional().nullable(),
-  plan: z.string().optional().nullable(),
-  pending: z.string().optional().nullable(),
-  watchOut: z.string().optional().nullable(),
+  currentStatusSummary: z.string().optional().nullable(),
+  diagnosisStatus: z.enum(["SUSPECTED", "CONFIRMED", "RULED_OUT"]).default("CONFIRMED"),
   includeInHandover: z.coerce.boolean(),
   updatedAt: z.string().optional().nullable(),
+  resolvedAt: z.string().optional().nullable(),
+});
+
+const problemProgressEntrySchema = z
+  .object({
+    id: z.string().optional(),
+    patientId: z.string().min(1),
+    problemId: z.string().min(1),
+    dateTime: z.string().optional().nullable(),
+    statusUpdate: z.string().optional().nullable(),
+    newEvidence: z.string().optional().nullable(),
+    treatmentChange: z.string().optional().nullable(),
+    reasoningUpdate: z.string().optional().nullable(),
+    todayPlan: z.string().optional().nullable(),
+    pendingTaskIds: z.array(z.string()).default([]),
+    updatedAt: z.string().optional().nullable(),
+  })
+  .superRefine((value, ctx) => {
+    const hasContent = [
+      value.statusUpdate,
+      value.newEvidence,
+      value.treatmentChange,
+      value.reasoningUpdate,
+      value.todayPlan,
+    ].some((item) => Boolean(item?.trim())) || value.pendingTaskIds.length > 0;
+
+    if (!hasContent) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Progress update must include at least one clinical update or linked pending task.",
+      });
+    }
 });
 
 const taskSchema = z.object({
@@ -461,7 +510,8 @@ function createSeedStore(): DemoStore {
   return {
     wards: structuredClone(demoWards),
     patients: structuredClone(demoPatientsSeed),
-    problems: structuredClone(demoProblemsSeed),
+    problemMasters: structuredClone(demoProblemMastersSeed),
+    problemProgressEntries: structuredClone(demoProblemProgressEntriesSeed),
     tasks: structuredClone(demoTasksSeed),
     taskUpdates: structuredClone(demoTaskUpdatesSeed),
     handovers: structuredClone(demoHandoverSeed),
@@ -475,25 +525,40 @@ function createSeedStore(): DemoStore {
 
 let store: DemoStore = createSeedStore();
 
-function normalizeProblemRecord(problem: Partial<Problem>): Problem {
+function normalizeProblemMasterRecord(problem: Partial<ProblemMaster>): ProblemMaster {
   return {
     id: problem.id ?? nextId("problem"),
     patientId: problem.patientId ?? "",
-    title: problem.title ?? "Untitled problem",
-    status: problem.status ?? "active",
-    priority: problem.priority ?? defaultProblemPriority(problem.status ?? "active"),
-    currentStatus: problem.currentStatus ?? problem.keyData ?? null,
-    evidence: problem.evidence ?? problem.keyData ?? null,
-    treatment: problem.treatment ?? null,
-    reasoning: problem.reasoning ?? null,
-    todayPlan: problem.todayPlan ?? problem.plan ?? null,
-    keyData: problem.keyData ?? null,
-    plan: problem.plan ?? null,
-    pending: problem.pending ?? null,
-    watchOut: problem.watchOut ?? null,
+    problemName: problem.problemName ?? "Untitled problem",
+    priority: problem.priority ?? "ACTIVE_STABLE",
+    currentStatusSummary: problem.currentStatusSummary ?? null,
+    diagnosisStatus: problem.diagnosisStatus ?? "CONFIRMED",
     includeInHandover: problem.includeInHandover ?? true,
     sortOrder: problem.sortOrder ?? 0,
+    createdAt: problem.createdAt ?? now(),
     updatedAt: problem.updatedAt ?? now(),
+    resolvedAt: problem.resolvedAt ?? null,
+  };
+}
+
+function normalizeProblemProgressEntryRecord(
+  entry: Partial<ProblemProgressEntry>,
+): ProblemProgressEntry {
+  const timestamp = entry.dateTime ?? entry.createdAt ?? now();
+  return {
+    id: entry.id ?? nextId("problem-progress"),
+    problemId: entry.problemId ?? "",
+    dateTime: timestamp,
+    authorId: entry.authorId ?? null,
+    authorName: entry.authorName ?? null,
+    statusUpdate: entry.statusUpdate ?? null,
+    newEvidence: entry.newEvidence ?? null,
+    treatmentChange: entry.treatmentChange ?? null,
+    reasoningUpdate: entry.reasoningUpdate ?? null,
+    todayPlan: entry.todayPlan ?? null,
+    pendingTaskIds: entry.pendingTaskIds ?? [],
+    createdAt: entry.createdAt ?? timestamp,
+    updatedAt: entry.updatedAt ?? timestamp,
   };
 }
 
@@ -541,11 +606,93 @@ function normalizePatientRecord(patient: Partial<Patient>): Patient {
 
 function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
   const seed = createSeedStore();
+  const legacyProblems = (input as { problems?: Array<Partial<Problem> & Record<string, unknown>> } | null | undefined)
+    ?.problems;
+  const problemMasters =
+    input?.problemMasters ??
+    legacyProblems?.map((problem) =>
+      normalizeProblemMasterRecord({
+        id: typeof problem.id === "string" ? problem.id : undefined,
+        patientId: typeof problem.patientId === "string" ? problem.patientId : "",
+        problemName:
+          typeof problem.problemName === "string"
+            ? problem.problemName
+            : typeof problem.title === "string"
+              ? problem.title
+              : "Untitled problem",
+        priority:
+          typeof problem.priority === "string"
+            ? (problem.priority as ProblemPriority)
+            : defaultProblemPriority((problem.status as ProblemStatus | undefined) ?? "active"),
+        currentStatusSummary:
+          typeof problem.currentStatusSummary === "string"
+            ? problem.currentStatusSummary
+            : typeof problem.currentStatus === "string"
+              ? problem.currentStatus
+              : typeof problem.keyData === "string"
+                ? problem.keyData
+                : null,
+        diagnosisStatus:
+          typeof problem.diagnosisStatus === "string"
+            ? (problem.diagnosisStatus as ProblemDiagnosisStatus)
+            : "CONFIRMED",
+        includeInHandover:
+          typeof problem.includeInHandover === "boolean" ? problem.includeInHandover : true,
+        sortOrder: typeof problem.sortOrder === "number" ? problem.sortOrder : 0,
+        createdAt: typeof problem.createdAt === "string" ? problem.createdAt : now(),
+        updatedAt: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
+        resolvedAt:
+          typeof problem.resolvedAt === "string"
+            ? problem.resolvedAt
+            : ((problem.priority as ProblemPriority | undefined) ?? null) === "RESOLVED_CHRONIC"
+              ? typeof problem.updatedAt === "string"
+                ? problem.updatedAt
+                : now()
+              : null,
+      }),
+    ) ??
+    seed.problemMasters;
+  const problemProgressEntries =
+    input?.problemProgressEntries ??
+    legacyProblems?.map((problem) =>
+      normalizeProblemProgressEntryRecord({
+        id: typeof problem.id === "string" ? `${problem.id}-initial-progress` : undefined,
+        problemId: typeof problem.id === "string" ? problem.id : "",
+        authorId: null,
+        authorName: null,
+        dateTime: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
+        statusUpdate:
+          typeof problem.currentStatus === "string"
+            ? problem.currentStatus
+            : typeof problem.keyData === "string"
+              ? problem.keyData
+              : null,
+        newEvidence:
+          typeof problem.evidence === "string"
+            ? problem.evidence
+            : typeof problem.keyData === "string"
+              ? problem.keyData
+              : null,
+        treatmentChange: typeof problem.treatment === "string" ? problem.treatment : null,
+        reasoningUpdate: typeof problem.reasoning === "string" ? problem.reasoning : null,
+        todayPlan:
+          typeof problem.todayPlan === "string"
+            ? problem.todayPlan
+            : typeof problem.plan === "string"
+              ? problem.plan
+              : null,
+        pendingTaskIds: [],
+        createdAt: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
+        updatedAt: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
+      }),
+    ) ??
+    seed.problemProgressEntries;
 
   return {
     wards: input?.wards ?? seed.wards,
     patients: (input?.patients ?? seed.patients).map(normalizePatientRecord),
-    problems: (input?.problems ?? seed.problems).map(normalizeProblemRecord),
+    problemMasters: problemMasters.map(normalizeProblemMasterRecord),
+    problemProgressEntries: problemProgressEntries.map(normalizeProblemProgressEntryRecord),
     tasks: (input?.tasks ?? seed.tasks).map(normalizeTaskRecord),
     taskUpdates: input?.taskUpdates ?? seed.taskUpdates,
     handovers: input?.handovers ?? seed.handovers,
@@ -690,7 +837,7 @@ function compareBed(left: string, right: string) {
   return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
 }
 
-function defaultProblemPriority(status: Problem["status"]): ProblemPriority {
+function defaultProblemPriority(status: ProblemStatus): ProblemPriority {
   switch (status) {
     case "worsening":
       return "ACTIVE_UNSTABLE";
@@ -704,11 +851,81 @@ function defaultProblemPriority(status: Problem["status"]): ProblemPriority {
   }
 }
 
-function summaryLine(...values: Array<string | null | undefined>) {
-  return values
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value))
+function problemIsResolved(problem: ProblemMaster | Problem) {
+  return problem.priority === "RESOLVED_CHRONIC" || Boolean(problem.resolvedAt);
+}
+
+function sortProblemProgressEntries(left: ProblemProgressEntry, right: ProblemProgressEntry) {
+  return right.dateTime.localeCompare(left.dateTime) || right.updatedAt.localeCompare(left.updatedAt);
+}
+
+function getProblemProgressEntries(input: DemoStore, problemId: string) {
+  return input.problemProgressEntries
+    .filter((entry) => entry.problemId === problemId)
+    .sort(sortProblemProgressEntries);
+}
+
+function getProblemLinkedTasks(input: DemoStore, problemId: string) {
+  return attachTaskUpdates(
+    input,
+    input.tasks
+      .filter((task) => task.problemId === problemId)
+      .sort((left, right) => {
+        if (left.status === "done" && right.status !== "done") return 1;
+        if (left.status !== "done" && right.status === "done") return -1;
+        const priorityDiff = compareTaskPriority(left.priority, right.priority);
+        if (priorityDiff !== 0) return priorityDiff;
+        return right.updatedAt.localeCompare(left.updatedAt);
+      }),
+  );
+}
+
+function buildProblemView(input: DemoStore, master: ProblemMaster): Problem {
+  const historyEntries = getProblemProgressEntries(input, master.id);
+  return {
+    ...master,
+    latestEntry: historyEntries[0] ?? null,
+    historyEntries,
+    linkedTasks: getProblemLinkedTasks(input, master.id),
+  };
+}
+
+function getProblemViews(input: DemoStore, patientId: string) {
+  return input.problemMasters
+    .filter((problem) => problem.patientId === patientId)
+    .map((problem) => buildProblemView(input, problem))
+    .sort((left, right) => {
+      const priorityDiff = compareProblemPriority(left.priority, right.priority);
+      if (priorityDiff !== 0) return priorityDiff;
+      return left.sortOrder - right.sortOrder;
+    });
+}
+
+function getProblemLatestStatus(problem: Problem) {
+  return problem.latestEntry?.statusUpdate ?? problem.currentStatusSummary;
+}
+
+function getProblemLatestEvidence(problem: Problem) {
+  return problem.latestEntry?.newEvidence ?? null;
+}
+
+function getProblemLatestPlan(problem: Problem) {
+  return problem.latestEntry?.todayPlan ?? null;
+}
+
+function getProblemPendingTasks(problem: Problem) {
+  return problem.linkedTasks.filter((task) => task.status !== "done");
+}
+
+function getProblemHandoverWatch(problem: Problem) {
+  const warning = [
+    problem.currentStatusSummary,
+    getProblemLatestStatus(problem),
+    getProblemLatestEvidence(problem),
+  ]
+    .filter(Boolean)
     .join(" | ");
+  return warning || null;
 }
 
 function compareTaskPriority(left: WardTask["priority"], right: WardTask["priority"]) {
@@ -762,7 +979,7 @@ function summarizeWardPatient(
   referenceTime = now(),
 ): WardPatientSummary {
   const activeProblems = problems
-    .filter((problem) => problem.priority !== "RESOLVED_CHRONIC")
+    .filter((problem) => !problemIsResolved(problem))
     .sort((left, right) => {
       const priorityDiff = compareProblemPriority(left.priority, right.priority);
       if (priorityDiff !== 0) return priorityDiff;
@@ -772,9 +989,9 @@ function summarizeWardPatient(
   const highestPriorityProblem = activeProblems[0]
     ? {
         id: activeProblems[0].id,
-        title: activeProblems[0].title,
+        problemName: activeProblems[0].problemName,
         priority: activeProblems[0].priority,
-        currentStatus: activeProblems[0].currentStatus ?? activeProblems[0].keyData,
+        currentStatus: getProblemLatestStatus(activeProblems[0]),
       }
     : null;
 
@@ -809,7 +1026,7 @@ function buildWardSummary(
           summarizeWardPatient(
             patient,
             input.tasks.filter((task) => task.patientId === patient.id),
-            input.problems.filter((problem) => problem.patientId === patient.id),
+            getProblemViews(input, patient.id),
           ),
         )
         .sort((left, right) => compareBed(left.bed, right.bed)),
@@ -849,15 +1066,17 @@ function buildDischargeDraft(input: DemoStore, patientId: string) {
   const patient = patientById(input, patientId);
   if (!patient) return null;
 
-  const hospitalCourseItems = input.problems
-    .filter((problem) => problem.patientId === patientId)
-    .sort((left, right) => left.sortOrder - right.sortOrder)
+  const hospitalCourseItems = getProblemViews(input, patientId)
     .map((problem) =>
       [
-        problem.title,
-        problem.keyData,
-        problem.plan ? `Plan: ${problem.plan}` : null,
-        problem.pending ? `Pending: ${problem.pending}` : null,
+        problem.problemName,
+        getProblemLatestStatus(problem) ?? problem.currentStatusSummary,
+        getProblemLatestPlan(problem) ? `Plan: ${getProblemLatestPlan(problem)}` : null,
+        getProblemPendingTasks(problem).length
+          ? `Pending: ${getProblemPendingTasks(problem)
+              .map((task) => task.title)
+              .join("; ")}`
+          : null,
       ]
         .filter(Boolean)
         .join(" | "),
@@ -949,28 +1168,41 @@ function mapPatientRow(row: PatientRow, profiles: Map<string, UserProfile>): Pat
   };
 }
 
-function mapProblemRow(row: ProblemRow): Problem {
-  const priority = row.priority ?? defaultProblemPriority(row.status);
-  const currentStatus = row.current_status ?? row.key_data;
-  const evidence = row.evidence ?? row.key_data;
-  const todayPlan = row.today_plan ?? row.plan;
+function mapProblemRow(row: ProblemRow): ProblemMaster {
+  const priority = row.priority ?? defaultProblemPriority(row.status ?? "active");
+  const currentStatusSummary = row.current_status_summary ?? row.current_status ?? row.key_data ?? null;
   return {
     id: row.id,
     patientId: row.patient_id,
-    title: row.title,
-    status: row.status,
+    problemName: row.problem_name ?? row.title ?? "Untitled problem",
     priority,
-    currentStatus,
-    evidence,
-    treatment: row.treatment ?? null,
-    reasoning: row.reasoning ?? null,
-    todayPlan,
-    keyData: row.key_data,
-    plan: row.plan,
-    pending: row.pending,
-    watchOut: row.watch_out,
+    currentStatusSummary,
+    diagnosisStatus: row.diagnosis_status ?? "CONFIRMED",
     includeInHandover: row.include_in_handover,
     sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    resolvedAt: row.resolved_at ?? (priority === "RESOLVED_CHRONIC" ? row.updated_at : null),
+  };
+}
+
+function mapProblemProgressEntryRow(
+  row: ProblemProgressEntryRow,
+  profiles: Map<string, UserProfile>,
+): ProblemProgressEntry {
+  return {
+    id: row.id,
+    problemId: row.problem_id,
+    dateTime: row.date_time,
+    authorId: row.author_id,
+    authorName: row.author_id ? profiles.get(row.author_id)?.name ?? null : null,
+    statusUpdate: row.status_update,
+    newEvidence: row.new_evidence,
+    treatmentChange: row.treatment_change,
+    reasoningUpdate: row.reasoning_update,
+    todayPlan: row.today_plan,
+    pendingTaskIds: row.pending_task_ids ?? [],
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
@@ -1115,21 +1347,6 @@ function isRecoverableStudentAssignmentReadError(error: { message: string } | nu
   );
 }
 
-function isRecoverableProblemSchemaError(error: { message: string } | null | undefined) {
-  const message = error?.message?.toLowerCase() ?? "";
-  return (
-    message.includes("problem") &&
-    (message.includes("priority") ||
-      message.includes("current_status") ||
-      message.includes("evidence") ||
-      message.includes("treatment") ||
-      message.includes("reasoning") ||
-      message.includes("today_plan") ||
-      message.includes("schema cache") ||
-      message.includes("column"))
-  );
-}
-
 function isRecoverableTaskProblemLinkError(error: { message: string } | null | undefined) {
   const message = error?.message?.toLowerCase() ?? "";
   return (
@@ -1161,6 +1378,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       profilesResult,
       patientsResult,
       problemsResult,
+      problemProgressEntriesResult,
       tasksResult,
       handoversResult,
       activityResult,
@@ -1181,6 +1399,10 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
         .from("problems")
         .select("*")
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("problem_progress_entries")
+        .select("*")
+        .order("date_time", { ascending: false }),
       supabase
         .from("ward_tasks")
         .select("*")
@@ -1216,6 +1438,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
     ensureNoError(profilesResult, "Failed to load profiles");
     ensureNoError(patientsResult, "Failed to load patients");
     ensureNoError(problemsResult, "Failed to load problems");
+    ensureNoError(problemProgressEntriesResult, "Failed to load problem progress entries");
     ensureNoError(tasksResult, "Failed to load tasks");
     ensureNoError(handoversResult, "Failed to load handover notes");
     ensureNoError(activityResult, "Failed to load activity logs");
@@ -1238,6 +1461,10 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
 
     const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
     const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+    const problemMasters = ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow);
+    const problemProgressEntries = ((problemProgressEntriesResult.data ?? []) as ProblemProgressEntryRow[]).map(
+      (row) => mapProblemProgressEntryRow(row, profileMap),
+    );
 
     return {
       wards: ((wardsResult.data ?? []) as WardRow[]).map(mapWardRow),
@@ -1245,7 +1472,8 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       patients: ((patientsResult.data ?? []) as PatientRow[]).map((row) =>
         mapPatientRow(row, profileMap),
       ),
-      problems: ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow),
+      problemMasters,
+      problemProgressEntries,
       tasks: ((tasksResult.data ?? []) as TaskRow[]).map((row) => mapTaskRow(row, profileMap)),
       taskUpdates: (((taskUpdatesResult.error ? [] : taskUpdatesResult.data) ?? []) as TaskUpdateRow[]).map(
         mapTaskUpdateRow,
@@ -1327,9 +1555,9 @@ function buildWardOverviewSummaries(
             highestPriorityProblem: highestPriorityProblem
               ? {
                   id: highestPriorityProblem.id,
-                  title: highestPriorityProblem.title,
+                  problemName: highestPriorityProblem.problemName,
                   priority: highestPriorityProblem.priority,
-                  currentStatus: highestPriorityProblem.currentStatus ?? highestPriorityProblem.keyData,
+                  currentStatus: getProblemLatestStatus(highestPriorityProblem),
                 }
               : null,
           };
@@ -1411,6 +1639,17 @@ const getWardOverviewDataCached = cache(
             .order("sort_order", { ascending: true })
         : { data: [], error: null };
       ensureNoError(problemsResult, "Failed to load ward overview problems");
+      const problemRows = (problemsResult.data ?? []) as ProblemRow[];
+      const problemIds = problemRows.map((problem) => problem.id);
+
+      const problemProgressEntriesResult = problemIds.length
+        ? await supabase
+            .from("problem_progress_entries")
+            .select("*")
+            .in("problem_id", problemIds)
+            .order("date_time", { ascending: false })
+        : { data: [], error: null };
+      ensureNoError(problemProgressEntriesResult, "Failed to load ward overview problem progress");
 
       const tasksResult = patientIds.length
         ? await supabase
@@ -1447,9 +1686,24 @@ const getWardOverviewDataCached = cache(
         { pending: number; blocked: number; overdue: number; urgent: number }
       >();
       const problemsByPatientId = new Map<string, Problem[]>();
+      const progressEntriesByProblemId = new Map<string, ProblemProgressEntry[]>();
 
-      for (const row of (problemsResult.data ?? []) as ProblemRow[]) {
-        const mapped = mapProblemRow(row);
+      for (const row of (problemProgressEntriesResult.data ?? []) as ProblemProgressEntryRow[]) {
+        const mapped = mapProblemProgressEntryRow(row, profileMap);
+        const existing = progressEntriesByProblemId.get(mapped.problemId) ?? [];
+        existing.push(mapped);
+        progressEntriesByProblemId.set(mapped.problemId, existing);
+      }
+
+      for (const row of problemRows) {
+        const master = mapProblemRow(row);
+        const historyEntries = (progressEntriesByProblemId.get(master.id) ?? []).sort(sortProblemProgressEntries);
+        const mapped: Problem = {
+          ...master,
+          latestEntry: historyEntries[0] ?? null,
+          historyEntries,
+          linkedTasks: [],
+        };
         const existing = problemsByPatientId.get(mapped.patientId) ?? [];
         existing.push(mapped);
         problemsByPatientId.set(mapped.patientId, existing);
@@ -1537,6 +1791,17 @@ async function fetchLiveProblem(supabase: LiveClient, problemId: string) {
   return (result.data as ProblemRow | null) ?? null;
 }
 
+async function fetchLiveProblemProgressEntry(supabase: LiveClient, entryId: string) {
+  const result = await supabase
+    .from("problem_progress_entries")
+    .select("*")
+    .eq("id", entryId)
+    .maybeSingle();
+
+  ensureNoError(result, "Failed to load problem progress entry");
+  return (result.data as ProblemProgressEntryRow | null) ?? null;
+}
+
 async function fetchLiveTask(supabase: LiveClient, taskId: string) {
   const result = await supabase
     .from("ward_tasks")
@@ -1585,6 +1850,7 @@ function revalidateWardflowPaths(patientId?: string) {
   revalidatePath("/admin/task-templates");
   if (patientId) {
     revalidatePath(`/patients/${patientId}`);
+    revalidatePath(`/patients/${patientId}/summary-note`);
     revalidatePath(`/discharged/${patientId}`);
   }
 }
@@ -1685,7 +1951,13 @@ export async function hardDeletePatient(patientId: string, session: SessionConte
       .filter((entry) => entry.patientId === parsed.patientId)
       .map((entry) => entry.id);
     store.patients = store.patients.filter((entry) => entry.id !== parsed.patientId);
-    store.problems = store.problems.filter((entry) => entry.patientId !== parsed.patientId);
+    const deletedProblemIds = store.problemMasters
+      .filter((entry) => entry.patientId === parsed.patientId)
+      .map((entry) => entry.id);
+    store.problemMasters = store.problemMasters.filter((entry) => entry.patientId !== parsed.patientId);
+    store.problemProgressEntries = store.problemProgressEntries.filter(
+      (entry) => !deletedProblemIds.includes(entry.problemId),
+    );
     store.tasks = store.tasks.filter((entry) => entry.patientId !== parsed.patientId);
     store.taskUpdates = store.taskUpdates.filter((entry) => !deletedTaskIds.includes(entry.taskId));
     store.handovers = store.handovers.filter((entry) => entry.patientId !== parsed.patientId);
@@ -1784,13 +2056,7 @@ export async function getPatientBundle(
   return {
     patient,
     ward: input.wards.find((ward) => ward.id === patient.wardId) ?? null,
-    problems: input.problems
-      .filter((problem) => problem.patientId === patientId)
-      .sort((left, right) => {
-        const priorityDiff = compareProblemPriority(left.priority, right.priority);
-        if (priorityDiff !== 0) return priorityDiff;
-        return left.sortOrder - right.sortOrder;
-      }),
+    problems: getProblemViews(input, patientId),
     tasks: attachTaskUpdates(
       input,
       input.tasks
@@ -2068,9 +2334,7 @@ export async function getHandoverBundles(session: SessionContext): Promise<Hando
     patients: summary.patients
       .map((patient) => ({
         ...patient,
-        problems: input.problems.filter(
-          (problem) => problem.patientId === patient.id && problem.status !== "resolved",
-        ),
+        problems: getProblemViews(input, patient.id).filter((problem) => !problemIsResolved(problem)),
         tasks: attachTaskUpdates(
           input,
           input.tasks.filter((task) => task.patientId === patient.id && task.status !== "done"),
@@ -2096,16 +2360,17 @@ export async function getHandoverStructuredText(session: SessionContext, wardId?
           (patient) =>
             patient.status !== "stable" ||
             patient.tasks.some((task) => task.status !== "done") ||
-            patient.problems.some((problem) => problem.watchOut || problem.pending),
+            patient.problems.some(
+              (problem) => Boolean(getProblemHandoverWatch(problem)) || getProblemPendingTasks(problem).length > 0,
+            ),
         )
         .map((patient) => {
           const watchItems = patient.problems
-            .map((problem) => problem.watchOut)
+            .map((problem) => getProblemHandoverWatch(problem))
             .filter((value): value is string => Boolean(value));
           const pendingItems = [
             ...patient.problems
-              .map((problem) => problem.pending)
-              .filter((value): value is string => Boolean(value)),
+              .flatMap((problem) => getProblemPendingTasks(problem).map((task) => task.title)),
             ...patient.tasks
               .filter((task) => task.status !== "done")
               .map((task) => task.title),
@@ -3097,28 +3362,21 @@ export async function dischargePatientWithSummary(formData: FormData, session: S
   return summaryId;
 }
 
-export async function saveProblem(formData: FormData, session: SessionContext) {
+export async function saveProblemMaster(formData: FormData, session: SessionContext) {
   requireClinicalEditor(session);
-  const parsed = problemSchema.parse({
+  const parsed = problemMasterSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
-    title: formData.get("title"),
-    status: formData.get("status"),
+    problemName: formData.get("problemName"),
     priority: formData.get("priority"),
-    currentStatus: textOrNull(formData.get("currentStatus")),
-    evidence: textOrNull(formData.get("evidence")),
-    treatment: textOrNull(formData.get("treatment")),
-    reasoning: textOrNull(formData.get("reasoning")),
-    todayPlan: textOrNull(formData.get("todayPlan")),
-    keyData: textOrNull(formData.get("keyData")),
-    plan: textOrNull(formData.get("plan")),
-    pending: textOrNull(formData.get("pending")),
-    watchOut: textOrNull(formData.get("watchOut")),
+    currentStatusSummary: textOrNull(formData.get("currentStatusSummary")),
+    diagnosisStatus: formData.get("diagnosisStatus"),
     includeInHandover: formData.get("includeInHandover") === "on",
     updatedAt: textOrNull(formData.get("updatedAt")),
+    resolvedAt: textOrNull(formData.get("resolvedAt")),
   });
-  const derivedKeyData = parsed.keyData ?? summaryLine(parsed.currentStatus, parsed.evidence);
-  const derivedPlan = parsed.plan ?? parsed.todayPlan;
+  const resolvedAt =
+    parsed.priority === "RESOLVED_CHRONIC" ? parsed.resolvedAt ?? now() : null;
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -3127,24 +3385,17 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     requireWardWriteAccess(session, patient.wardId);
 
     if (parsed.id) {
-      const existing = store.problems.find((entry) => entry.id === parsed.id);
+      const existing = store.problemMasters.find((entry) => entry.id === parsed.id);
       if (!existing) throw new Error("Problem not found");
       assertNoConflict(parsed.updatedAt, existing.updatedAt, "problem");
 
       const before = structuredClone(existing);
-      existing.title = parsed.title;
-      existing.status = parsed.status;
+      existing.problemName = parsed.problemName;
       existing.priority = parsed.priority;
-      existing.currentStatus = parsed.currentStatus ?? null;
-      existing.evidence = parsed.evidence ?? null;
-      existing.treatment = parsed.treatment ?? null;
-      existing.reasoning = parsed.reasoning ?? null;
-      existing.todayPlan = parsed.todayPlan ?? null;
-      existing.keyData = derivedKeyData ?? null;
-      existing.plan = derivedPlan ?? null;
-      existing.pending = parsed.pending ?? null;
-      existing.watchOut = parsed.watchOut ?? null;
+      existing.currentStatusSummary = parsed.currentStatusSummary ?? null;
+      existing.diagnosisStatus = parsed.diagnosisStatus;
       existing.includeInHandover = parsed.includeInHandover;
+      existing.resolvedAt = resolvedAt;
       existing.updatedAt = now();
       addActivityToDemoStore(
         session,
@@ -3156,29 +3407,23 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
         existing,
       );
     } else {
-      const problem: Problem = {
+      const problem: ProblemMaster = {
         id: nextId("problem"),
         patientId: parsed.patientId,
-        title: parsed.title,
-        status: parsed.status,
+        problemName: parsed.problemName,
         priority: parsed.priority,
-        currentStatus: parsed.currentStatus ?? null,
-        evidence: parsed.evidence ?? null,
-        treatment: parsed.treatment ?? null,
-        reasoning: parsed.reasoning ?? null,
-        todayPlan: parsed.todayPlan ?? null,
-        keyData: derivedKeyData ?? null,
-        plan: derivedPlan ?? null,
-        pending: parsed.pending ?? null,
-        watchOut: parsed.watchOut ?? null,
+        currentStatusSummary: parsed.currentStatusSummary ?? null,
+        diagnosisStatus: parsed.diagnosisStatus,
         includeInHandover: parsed.includeInHandover,
         sortOrder:
-          store.problems
+          store.problemMasters
             .filter((entry) => entry.patientId === parsed.patientId)
             .reduce((max, entry) => Math.max(max, entry.sortOrder), 0) + 1,
+        createdAt: now(),
         updatedAt: now(),
+        resolvedAt,
       };
-      store.problems.push(problem);
+      store.problemMasters.push(problem);
       addActivityToDemoStore(
         session,
         parsed.patientId,
@@ -3206,41 +3451,20 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     if (!existing) throw new Error("Problem not found");
     assertNoConflict(parsed.updatedAt, existing.updated_at, "problem");
 
-    const fullUpdatePayload = {
-      title: parsed.title,
-      status: parsed.status,
+    const payload = {
+      title: parsed.problemName,
+      problem_name: parsed.problemName,
       priority: parsed.priority,
-      current_status: parsed.currentStatus ?? null,
-      evidence: parsed.evidence ?? null,
-      treatment: parsed.treatment ?? null,
-      reasoning: parsed.reasoning ?? null,
-      today_plan: parsed.todayPlan ?? null,
-      key_data: derivedKeyData ?? null,
-      plan: derivedPlan ?? null,
-      pending: parsed.pending ?? null,
-      watch_out: parsed.watchOut ?? null,
+      current_status_summary: parsed.currentStatusSummary ?? null,
+      diagnosis_status: parsed.diagnosisStatus,
       include_in_handover: parsed.includeInHandover,
+      resolved_at: resolvedAt,
       updated_by_id: session.profile.id,
     };
-    const legacyUpdatePayload = {
-      title: parsed.title,
-      status: parsed.status,
-      key_data: derivedKeyData ?? null,
-      plan: derivedPlan ?? null,
-      pending: parsed.pending ?? null,
-      watch_out: parsed.watchOut ?? null,
-      include_in_handover: parsed.includeInHandover,
-      updated_by_id: session.profile.id,
-    };
-    const updateResult = await supabase.from("problems").update(fullUpdatePayload).eq("id", parsed.id);
-    if (updateResult.error && isRecoverableProblemSchemaError(updateResult.error)) {
-      ensureNoError(
-        await supabase.from("problems").update(legacyUpdatePayload).eq("id", parsed.id),
-        "Failed to update problem",
-      );
-    } else {
-      ensureNoError(updateResult, "Failed to update problem");
-    }
+    ensureNoError(
+      await supabase.from("problems").update(payload).eq("id", parsed.id),
+      "Failed to update problem",
+    );
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -3250,22 +3474,7 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
       entity_type: "problem",
       entity_id: parsed.id,
       before_json: existing,
-      after_json: {
-        ...existing,
-        title: parsed.title,
-        status: parsed.status,
-        priority: parsed.priority,
-        current_status: parsed.currentStatus ?? null,
-        evidence: parsed.evidence ?? null,
-        treatment: parsed.treatment ?? null,
-        reasoning: parsed.reasoning ?? null,
-        today_plan: parsed.todayPlan ?? null,
-        key_data: derivedKeyData ?? null,
-        plan: derivedPlan ?? null,
-        pending: parsed.pending ?? null,
-        watch_out: parsed.watchOut ?? null,
-        include_in_handover: parsed.includeInHandover,
-      },
+      after_json: { ...existing, ...payload },
     });
   } else {
     const sortOrderResult = await supabase
@@ -3278,47 +3487,22 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
 
     const problemId = nextId("problem");
     const sortOrder = ((sortOrderResult.data?.[0] as { sort_order?: number } | undefined)?.sort_order ?? 0) + 1;
-    const fullInsertPayload = {
-      id: problemId,
-      patient_id: parsed.patientId,
-      title: parsed.title,
-      status: parsed.status,
-      priority: parsed.priority,
-      current_status: parsed.currentStatus ?? null,
-      evidence: parsed.evidence ?? null,
-      treatment: parsed.treatment ?? null,
-      reasoning: parsed.reasoning ?? null,
-      today_plan: parsed.todayPlan ?? null,
-      key_data: derivedKeyData ?? null,
-      plan: derivedPlan ?? null,
-      pending: parsed.pending ?? null,
-      watch_out: parsed.watchOut ?? null,
-      include_in_handover: parsed.includeInHandover,
-      sort_order: sortOrder,
-      updated_by_id: session.profile.id,
-    };
-    const legacyInsertPayload = {
-      id: problemId,
-      patient_id: parsed.patientId,
-      title: parsed.title,
-      status: parsed.status,
-      key_data: derivedKeyData ?? null,
-      plan: derivedPlan ?? null,
-      pending: parsed.pending ?? null,
-      watch_out: parsed.watchOut ?? null,
-      include_in_handover: parsed.includeInHandover,
-      sort_order: sortOrder,
-      updated_by_id: session.profile.id,
-    };
-    const insertResult = await supabase.from("problems").insert(fullInsertPayload);
-    if (insertResult.error && isRecoverableProblemSchemaError(insertResult.error)) {
-      ensureNoError(
-        await supabase.from("problems").insert(legacyInsertPayload),
-        "Failed to create problem",
-      );
-    } else {
-      ensureNoError(insertResult, "Failed to create problem");
-    }
+    ensureNoError(
+      await supabase.from("problems").insert({
+        id: problemId,
+        patient_id: parsed.patientId,
+        title: parsed.problemName,
+        problem_name: parsed.problemName,
+        priority: parsed.priority,
+        current_status_summary: parsed.currentStatusSummary ?? null,
+        diagnosis_status: parsed.diagnosisStatus,
+        include_in_handover: parsed.includeInHandover,
+        sort_order: sortOrder,
+        resolved_at: resolvedAt,
+        updated_by_id: session.profile.id,
+      }),
+      "Failed to create problem",
+    );
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -3329,8 +3513,7 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
       entity_id: problemId,
       before_json: null,
       after_json: {
-        title: parsed.title,
-        status: parsed.status,
+        problem_name: parsed.problemName,
         priority: parsed.priority,
         sort_order: sortOrder,
       },
@@ -3342,6 +3525,225 @@ export async function saveProblem(formData: FormData, session: SessionContext) {
     "Failed to refresh patient timestamp",
   );
   revalidateWardflowPaths(parsed.patientId);
+}
+
+export async function saveProblemProgressEntry(formData: FormData, session: SessionContext) {
+  requireClinicalEditor(session);
+  const rawPendingTaskIds = formData.getAll("pendingTaskIds").flatMap((value) =>
+    typeof value === "string"
+      ? value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [],
+  );
+  const parsed = problemProgressEntrySchema.parse({
+    id: textOrNull(formData.get("id")) ?? undefined,
+    patientId: formData.get("patientId"),
+    problemId: formData.get("problemId"),
+    dateTime: textOrNull(formData.get("dateTime")),
+    statusUpdate: textOrNull(formData.get("statusUpdate")),
+    newEvidence: textOrNull(formData.get("newEvidence")),
+    treatmentChange: textOrNull(formData.get("treatmentChange")),
+    reasoningUpdate: textOrNull(formData.get("reasoningUpdate")),
+    todayPlan: textOrNull(formData.get("todayPlan")),
+    pendingTaskIds: [...new Set(rawPendingTaskIds)],
+    updatedAt: textOrNull(formData.get("updatedAt")),
+  });
+  const entryDateTime = parsed.dateTime ?? now();
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) throw new Error("Patient not found");
+    requireWardWriteAccess(session, patient.wardId);
+    const problem = store.problemMasters.find((entry) => entry.id === parsed.problemId);
+    if (!problem || problem.patientId !== parsed.patientId) {
+      throw new Error("Problem not found");
+    }
+
+    const allowedPendingTaskIds = new Set(
+      store.tasks
+        .filter(
+          (task) =>
+            task.patientId === parsed.patientId &&
+            task.problemId === parsed.problemId &&
+            task.status !== "done",
+        )
+        .map((task) => task.id),
+    );
+    if (parsed.pendingTaskIds.some((taskId) => !allowedPendingTaskIds.has(taskId))) {
+      throw new Error("Selected pending tasks must be incomplete tasks linked to this problem");
+    }
+
+    if (parsed.id) {
+      const existing = store.problemProgressEntries.find((entry) => entry.id === parsed.id);
+      if (!existing) throw new Error("Problem progress entry not found");
+      assertNoConflict(parsed.updatedAt, existing.updatedAt, "problem progress");
+
+      const before = structuredClone(existing);
+      existing.dateTime = entryDateTime;
+      existing.statusUpdate = parsed.statusUpdate ?? null;
+      existing.newEvidence = parsed.newEvidence ?? null;
+      existing.treatmentChange = parsed.treatmentChange ?? null;
+      existing.reasoningUpdate = parsed.reasoningUpdate ?? null;
+      existing.todayPlan = parsed.todayPlan ?? null;
+      existing.pendingTaskIds = parsed.pendingTaskIds;
+      existing.updatedAt = now();
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "problem_progress.updated",
+        "problem_progress_entry",
+        existing.id,
+        before,
+        existing,
+      );
+    } else {
+      const entry: ProblemProgressEntry = {
+        id: nextId("problem-progress"),
+        problemId: parsed.problemId,
+        dateTime: entryDateTime,
+        authorId: session.profile.id,
+        authorName: session.profile.name,
+        statusUpdate: parsed.statusUpdate ?? null,
+        newEvidence: parsed.newEvidence ?? null,
+        treatmentChange: parsed.treatmentChange ?? null,
+        reasoningUpdate: parsed.reasoningUpdate ?? null,
+        todayPlan: parsed.todayPlan ?? null,
+        pendingTaskIds: parsed.pendingTaskIds,
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      store.problemProgressEntries.unshift(entry);
+      addActivityToDemoStore(
+        session,
+        parsed.patientId,
+        "problem_progress.created",
+        "problem_progress_entry",
+        entry.id,
+        null,
+        entry,
+      );
+    }
+
+    const master = store.problemMasters.find((entry) => entry.id === parsed.problemId);
+    if (master) {
+      master.updatedAt = now();
+    }
+    refreshDemoPatient(parsed.patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.patientId);
+    return;
+  }
+
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardWriteAccess(session, patient.ward_id);
+  const problem = await fetchLiveProblem(supabase, parsed.problemId);
+  if (!problem || problem.patient_id !== parsed.patientId) {
+    throw new Error("Problem not found");
+  }
+
+  const pendingTasksResult = await supabase
+    .from("ward_tasks")
+    .select("id, status")
+    .eq("patient_id", parsed.patientId)
+    .eq("problem_id", parsed.problemId);
+  ensureNoError(pendingTasksResult, "Failed to load linked tasks for progress update");
+  const allowedPendingTaskIds = new Set(
+    ((pendingTasksResult.data ?? []) as Array<{ id: string; status: WardTask["status"] }>)
+      .filter((task) => task.status !== "done")
+      .map((task) => task.id),
+  );
+  if (parsed.pendingTaskIds.some((taskId) => !allowedPendingTaskIds.has(taskId))) {
+    throw new Error("Selected pending tasks must be incomplete tasks linked to this problem");
+  }
+
+  if (parsed.id) {
+    const existing = await fetchLiveProblemProgressEntry(supabase, parsed.id);
+    if (!existing) throw new Error("Problem progress entry not found");
+    assertNoConflict(parsed.updatedAt, existing.updated_at, "problem progress");
+
+    const payload = {
+      date_time: entryDateTime,
+      status_update: parsed.statusUpdate ?? null,
+      new_evidence: parsed.newEvidence ?? null,
+      treatment_change: parsed.treatmentChange ?? null,
+      reasoning_update: parsed.reasoningUpdate ?? null,
+      today_plan: parsed.todayPlan ?? null,
+      pending_task_ids: parsed.pendingTaskIds,
+    };
+    ensureNoError(
+      await supabase.from("problem_progress_entries").update(payload).eq("id", parsed.id),
+      "Failed to update problem progress entry",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "problem_progress.updated",
+      entity_type: "problem_progress_entry",
+      entity_id: parsed.id,
+      before_json: existing,
+      after_json: { ...existing, ...payload },
+    });
+  } else {
+    const entryId = nextId("problem-progress");
+    ensureNoError(
+      await supabase.from("problem_progress_entries").insert({
+        id: entryId,
+        problem_id: parsed.problemId,
+        date_time: entryDateTime,
+        author_id: session.profile.id,
+        status_update: parsed.statusUpdate ?? null,
+        new_evidence: parsed.newEvidence ?? null,
+        treatment_change: parsed.treatmentChange ?? null,
+        reasoning_update: parsed.reasoningUpdate ?? null,
+        today_plan: parsed.todayPlan ?? null,
+        pending_task_ids: parsed.pendingTaskIds,
+      }),
+      "Failed to create problem progress entry",
+    );
+
+    await insertActivityLog(supabase, {
+      patient_id: parsed.patientId,
+      actor_id: session.profile.id,
+      actor_name: session.profile.name,
+      action: "problem_progress.created",
+      entity_type: "problem_progress_entry",
+      entity_id: entryId,
+      before_json: null,
+      after_json: {
+        date_time: entryDateTime,
+        status_update: parsed.statusUpdate ?? null,
+        new_evidence: parsed.newEvidence ?? null,
+        treatment_change: parsed.treatmentChange ?? null,
+        reasoning_update: parsed.reasoningUpdate ?? null,
+        today_plan: parsed.todayPlan ?? null,
+        pending_task_ids: parsed.pendingTaskIds,
+      },
+    });
+  }
+
+  ensureNoError(
+    await supabase
+      .from("problems")
+      .update({ updated_by_id: session.profile.id })
+      .eq("id", parsed.problemId),
+    "Failed to refresh problem timestamp",
+  );
+  ensureNoError(
+    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", parsed.patientId),
+    "Failed to refresh patient timestamp",
+  );
+  revalidateWardflowPaths(parsed.patientId);
+}
+
+export async function saveProblem(formData: FormData, session: SessionContext) {
+  return saveProblemMaster(formData, session);
 }
 
 export async function moveProblem(
@@ -3363,8 +3765,8 @@ export async function moveProblem(
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
-    const currentProblem = store.problems.find((problem) => problem.id === current.id);
-    const swapProblem = store.problems.find((problem) => problem.id === swap.id);
+    const currentProblem = store.problemMasters.find((problem) => problem.id === current.id);
+    const swapProblem = store.problemMasters.find((problem) => problem.id === swap.id);
     if (!currentProblem || !swapProblem) return;
 
     const fromOrder = currentProblem.sortOrder;
@@ -3463,7 +3865,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     requireTaskWorkflowWriteAccess(session, patient.wardId);
     if (
       parsed.problemId &&
-      !store.problems.some(
+      !store.problemMasters.some(
         (problem) => problem.id === parsed.problemId && problem.patientId === parsed.patientId,
       )
     ) {

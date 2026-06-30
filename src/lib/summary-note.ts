@@ -9,7 +9,11 @@ import type {
   TaskWithUpdates,
   Ward,
 } from "@/lib/types";
-import { labelForProblemPriority, labelForTaskPriority } from "@/lib/utils";
+import {
+  labelForProblemDiagnosisStatus,
+  labelForProblemPriority,
+  labelForTaskPriority,
+} from "@/lib/utils";
 
 type SummaryNoteInput = {
   patient: Patient;
@@ -68,13 +72,13 @@ function taskMetadataParts(task: TaskWithUpdates) {
 }
 
 function formatTaskLine(task: TaskWithUpdates) {
-  const parts = [task.title, ...taskMetadataParts(task)];
-
-  return parts.filter(Boolean).join(" | ");
+  return [task.title, ...taskMetadataParts(task)].filter(Boolean).join(" | ");
 }
 
-function formatTaskLineWithProblem(task: TaskWithUpdates, problemTitle: string) {
-  return [task.title, `Problem: ${problemTitle}`, ...taskMetadataParts(task)].filter(Boolean).join(" | ");
+function formatTaskLineWithProblem(task: TaskWithUpdates, problemName: string) {
+  return [task.title, `Problem: ${problemName}`, ...taskMetadataParts(task)]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 function buildOrderedTaskLines(tasks: TaskWithUpdates[], problems: Problem[]) {
@@ -86,7 +90,7 @@ function buildOrderedTaskLines(tasks: TaskWithUpdates[], problems: Problem[]) {
     linkedProblemIds.add(problem.id);
     for (const task of incompleteTasks) {
       if (task.problemId === problem.id) {
-        lines.push(formatTaskLineWithProblem(task, problem.title));
+        lines.push(formatTaskLineWithProblem(task, problem.problemName));
       }
     }
   }
@@ -100,17 +104,50 @@ function buildOrderedTaskLines(tasks: TaskWithUpdates[], problems: Problem[]) {
   return lines;
 }
 
-function buildProblemEntry(problem: Problem, tasks: TaskWithUpdates[]): SummaryNoteProblemEntry {
+function buildProblemHistory(problem: Problem) {
+  if (!problem.historyEntries.length) {
+    return ["No historical progress entry yet"];
+  }
+
+  return problem.historyEntries.map((entry) =>
+    [
+      entry.dateTime.slice(0, 16).replace("T", " "),
+      entry.statusUpdate ? `Status: ${entry.statusUpdate}` : null,
+      entry.newEvidence ? `Evidence: ${entry.newEvidence}` : null,
+      entry.treatmentChange ? `Treatment: ${entry.treatmentChange}` : null,
+      entry.reasoningUpdate ? `Reasoning: ${entry.reasoningUpdate}` : null,
+      entry.todayPlan ? `Plan: ${entry.todayPlan}` : null,
+      entry.pendingTaskIds.length ? `Pending tasks: ${entry.pendingTaskIds.join(", ")}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | "),
+  );
+}
+
+function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
+  const latestEntry = problem.latestEntry;
   return {
     id: problem.id,
-    title: problem.title,
+    problemName: problem.problemName,
     priority: problem.priority,
-    status: withFallback(splitBullets(problem.currentStatus ?? problem.keyData)),
-    evidence: withFallback(splitBullets(problem.evidence ?? problem.keyData)),
-    treatment: withFallback(splitBullets(problem.treatment)),
-    reasoning: withFallback(splitBullets(problem.reasoning)),
-    todayPlan: withFallback(splitBullets(problem.todayPlan ?? problem.plan)),
-    pendingTasks: withFallback(tasks.filter((task) => task.status !== "done").map(formatTaskLine)),
+    diagnosisStatus: problem.diagnosisStatus,
+    currentSummary: withFallback(
+      [
+        `${labelForProblemDiagnosisStatus(problem.diagnosisStatus)} diagnosis`,
+        ...splitBullets(problem.currentStatusSummary),
+      ],
+      "No current summary",
+    ),
+    latestUpdate: withFallback(splitBullets(latestEntry?.statusUpdate), "No latest update"),
+    evidence: withFallback(splitBullets(latestEntry?.newEvidence), "No new evidence"),
+    treatment: withFallback(splitBullets(latestEntry?.treatmentChange), "No treatment change"),
+    reasoning: withFallback(splitBullets(latestEntry?.reasoningUpdate), "No reasoning update"),
+    todayPlan: withFallback(splitBullets(latestEntry?.todayPlan), "No today's plan"),
+    history: withFallback(buildProblemHistory(problem), "No history"),
+    pendingTasks: withFallback(
+      problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
+      "No linked pending task",
+    ),
   };
 }
 
@@ -140,12 +177,16 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
     lines.push("- None");
   } else {
     payload.activeProblems.forEach((problem, index) => {
-      lines.push(`${index + 1}. ${problem.title} [${labelForProblemPriority(problem.priority)}]`);
-      lines.push(`   Status: ${problem.status.join(" | ")}`);
+      lines.push(
+        `${index + 1}. ${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
+      );
+      lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
+      lines.push(`   Latest Update: ${problem.latestUpdate.join(" | ")}`);
       lines.push(`   Evidence: ${problem.evidence.join(" | ")}`);
       lines.push(`   Treatment: ${problem.treatment.join(" | ")}`);
       lines.push(`   Reasoning: ${problem.reasoning.join(" | ")}`);
       lines.push(`   Today's Plan: ${problem.todayPlan.join(" | ")}`);
+      lines.push(`   History: ${problem.history.join(" || ")}`);
       lines.push(`   Pending Tasks: ${problem.pendingTasks.join(" | ")}`);
     });
   }
@@ -194,22 +235,22 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
   const { fileLabel, dateLabel } = noteDateParts();
   const admitDate = getAdmitDate(activity);
   const activeProblems = problems
-    .filter((problem) => problem.priority !== "RESOLVED_CHRONIC")
-    .map((problem) =>
-      buildProblemEntry(
-        problem,
-        tasks.filter((task) => task.problemId === problem.id),
-      ),
-    );
+    .filter((problem) => problem.priority !== "RESOLVED_CHRONIC" && !problem.resolvedAt)
+    .map(buildProblemEntry);
   const resolvedProblems = problems
-    .filter((problem) => problem.priority === "RESOLVED_CHRONIC")
-    .map((problem) => `${problem.title}${problem.currentStatus ? ` | ${problem.currentStatus}` : ""}`);
+    .filter((problem) => problem.priority === "RESOLVED_CHRONIC" || Boolean(problem.resolvedAt))
+    .map(
+      (problem) =>
+        `${problem.problemName}${problem.currentStatusSummary ? ` | ${problem.currentStatusSummary}` : ""}`,
+    );
   const consultTasks = tasks.filter((task) => task.type === "consult");
   const incompleteTasks = tasks.filter((task) => task.status !== "done");
   const orderedTasks = buildOrderedTaskLines(tasks, problems);
   const pendingIssues = [
-    ...problems.flatMap((problem) => splitBullets(problem.pending)),
-    ...incompleteTasks.map(formatTaskLine),
+    ...problems.flatMap((problem) =>
+      problem.linkedTasks.filter((task) => task.status !== "done").map((task) => task.title),
+    ),
+    ...(handover?.note ? [handover.note] : []),
   ];
   const suggestedPlan = [
     ...activeProblems.flatMap((problem) => problem.todayPlan.filter((item) => item !== "-")),
@@ -220,7 +261,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     patient.precaution !== "none" ? `Infection risk: ${patient.precaution}` : null,
     ...problems
       .filter((problem) => problem.priority === "ACTIVE_UNSTABLE")
-      .map((problem) => `Deterioration warning: ${problem.title}`),
+      .map((problem) => `Deterioration warning: ${problem.problemName}`),
     ...tasks
       .filter((task) => task.type === "medication" && task.priority !== "normal")
       .map((task) => `High-risk medication task: ${task.title}`),
@@ -254,13 +295,19 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
       patient.diagnosis,
       handover?.note ?? "Active inpatient ward-round follow-up.",
     ]),
-    hospitalCourse: makeSection("Hospital Course", [
-      ...problems.map((problem) =>
-        [problem.title, problem.currentStatus ?? problem.keyData, problem.todayPlan ?? problem.plan]
+    hospitalCourse: makeSection(
+      "Hospital Course",
+      problems.map((problem) =>
+        [
+          problem.problemName,
+          problem.currentStatusSummary,
+          problem.latestEntry?.statusUpdate,
+          problem.latestEntry?.todayPlan ? `Plan: ${problem.latestEntry.todayPlan}` : null,
+        ]
           .filter(Boolean)
           .join(" | "),
       ),
-    ]),
+    ),
     activeProblems,
     resolvedProblems,
     consultations: consultTasks.length
@@ -269,7 +316,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     pendingIssues,
     suggestedPlan,
     safetyAlerts,
-    tasks: orderedTasks,
+    tasks: orderedTasks.length ? orderedTasks : incompleteTasks.map(formatTaskLine),
   };
 
   return {

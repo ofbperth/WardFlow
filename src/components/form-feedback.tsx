@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
+import { LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PendingSubmitButton({
@@ -155,6 +155,8 @@ export function InlineEditor({
   buttonLabel,
   panelTitle,
   buttonIcon = "edit",
+  iconOnly = false,
+  buttonTitle,
   children,
   className,
   buttonClassName,
@@ -165,6 +167,8 @@ export function InlineEditor({
   buttonLabel: string;
   panelTitle: string;
   buttonIcon?: "edit" | "create";
+  iconOnly?: boolean;
+  buttonTitle?: string;
   children: React.ReactNode;
   className?: string;
   buttonClassName?: string;
@@ -180,28 +184,44 @@ export function InlineEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        title={buttonTitle ?? buttonLabel}
+        aria-label={buttonTitle ?? buttonLabel}
         className={cn(
-          "button-secondary mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-[color:var(--color-accent-strong)] md:px-4",
+          iconOnly
+            ? "button-secondary mt-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
+            : "button-secondary mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-[color:var(--color-accent-strong)] md:px-4",
           className,
           buttonClassName,
         )}
       >
         <Icon className="h-4 w-4" />
-        {buttonLabel}
+        {iconOnly ? <span className="sr-only">{buttonLabel}</span> : buttonLabel}
       </button>
     );
   }
 
   return (
-    <div className={cn("panel-accent mt-4 rounded-[24px] p-4", className, panelClassName)}>
-      <div className={cn("mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3", headerClassName)}>
+    <div
+      className={cn(
+        "panel-accent fixed inset-x-0 bottom-0 z-40 mt-4 max-h-[85vh] overflow-y-auto rounded-t-[24px] p-4 shadow-2xl md:static md:max-h-none md:rounded-[24px] md:shadow-none",
+        className,
+        panelClassName,
+      )}
+    >
+      <div
+        className={cn(
+          "mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3",
+          headerClassName,
+        )}
+      >
         <p className="text-sm font-semibold text-[color:var(--color-accent-strong)]">{panelTitle}</p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="button-secondary rounded-full px-3 py-1.5 text-xs font-semibold text-[color:var(--color-accent-strong)]"
+          aria-label="Close"
+          className="button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
         >
-          Cancel
+          <X className="h-4 w-4" />
         </button>
       </div>
       <div
@@ -218,11 +238,64 @@ export function InlineEditor({
 
 export function ProblemEditor({
   children,
+  iconOnly,
+  buttonTitle,
 }: {
   children: React.ReactNode;
+  iconOnly?: boolean;
+  buttonTitle?: string;
 }) {
   return (
-    <InlineEditor buttonLabel="Edit problem detail" panelTitle="Edit problem detail">
+    <InlineEditor
+      buttonLabel="Edit problem detail"
+      panelTitle="Edit problem detail"
+      iconOnly={iconOnly}
+      buttonTitle={buttonTitle}
+    >
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function ProgressEntryEditor({
+  children,
+  iconOnly,
+  buttonTitle,
+}: {
+  children: React.ReactNode;
+  iconOnly?: boolean;
+  buttonTitle?: string;
+}) {
+  return (
+    <InlineEditor
+      buttonLabel="Add progress update"
+      panelTitle="Add progress update"
+      buttonIcon="create"
+      iconOnly={iconOnly}
+      buttonTitle={buttonTitle}
+    >
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function ProgressEntryHistoryEditor({
+  children,
+  iconOnly,
+  buttonTitle,
+}: {
+  children: React.ReactNode;
+  iconOnly?: boolean;
+  buttonTitle?: string;
+}) {
+  return (
+    <InlineEditor
+      buttonLabel="Edit progress update"
+      panelTitle="Edit progress update"
+      buttonIcon="edit"
+      iconOnly={iconOnly}
+      buttonTitle={buttonTitle}
+    >
       {children}
     </InlineEditor>
   );
@@ -272,6 +345,9 @@ export function PatientEditor({
 
 export function ProblemCreator({
   children,
+  buttonLabel = "Create problem",
+  iconOnly = false,
+  buttonTitle,
   className,
   buttonClassName,
   panelClassName,
@@ -279,6 +355,9 @@ export function ProblemCreator({
   contentClassName,
 }: {
   children: React.ReactNode;
+  buttonLabel?: string;
+  iconOnly?: boolean;
+  buttonTitle?: string;
   className?: string;
   buttonClassName?: string;
   panelClassName?: string;
@@ -287,9 +366,11 @@ export function ProblemCreator({
 }) {
   return (
     <InlineEditor
-      buttonLabel="Create problem"
+      buttonLabel={buttonLabel}
       panelTitle="Create problem"
       buttonIcon="create"
+      iconOnly={iconOnly}
+      buttonTitle={buttonTitle}
       className={className}
       buttonClassName={buttonClassName}
       panelClassName={panelClassName}
@@ -303,6 +384,9 @@ export function ProblemCreator({
 
 export function TaskCreator({
   children,
+  buttonLabel = "Create task",
+  iconOnly = false,
+  buttonTitle,
   className,
   buttonClassName,
   panelClassName,
@@ -310,6 +394,9 @@ export function TaskCreator({
   contentClassName,
 }: {
   children: React.ReactNode;
+  buttonLabel?: string;
+  iconOnly?: boolean;
+  buttonTitle?: string;
   className?: string;
   buttonClassName?: string;
   panelClassName?: string;
@@ -318,9 +405,11 @@ export function TaskCreator({
 }) {
   return (
     <InlineEditor
-      buttonLabel="Create task"
+      buttonLabel={buttonLabel}
       panelTitle="Create task"
       buttonIcon="create"
+      iconOnly={iconOnly}
+      buttonTitle={buttonTitle}
       className={className}
       buttonClassName={buttonClassName}
       panelClassName={panelClassName}

@@ -17,6 +17,8 @@ import {
   saveHandover,
   savePatient,
   saveProblem,
+  saveProblemMaster,
+  saveProblemProgressEntry,
   saveTask,
   saveTaskUpdate,
   saveTemplate,
@@ -149,6 +151,16 @@ export async function savePatientDetailAction(formData: FormData) {
 export async function saveProblemAction(formData: FormData) {
   const session = await requireAppSession();
   await saveProblem(formData, session);
+}
+
+export async function saveProblemMasterAction(formData: FormData) {
+  const session = await requireAppSession();
+  await saveProblemMaster(formData, session);
+}
+
+export async function saveProblemProgressEntryAction(formData: FormData) {
+  const session = await requireAppSession();
+  await saveProblemProgressEntry(formData, session);
 }
 
 export async function reorderProblemAction(formData: FormData) {

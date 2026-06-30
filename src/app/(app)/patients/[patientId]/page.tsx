@@ -5,7 +5,8 @@ import {
   reorderProblemAction,
   saveHandoverAction,
   savePatientDetailAction,
-  saveProblemAction,
+  saveProblemMasterAction,
+  saveProblemProgressEntryAction,
   saveTaskAction,
   saveTaskUpdateAction,
   updateTaskStatusAction,
@@ -79,7 +80,7 @@ export default async function PatientPage({
     session.profile.role === "resident" ||
     (session.profile.role === "student" && isAssignedWard);
   const activeProblemCount = bundle.problems.filter(
-    (problem) => problem.priority !== "RESOLVED_CHRONIC",
+    (problem) => problem.priority !== "RESOLVED_CHRONIC" && !problem.resolvedAt,
   ).length;
   const activeTaskCount = bundle.tasks.filter((task) => task.status !== "done").length;
 
@@ -90,6 +91,7 @@ export default async function PatientPage({
         filters={[
           { schema: "public", table: "patients", filter: `id=eq.${patientId}` },
           { schema: "public", table: "problems", filter: `patient_id=eq.${patientId}` },
+          { schema: "public", table: "problem_progress_entries" },
           { schema: "public", table: "ward_tasks", filter: `patient_id=eq.${patientId}` },
           { schema: "public", table: "task_updates" },
           { schema: "public", table: "handover_notes", filter: `patient_id=eq.${patientId}` },
@@ -261,7 +263,8 @@ export default async function PatientPage({
               tasks={bundle.tasks}
               patientId={bundle.patient.id}
               reorderAction={reorderProblemAction}
-              saveProblemAction={saveProblemAction}
+              saveProblemMasterAction={saveProblemMasterAction}
+              saveProblemProgressEntryAction={saveProblemProgressEntryAction}
               saveTaskAction={saveTaskAction}
               updateStatusAction={updateTaskStatusAction}
               profiles={taskProfiles}
@@ -279,11 +282,11 @@ export default async function PatientPage({
                   contentClassName="space-y-3"
                 >
                   <SectionLabel>Problem</SectionLabel>
-                  <form action={saveProblemAction} className="space-y-3">
+                  <form action={saveProblemMasterAction} className="space-y-3">
                     <input type="hidden" name="patientId" value={bundle.patient.id} />
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Problem name">
-                        <TextInput name="title" required placeholder="Diffuse alveolar hemorrhage" />
+                        <TextInput name="problemName" required placeholder="Diffuse alveolar hemorrhage" />
                       </Field>
                       <Field label="Priority">
                         <SelectBox name="priority" defaultValue="ACTIVE_STABLE">
@@ -295,49 +298,17 @@ export default async function PatientPage({
                       </Field>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
-                      <Field label="Status tag">
-                        <SelectBox name="status" defaultValue="active">
-                          <option value="active">Active</option>
-                          <option value="improving">Improving</option>
-                          <option value="worsening">Worsening</option>
-                          <option value="resolved">Resolved</option>
+                      <Field label="Diagnosis status">
+                        <SelectBox name="diagnosisStatus" defaultValue="CONFIRMED">
+                          <option value="SUSPECTED">Suspected</option>
+                          <option value="CONFIRMED">Confirmed</option>
+                          <option value="RULED_OUT">Ruled out</option>
                         </SelectBox>
                       </Field>
-                      <Field label="Handover key line">
-                        <TextInput name="keyData" placeholder="Stable after PLEX" />
+                      <Field label="Current summary">
+                        <TextInput name="currentStatusSummary" placeholder="Stable after PLEX" />
                       </Field>
                     </div>
-                    <Field label="Current status">
-                      <TextArea name="currentStatus" placeholder="Short current bedside status" />
-                    </Field>
-                    <Field label="Evidence">
-                      <TextArea name="evidence" placeholder="Key labs, imaging, exam, procedure" />
-                    </Field>
-                    <Field label="Treatment">
-                      <TextArea name="treatment" placeholder="Medication, procedure, supportive care" />
-                    </Field>
-                    <Field label="Reasoning">
-                      <TextArea name="reasoning" placeholder="Supporting and opposing evidence" />
-                    </Field>
-                    <Field label="Today's plan">
-                      <TextArea name="todayPlan" placeholder="Plan for today; each item can become a task" />
-                    </Field>
-                    <details className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
-                      <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
-                        Handover extras
-                      </summary>
-                      <div className="mt-3 space-y-3">
-                        <Field label="Pending issues">
-                          <TextArea name="pending" placeholder="Await ABG / consultant reply" />
-                        </Field>
-                        <Field label="Watch out">
-                          <TextArea name="watchOut" placeholder="Desaturation during transfer" />
-                        </Field>
-                        <Field label="Legacy plan line">
-                          <TextArea name="plan" placeholder="Repeat CXR and monitor saturation trend" />
-                        </Field>
-                      </div>
-                    </details>
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input type="checkbox" name="includeInHandover" defaultChecked />
                       Include in handover
@@ -395,7 +366,7 @@ export default async function PatientPage({
                           <option value="">No linked problem</option>
                           {bundle.problems.map((problem) => (
                             <option key={problem.id} value={problem.id}>
-                              {problem.title}
+                              {problem.problemName}
                             </option>
                           ))}
                         </SelectBox>
