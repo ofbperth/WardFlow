@@ -267,7 +267,7 @@ const patientSchema = z.object({
   bed: z.string().min(1),
   displayName: z.string().min(1),
   ageText: z.string().optional().nullable(),
-  sex: z.string().optional().nullable(),
+  sex: z.enum(["Male", "Female"]).optional().nullable(),
   underlyingDisease: z.string().optional().nullable(),
   diagnosis: z.string().min(1),
   status: z.enum(["stable", "watch", "critical"]),
@@ -2673,6 +2673,7 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
 }
 
 export async function savePatient(formData: FormData, session: SessionContext): Promise<string> {
+  const hasUnderlyingDiseaseField = formData.has("underlyingDisease");
   const parsed = patientSchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
@@ -2680,7 +2681,7 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     displayName: formData.get("displayName"),
     ageText: textOrNull(formData.get("age")),
     sex: textOrNull(formData.get("sex")),
-    underlyingDisease: textOrNull(formData.get("underlyingDisease")),
+    underlyingDisease: hasUnderlyingDiseaseField ? textOrNull(formData.get("underlyingDisease")) : undefined,
     diagnosis: formData.get("diagnosis"),
     status: formData.get("status"),
     responsibleDoctorId: textOrNull(formData.get("responsibleDoctorId")),
@@ -2717,7 +2718,9 @@ export async function savePatient(formData: FormData, session: SessionContext): 
       existing.displayName = parsed.displayName;
       existing.age = parsedAge;
       existing.sex = parsed.sex ?? null;
-      existing.underlyingDisease = parsed.underlyingDisease ?? null;
+      if (hasUnderlyingDiseaseField) {
+        existing.underlyingDisease = parsed.underlyingDisease ?? null;
+      }
       existing.diagnosis = parsed.diagnosis;
       existing.status = parsed.status;
       existing.responsibleDoctorId = parsed.responsibleDoctorId ?? session.profile.id;

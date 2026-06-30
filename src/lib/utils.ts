@@ -32,6 +32,20 @@ export function formatRelative(value: string | null | undefined) {
   return formatDistanceToNow(new Date(value), { addSuffix: true, locale: th });
 }
 
+export function formatPatientSex(value: string | null | undefined) {
+  if (!value) return "-";
+  if (value === "M") return "Male";
+  if (value === "F") return "Female";
+  return value;
+}
+
+export function normalizePatientSexOption(value: string | null | undefined) {
+  if (value === "M") return "Male";
+  if (value === "F") return "Female";
+  if (value === "Male" || value === "Female") return value;
+  return "";
+}
+
 export function getInitials(name: string) {
   const parts = name
     .split(" ")

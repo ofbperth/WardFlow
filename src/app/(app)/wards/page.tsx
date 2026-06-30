@@ -17,6 +17,7 @@ import {
   TextInput,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
+import { normalizePatientSexOption } from "@/lib/utils";
 import { getWardOverviewData } from "@/lib/wardflow";
 
 export default async function WardsPage({
@@ -124,7 +125,11 @@ export default async function WardsPage({
                           <TextInput name="age" placeholder="71" />
                         </Field>
                         <Field label="Sex">
-                          <TextInput name="sex" placeholder="F" />
+                          <SelectBox name="sex" defaultValue={normalizePatientSexOption(null)}>
+                            <option value="">Select sex</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </SelectBox>
                         </Field>
                         <Field label="Underlying disease">
                           <TextInput name="underlyingDisease" placeholder="DM, HT, CKD" />

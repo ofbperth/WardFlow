@@ -9,6 +9,7 @@ import {
 import {
   cn,
   formatDateTime,
+  formatPatientSex,
   formatRelative,
   getInitials,
   labelForActivityAction,
@@ -285,15 +286,13 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
   const primaryItems = [
     { label: "Ward", value: ward ?? "-" },
     { label: "Bed", value: patient.bed },
-    { label: "Age / Sex", value: `${patient.age ?? "-"} / ${patient.sex ?? "-"}` },
+    { label: "Age / Sex", value: `${patient.age ?? "-"} / ${formatPatientSex(patient.sex)}` },
     { label: "Diagnosis", value: patient.diagnosis },
-    { label: "Underlying disease", value: patient.underlyingDisease ?? "-" },
     { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
     { label: "Status", value: labelForPatientStatus(patient.status) },
   ];
   const secondaryItems = [
     { label: "Precaution", value: labelForPrecaution(patient.precaution) },
-    { label: "Allergy", value: patient.allergy ?? "-" },
     { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
     { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
   ];

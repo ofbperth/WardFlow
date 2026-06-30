@@ -34,7 +34,7 @@ import {
   Timeline,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatPatientSex, normalizePatientSexOption } from "@/lib/utils";
 import {
   getAssignableProfilesForWard,
   getDischargeDraft,
@@ -169,13 +169,11 @@ export default async function PatientPage({
                     />
                   </Field>
                   <Field label="Sex">
-                    <TextInput name="sex" defaultValue={bundle.patient.sex ?? ""} />
-                  </Field>
-                  <Field label="Underlying disease">
-                    <TextInput
-                      name="underlyingDisease"
-                      defaultValue={bundle.patient.underlyingDisease ?? ""}
-                    />
+                    <SelectBox name="sex" defaultValue={normalizePatientSexOption(bundle.patient.sex)}>
+                      <option value="">Select sex</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </SelectBox>
                   </Field>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
@@ -460,15 +458,10 @@ export default async function PatientPage({
             <div className="grid gap-3 sm:grid-cols-2">
               <SnapshotBox
                 label="Age / Sex"
-                value={`${bundle.patient.age ?? "-"} / ${bundle.patient.sex ?? "-"}`}
-              />
-              <SnapshotBox
-                label="Underlying disease"
-                value={bundle.patient.underlyingDisease ?? "-"}
+                value={`${bundle.patient.age ?? "-"} / ${formatPatientSex(bundle.patient.sex)}`}
               />
               <SnapshotBox label="Code status" value={bundle.patient.codeStatus ?? "-"} />
               <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
-              <SnapshotBox label="Allergy" value={bundle.patient.allergy ?? "-"} />
               <SnapshotBox label="Ward" value={bundle.ward?.name ?? "-"} />
             </div>
           </GlassPanel>
