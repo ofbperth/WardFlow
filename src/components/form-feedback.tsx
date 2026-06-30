@@ -188,7 +188,7 @@ export function InlineEditor({
         aria-label={buttonTitle ?? buttonLabel}
         className={cn(
           iconOnly
-            ? "button-secondary mt-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
+            ? "button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
             : "button-secondary mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-[color:var(--color-accent-strong)] md:px-4",
           className,
           buttonClassName,
@@ -203,34 +203,45 @@ export function InlineEditor({
   return (
     <div
       className={cn(
-        "panel-accent fixed inset-x-0 bottom-0 z-40 mt-4 max-h-[85vh] overflow-y-auto rounded-t-[24px] p-4 shadow-2xl md:static md:max-h-none md:rounded-[24px] md:shadow-none",
+        "fixed inset-0 z-50 flex items-end justify-center bg-[color:var(--color-ink)]/28 p-0 md:items-center md:px-4 md:py-6",
         className,
-        panelClassName,
       )}
+      onClick={() => setOpen(false)}
     >
       <div
         className={cn(
-          "mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3",
-          headerClassName,
+          "panel-accent w-full max-h-[88vh] overflow-y-auto rounded-t-[24px] border-x clinical-divider p-4 shadow-2xl md:max-h-[calc(100vh-3rem)] md:max-w-2xl md:rounded-[24px] md:border md:p-5",
+          panelClassName,
         )}
+        onClick={(event) => event.stopPropagation()}
       >
-        <p className="text-sm font-semibold text-[color:var(--color-accent-strong)]">{panelTitle}</p>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="Close"
-          className="button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
+        <div className="mb-3 flex justify-center md:hidden">
+          <span className="h-1 w-10 rounded-full bg-[color:var(--color-rule)]" />
+        </div>
+        <div
+          className={cn(
+            "mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3",
+            headerClassName,
+          )}
         >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <div
-        className={contentClassName}
-        onSubmit={() => {
-          setOpen(false);
-        }}
-      >
-        {children}
+          <p className="text-sm font-semibold text-[color:var(--color-accent-strong)]">{panelTitle}</p>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close"
+            className="button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div
+          className={contentClassName}
+          onSubmit={() => {
+            setOpen(false);
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

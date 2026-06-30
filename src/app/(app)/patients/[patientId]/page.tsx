@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, ClipboardList } from "lucide-react";
 import {
   dischargePatientWithSummaryAction,
   reorderProblemAction,
@@ -24,7 +25,6 @@ import {
   GlassPanel,
   PageHeader,
   ProblemCards,
-  SectionLabel,
   SelectBox,
   StaffOptions,
   SubmitButton,
@@ -103,7 +103,7 @@ export default async function PatientPage({
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
             <Link
               href={`/patients/${bundle.patient.id}/summary-note`}
               className="button-accent inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
@@ -112,151 +112,29 @@ export default async function PatientPage({
             </Link>
             <Link
               href={`/wards/${bundle.patient.wardId}`}
-              className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
+              aria-label="Back to ward"
+              title="Back to ward"
+              className="button-secondary inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
             >
-              Back to ward
+              <ArrowLeft className="h-4 w-4" />
             </Link>
             <Link
               href="/handover"
-              className="button-secondary inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
+              aria-label="Open handover"
+              title="Open handover"
+              className="button-secondary inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
             >
-              Open handover
+              <ClipboardList className="h-4 w-4" />
             </Link>
           </div>
         }
       />
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Clinical status" value={bundle.patient.status} />
-        <MetricCard label="Open problems" value={String(activeProblemCount)} />
-        <MetricCard label="Active tasks" value={String(activeTaskCount)} />
-        <MetricCard
-          label="Responsible"
-          value={bundle.patient.responsibleDoctorName ?? "Unassigned"}
-        />
-      </section>
-
-      <GlassPanel title="Patient summary" className="px-4 py-4 md:px-6 md:py-6">
-        <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
-
-        {canManagePatient ? (
-          <div className="mt-4 flex flex-wrap items-start gap-3 md:mt-5">
-            <PatientEditor
-              className="mt-0"
-              buttonClassName="mt-0"
-              panelClassName="mt-0 order-last w-full"
-              headerClassName="items-start"
-              contentClassName="space-y-3"
-            >
-              <form action={savePatientDetailAction} className="space-y-3">
-                <input type="hidden" name="id" value={bundle.patient.id} />
-                <input type="hidden" name="wardId" value={bundle.patient.wardId} />
-                <input type="hidden" name="updatedAt" value={bundle.patient.lastUpdate} />
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Bed">
-                    <TextInput name="bed" defaultValue={bundle.patient.bed} required />
-                  </Field>
-                  <Field label="Display name">
-                    <TextInput name="displayName" defaultValue={bundle.patient.displayName} required />
-                  </Field>
-                </div>
-                <Field label="Diagnosis">
-                  <TextInput name="diagnosis" defaultValue={bundle.patient.diagnosis} required />
-                </Field>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Field label="Age">
-                    <TextInput
-                      name="age"
-                      defaultValue={bundle.patient.age != null ? String(bundle.patient.age) : ""}
-                    />
-                  </Field>
-                  <Field label="Sex">
-                    <SelectBox name="sex" defaultValue={normalizePatientSexOption(bundle.patient.sex)}>
-                      <option value="">Select sex</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </SelectBox>
-                  </Field>
-                </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Field label="Status">
-                    <SelectBox name="status" defaultValue={bundle.patient.status}>
-                      <option value="stable">Stable</option>
-                      <option value="watch">Watch</option>
-                      <option value="critical">Critical</option>
-                    </SelectBox>
-                  </Field>
-                  <Field label="Responsible">
-                    <SelectBox
-                      name="responsibleDoctorId"
-                      defaultValue={bundle.patient.responsibleDoctorId ?? ""}
-                    >
-                      <StaffOptions profiles={profiles} />
-                    </SelectBox>
-                  </Field>
-                  <Field label="Precaution">
-                    <SelectBox name="precaution" defaultValue={bundle.patient.precaution}>
-                      <option value="none">None</option>
-                      <option value="contact">Contact</option>
-                      <option value="droplet">Droplet</option>
-                      <option value="airborne">Airborne</option>
-                    </SelectBox>
-                  </Field>
-                </div>
-                <SubmitButton pendingLabel="Updating patient...">Update patient detail</SubmitButton>
-              </form>
-            </PatientEditor>
-
-            {bundle.patient.lifecycle === "active" && dischargeDraft ? (
-              <DischargeSummaryEditor
-                className="mt-0"
-                buttonClassName="w-full md:w-auto"
-                panelClassName="mt-0 order-last w-full"
-                headerClassName="items-start"
-                contentClassName="space-y-3"
-              >
-                <form action={dischargePatientWithSummaryAction} className="space-y-3">
-                  <input type="hidden" name="patientId" value={bundle.patient.id} />
-                  <input type="hidden" name="patientUpdatedAt" value={bundle.patient.lastUpdate} />
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <SnapshotBox label="Admit date" value={formatDateTime(dischargeDraft.admitDate)} />
-                    <SnapshotBox
-                      label="Discharge date"
-                      value={formatDateTime(dischargeDraft.dischargeDate)}
-                    />
-                    <SnapshotBox label="Length of stay" value={dischargeDraft.lengthOfStay || "-"} />
-                  </div>
-                  <Field label="Primary diagnosis">
-                    <TextInput
-                      name="primaryDiagnosis"
-                      defaultValue={dischargeDraft.primaryDiagnosis}
-                      required
-                    />
-                  </Field>
-                  <Field label="Hospital course">
-                    <TextArea name="hospitalCourse" defaultValue={dischargeDraft.hospitalCourse} />
-                  </Field>
-                  <Field label="Plan">
-                    <TextArea name="plan" defaultValue={dischargeDraft.plan} />
-                  </Field>
-                  <Field label="Home medication">
-                    <TextArea name="homeMedication" defaultValue={dischargeDraft.homeMedication} />
-                  </Field>
-                  <SubmitButton pendingLabel="Discharging patient...">
-                    Confirm discharge
-                  </SubmitButton>
-                </form>
-              </DischargeSummaryEditor>
-            ) : null}
-          </div>
-        ) : null}
-      </GlassPanel>
-
       <div className="grid gap-4 md:gap-6 2xl:grid-cols-[1.45fr_0.95fr]">
         <div className="space-y-4 md:space-y-6">
           <GlassPanel
-            title="Problem-oriented ward card"
-            subtitle="Priority-sorted clinical cards for fast bedside review."
+            title="Problems"
+            subtitle="Longitudinal updates with linked tasks."
           >
             <ProblemCards
               problems={bundle.problems}
@@ -275,13 +153,13 @@ export default async function PatientPage({
             {canEditClinical ? (
               <div className="mt-4 border-t clinical-divider pt-4">
                 <ProblemCreator
+                  buttonLabel="Add problem"
                   className="panel-accent mt-0 w-full rounded-[22px]"
                   buttonClassName="mt-0 ml-auto"
                   panelClassName="mt-0 w-full"
                   headerClassName="items-start"
                   contentClassName="space-y-3"
                 >
-                  <SectionLabel>Problem</SectionLabel>
                   <form action={saveProblemMasterAction} className="space-y-3">
                     <input type="hidden" name="patientId" value={bundle.patient.id} />
                     <div className="grid gap-3 md:grid-cols-2">
@@ -323,8 +201,8 @@ export default async function PatientPage({
           </GlassPanel>
 
           <GlassPanel
-            title="All Tasks"
-            subtitle="Incomplete work across all problems and general ward tasks."
+            title="Tasks"
+            subtitle="Incomplete work linked to this patient."
           >
             <TaskCards
               tasks={bundle.tasks}
@@ -339,6 +217,7 @@ export default async function PatientPage({
             {canEditTaskWorkflow ? (
               <div className="mt-4 border-t clinical-divider pt-4">
                 <TaskCreator
+                  buttonLabel="Add task"
                   className="panel-accent mt-0 w-full rounded-[22px]"
                   buttonClassName="mt-0 ml-auto"
                   panelClassName="mt-0 w-full"
@@ -426,7 +305,14 @@ export default async function PatientPage({
 
         <div className="space-y-4 md:space-y-6">
           <GlassPanel title="Care snapshot">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <SnapshotBox label="Clinical status" value={bundle.patient.status} />
+              <SnapshotBox label="Open problems" value={String(activeProblemCount)} />
+              <SnapshotBox label="Active tasks" value={String(activeTaskCount)} />
+              <SnapshotBox
+                label="Responsible"
+                value={bundle.patient.responsibleDoctorName ?? "Unassigned"}
+              />
               <SnapshotBox
                 label="Age / Sex"
                 value={`${bundle.patient.age ?? "-"} / ${formatPatientSex(bundle.patient.sex)}`}
@@ -435,6 +321,122 @@ export default async function PatientPage({
               <SnapshotBox label="Precaution" value={bundle.patient.precaution ?? "-"} />
               <SnapshotBox label="Ward" value={bundle.ward?.name ?? "-"} />
             </div>
+          </GlassPanel>
+
+          <GlassPanel title="Patient summary" className="px-4 py-4 md:px-5 md:py-5">
+            <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
+
+            {canManagePatient ? (
+              <div className="mt-4 flex flex-wrap items-start gap-3">
+                <PatientEditor
+                  className="mt-0"
+                  buttonClassName="mt-0"
+                  panelClassName="mt-0 order-last w-full"
+                  headerClassName="items-start"
+                  contentClassName="space-y-3"
+                >
+                  <form action={savePatientDetailAction} className="space-y-3">
+                    <input type="hidden" name="id" value={bundle.patient.id} />
+                    <input type="hidden" name="wardId" value={bundle.patient.wardId} />
+                    <input type="hidden" name="updatedAt" value={bundle.patient.lastUpdate} />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Field label="Bed">
+                        <TextInput name="bed" defaultValue={bundle.patient.bed} required />
+                      </Field>
+                      <Field label="Display name">
+                        <TextInput name="displayName" defaultValue={bundle.patient.displayName} required />
+                      </Field>
+                    </div>
+                    <Field label="Diagnosis">
+                      <TextInput name="diagnosis" defaultValue={bundle.patient.diagnosis} required />
+                    </Field>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Field label="Age">
+                        <TextInput
+                          name="age"
+                          defaultValue={bundle.patient.age != null ? String(bundle.patient.age) : ""}
+                        />
+                      </Field>
+                      <Field label="Sex">
+                        <SelectBox name="sex" defaultValue={normalizePatientSexOption(bundle.patient.sex)}>
+                          <option value="">Select sex</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                        </SelectBox>
+                      </Field>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Field label="Status">
+                        <SelectBox name="status" defaultValue={bundle.patient.status}>
+                          <option value="stable">Stable</option>
+                          <option value="watch">Watch</option>
+                          <option value="critical">Critical</option>
+                        </SelectBox>
+                      </Field>
+                      <Field label="Responsible">
+                        <SelectBox
+                          name="responsibleDoctorId"
+                          defaultValue={bundle.patient.responsibleDoctorId ?? ""}
+                        >
+                          <StaffOptions profiles={profiles} />
+                        </SelectBox>
+                      </Field>
+                      <Field label="Precaution">
+                        <SelectBox name="precaution" defaultValue={bundle.patient.precaution}>
+                          <option value="none">None</option>
+                          <option value="contact">Contact</option>
+                          <option value="droplet">Droplet</option>
+                          <option value="airborne">Airborne</option>
+                        </SelectBox>
+                      </Field>
+                    </div>
+                    <SubmitButton pendingLabel="Updating patient...">Update patient detail</SubmitButton>
+                  </form>
+                </PatientEditor>
+
+                {bundle.patient.lifecycle === "active" && dischargeDraft ? (
+                  <DischargeSummaryEditor
+                    className="mt-0"
+                    buttonClassName="w-full md:w-auto"
+                    panelClassName="mt-0 order-last w-full"
+                    headerClassName="items-start"
+                    contentClassName="space-y-3"
+                  >
+                    <form action={dischargePatientWithSummaryAction} className="space-y-3">
+                      <input type="hidden" name="patientId" value={bundle.patient.id} />
+                      <input type="hidden" name="patientUpdatedAt" value={bundle.patient.lastUpdate} />
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <SnapshotBox label="Admit date" value={formatDateTime(dischargeDraft.admitDate)} />
+                        <SnapshotBox
+                          label="Discharge date"
+                          value={formatDateTime(dischargeDraft.dischargeDate)}
+                        />
+                        <SnapshotBox label="Length of stay" value={dischargeDraft.lengthOfStay || "-"} />
+                      </div>
+                      <Field label="Primary diagnosis">
+                        <TextInput
+                          name="primaryDiagnosis"
+                          defaultValue={dischargeDraft.primaryDiagnosis}
+                          required
+                        />
+                      </Field>
+                      <Field label="Hospital course">
+                        <TextArea name="hospitalCourse" defaultValue={dischargeDraft.hospitalCourse} />
+                      </Field>
+                      <Field label="Plan">
+                        <TextArea name="plan" defaultValue={dischargeDraft.plan} />
+                      </Field>
+                      <Field label="Home medication">
+                        <TextArea name="homeMedication" defaultValue={dischargeDraft.homeMedication} />
+                      </Field>
+                      <SubmitButton pendingLabel="Discharging patient...">
+                        Confirm discharge
+                      </SubmitButton>
+                    </form>
+                  </DischargeSummaryEditor>
+                ) : null}
+              </div>
+            ) : null}
           </GlassPanel>
 
           {canEditClinical ? (
@@ -466,15 +468,6 @@ export default async function PatientPage({
       <GlassPanel title="Activity timeline">
         <Timeline items={bundle.activity} />
       </GlassPanel>
-    </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric-tile px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

@@ -312,7 +312,6 @@ function formatProgressHistoryLine(problem: Problem, entry: Problem["historyEntr
     .filter((task) => entry.pendingTaskIds.includes(task.id) && task.status !== "done")
     .map((task) => task.title);
   return [
-    formatDateTime(entry.dateTime),
     entry.statusUpdate,
     entry.newEvidence,
     entry.treatmentChange,
@@ -432,11 +431,11 @@ export function ProblemCards({
           <details
             key={problem.id}
             open={defaultOpen}
-            className="rounded-[20px] border clinical-divider bg-white px-3 py-2.5 md:px-3.5 md:py-3"
+            className="rounded-[18px] border clinical-divider bg-white px-3 py-2.5 md:px-3.5 md:py-3"
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 marker:content-none">
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-2 marker:content-none">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Circle
                     className={cn(
                       "h-2.5 w-2.5 shrink-0",
@@ -450,18 +449,27 @@ export function ProblemCards({
                   <p className="truncate text-sm font-semibold text-foreground md:text-[15px]">
                     {problem.problemName}
                   </p>
+                  <span className="rounded-full border clinical-divider bg-[color:var(--color-paper-3)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+                    {labelForProblemDiagnosisStatus(problem.diagnosisStatus)}
+                  </span>
                 </div>
-                <p className="mt-1 truncate text-xs leading-5 text-muted md:text-sm">
+                <p className="mt-1 line-clamp-1 text-[13px] leading-5 text-muted md:text-sm">
                   {compactProblemStatus(problem)}
-                  {incompleteCount ? ` · ${incompleteCount} task${incompleteCount > 1 ? "s" : ""}` : ""}
                 </p>
               </div>
-              <ChevronDown className="h-4 w-4 shrink-0 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
+              <div className="flex shrink-0 items-center gap-1.5">
+                {incompleteCount ? (
+                  <span className="rounded-full border clinical-divider bg-[color:var(--color-paper-3)] px-2 py-1 text-[11px] font-semibold text-muted">
+                    {incompleteCount} task{incompleteCount > 1 ? "s" : ""}
+                  </span>
+                ) : null}
+                <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
+              </div>
             </summary>
 
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 space-y-3 border-t clinical-divider pt-3">
               {canEdit ? (
-                <div className="flex items-center justify-end gap-1">
+                <div className="flex items-center justify-end gap-1 border-b clinical-divider pb-3">
                   <ProblemEditor iconOnly buttonTitle="Edit problem master">
                     <form action={saveProblemMasterAction} className="space-y-3">
                       <input type="hidden" name="id" value={problem.id} />
@@ -619,14 +627,20 @@ export function ProblemCards({
                 </div>
               ) : null}
 
-              <ProblemSection label="Current Summary" value={problem.currentStatusSummary ?? "No current summary yet"} />
-              <ProblemSection label="Latest Update" value={compactProblemStatus(problem)} />
-              <ProblemSection label="Evidence" value={compactProblemEvidence(problem)} />
-              <ProblemSection label="Treatment" value={compactProblemTreatment(problem)} />
-              <ProblemSection label="Reasoning" value={compactProblemReasoning(problem)} />
-              <ProblemSection label="Today's Plan" value={compactProblemPlan(problem)} />
+              <div className="grid gap-2 md:grid-cols-2">
+                <ProblemSection
+                  label="Current Summary"
+                  value={problem.currentStatusSummary ?? "No current summary yet"}
+                  className="md:col-span-2"
+                />
+                <ProblemSection label="Latest Update" value={compactProblemStatus(problem)} />
+                <ProblemSection label="Evidence" value={compactProblemEvidence(problem)} />
+                <ProblemSection label="Treatment" value={compactProblemTreatment(problem)} />
+                <ProblemSection label="Reasoning" value={compactProblemReasoning(problem)} />
+                <ProblemSection label="Today's Plan" value={compactProblemPlan(problem)} className="md:col-span-2" />
+              </div>
 
-              <div className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
+              <div className="rounded-[16px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
                   <p className="text-xs text-muted">{incompleteCount} incomplete</p>
@@ -636,11 +650,11 @@ export function ProblemCards({
                     linkedTasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-center justify-between gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2"
+                        className="flex items-start justify-between gap-2 rounded-[14px] border clinical-divider bg-white px-3 py-2"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-foreground">{task.title}</p>
-                          <p className="mt-1 truncate text-xs text-muted">
+                          <p className="line-clamp-2 text-sm font-semibold text-foreground">{task.title}</p>
+                          <p className="mt-1 line-clamp-1 text-xs text-muted">
                             {task.ownerName ?? "Unassigned"}
                             {task.dueAt ? ` · Due ${formatDateTime(task.dueAt)}` : ""}
                           </p>
@@ -670,7 +684,7 @@ export function ProblemCards({
                 </div>
               </div>
 
-              <details className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
+              <details className="rounded-[16px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
                   <span>History</span>
                   <ChevronDown className="h-4 w-4 transition-transform details-open:rotate-180" />
@@ -680,11 +694,14 @@ export function ProblemCards({
                     olderHistory.map((entry) => (
                       <div
                         key={entry.id}
-                        className="rounded-[16px] border clinical-divider bg-white px-3 py-2.5"
+                        className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 text-sm text-foreground">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                              {formatDateTime(entry.dateTime)}
+                            </p>
+                            <p className="mt-1 line-clamp-2 text-sm text-foreground">
                               {formatProgressHistoryLine(problem, entry)}
                             </p>
                           </div>
@@ -1028,11 +1045,24 @@ function TaskCard({
   );
 }
 
-function ProblemSection({ label, value }: { label: string; value: string }) {
+function ProblemSection({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-[18px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
+    <div
+      className={cn(
+        "rounded-[16px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5",
+        className,
+      )}
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-1.5 text-sm leading-6 text-foreground">{value}</p>
+      <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-5 text-foreground">{value}</p>
     </div>
   );
 }
@@ -1290,7 +1320,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
+        "w-full rounded-[16px] border clinical-divider bg-white px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -1302,7 +1332,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={cn(
-        "min-h-24 w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
+        "min-h-20 w-full rounded-[16px] border clinical-divider bg-white px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
@@ -1314,7 +1344,7 @@ export function SelectBox(props: React.SelectHTMLAttributes<HTMLSelectElement>) 
     <select
       {...props}
       className={cn(
-        "w-full rounded-[18px] border clinical-divider bg-white px-4 py-3 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
+        "w-full rounded-[16px] border clinical-divider bg-white px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-[color:var(--color-focus)] focus:ring-4 focus:ring-[color:var(--color-focus)]/10",
         props.className,
       )}
     />
