@@ -3037,6 +3037,7 @@ export async function savePatient(formData: FormData, session: SessionContext): 
         lastUpdate: now(),
       };
       store.patients.push(patient);
+      createInitialProblemForDemoPatient(patient, session);
       addActivityToDemoStore(session, patient.id, "patient.created", "patient", patient.id, null, patient);
       savedPatientId = patient.id;
     }
@@ -3166,6 +3167,20 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     ensureNoError(insertResult, "Failed to create patient");
   }
 
+  try {
+    await createInitialProblemForLivePatient(
+      supabase,
+      {
+        patientId,
+        diagnosis: parsed.diagnosis,
+      },
+      session,
+    );
+  } catch (error) {
+    ensureNoError(await supabase.from("patients").delete().eq("id", patientId), "Failed to rollback patient");
+    throw error;
+  }
+
   await insertActivityLog(supabase, {
     patient_id: patientId,
     actor_id: session.profile.id,
@@ -3184,6 +3199,76 @@ export async function savePatient(formData: FormData, session: SessionContext): 
 
   revalidateWardflowPaths(patientId);
   return patientId;
+}
+
+function createInitialProblemForDemoPatient(patient: Patient, session: SessionContext) {
+  const title = patient.diagnosis.trim();
+  if (!title) return;
+
+  const problem: ProblemMaster = {
+    id: nextId("problem"),
+    patientId: patient.id,
+    problemName: title,
+    priority: "ACTIVE_STABLE",
+    currentStatusSummary: null,
+    diagnosisStatus: "CONFIRMED",
+    includeInHandover: true,
+    sortOrder:
+      store.problemMasters
+        .filter((entry) => entry.patientId === patient.id)
+        .reduce((max, entry) => Math.max(max, entry.sortOrder), 0) + 1,
+    createdAt: now(),
+    updatedAt: now(),
+    resolvedAt: null,
+  };
+
+  store.problemMasters.push(problem);
+  addActivityToDemoStore(session, patient.id, "problem.created", "problem", problem.id, null, problem);
+}
+
+async function createInitialProblemForLivePatient(
+  supabase: Awaited<ReturnType<typeof getLiveClient>>,
+  input: {
+    patientId: string;
+    diagnosis: string;
+  },
+  session: SessionContext,
+) {
+  const title = input.diagnosis.trim();
+  if (!title) return;
+
+  const problemId = nextId("problem");
+  ensureNoError(
+    await supabase.from("problems").insert({
+      id: problemId,
+      patient_id: input.patientId,
+      title,
+      problem_name: title,
+      priority: "ACTIVE_STABLE",
+      current_status_summary: null,
+      diagnosis_status: "CONFIRMED",
+      include_in_handover: true,
+      sort_order: 1,
+      resolved_at: null,
+      updated_by_id: session.profile.id,
+    }),
+    "Failed to create initial problem",
+  );
+
+  await insertActivityLog(supabase, {
+    patient_id: input.patientId,
+    actor_id: session.profile.id,
+    actor_name: session.profile.name,
+    action: "problem.created",
+    entity_type: "problem",
+    entity_id: problemId,
+    before_json: null,
+    after_json: {
+      problem_name: title,
+      priority: "ACTIVE_STABLE",
+      sort_order: 1,
+    },
+  });
 }
 
 export async function dischargePatient(patientId: string, session: SessionContext) {

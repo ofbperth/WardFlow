@@ -237,32 +237,17 @@ export function PatientCensus({
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                         Bed {patient.bed}
                       </p>
-                      {patient.highestPriorityProblem ? (
-                        <Pill tone={problemPriorityTone(patient.highestPriorityProblem.priority)}>
-                          {labelForProblemPriority(patient.highestPriorityProblem.priority)}
-                        </Pill>
-                      ) : (
-                        <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
-                      )}
+                      <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                     </div>
                     <h3 className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">
                       {patient.displayName}
                     </h3>
-                    <p className="mt-0.5 text-xs text-muted">
-                      {patient.age ?? "-"} y / {patient.sex ?? "-"}
-                    </p>
+                    <p className="mt-0.5 text-xs text-muted">Age {patient.age ?? "-"}</p>
                     <p className="mt-1 text-xs text-muted">
                       HN {patient.hospitalNumber ?? "-"} | AN {patient.admissionNumber ?? "-"}
                     </p>
                     <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-5 text-foreground/90">
                       {patient.diagnosis}
-                    </p>
-                    <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted">
-                      {patient.highestPriorityProblem
-                        ? `${patient.highestPriorityProblem.problemName} | ${
-                            patient.highestPriorityProblem.currentStatus ?? "No status line"
-                          }`
-                        : "No active problem flagged"}
                     </p>
                   </div>
                   <div className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-1.5 text-[color:var(--color-accent-strong)]">
@@ -274,30 +259,11 @@ export function PatientCensus({
                   <Pill tone="border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-[color:var(--color-ink)]">
                     {patient.pendingTaskCount} open task
                   </Pill>
-                  {patient.urgentTaskCount > 0 ? (
-                    <Pill tone="border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] text-[color:var(--color-danger)]">
-                      {patient.urgentTaskCount} urgent task
-                    </Pill>
-                  ) : null}
-                  {patient.overdueTaskCount > 0 ? (
-                    <Pill tone="border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger-soft)] text-[color:var(--color-danger)]">
-                      {patient.overdueTaskCount} overdue
-                    </Pill>
-                  ) : null}
-                  {patient.blockedTaskCount > 0 ? (
-                    <Pill tone="border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-[color:var(--color-ink)]">
-                      {patient.blockedTaskCount} blocked
-                    </Pill>
-                  ) : null}
                   {patient.lifecycle === "discharged" ? (
                     <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-3)] text-[color:var(--color-ink-2)]">
                       Discharged
                     </Pill>
                   ) : null}
-                </div>
-
-                <div className="mt-2.5 border-t clinical-divider pt-2 text-xs text-muted">
-                  <span className="line-clamp-1">Responsible: {patient.responsibleDoctorName ?? "Unassigned"}</span>
                 </div>
               </Link>
             ))}
