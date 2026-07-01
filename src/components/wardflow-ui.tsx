@@ -354,6 +354,8 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
     { label: "Status", value: labelForPatientStatus(patient.status) },
   ];
   const secondaryItems = [
+    { label: "HN", value: patient.hospitalNumber ?? "-" },
+    { label: "AN", value: patient.admissionNumber ?? "-" },
     { label: "Precaution", value: labelForPrecaution(patient.precaution) },
     { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
     { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },

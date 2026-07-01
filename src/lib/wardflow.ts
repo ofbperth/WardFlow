@@ -121,6 +121,8 @@ type PatientRow = {
   id: string;
   ward_id: string | null;
   bed: string;
+  hospital_number?: string | null;
+  admission_number?: string | null;
   display_name: string;
   age: number | null;
   sex: string | null;
@@ -290,6 +292,8 @@ const patientSchema = z.object({
   id: z.string().optional(),
   wardId: z.string().min(1),
   bed: z.string().min(1),
+  hospitalNumber: z.string().optional().nullable(),
+  admissionNumber: z.string().optional().nullable(),
   displayName: z.string().min(1),
   ageText: z.string().optional().nullable(),
   sex: z.enum(["Male", "Female"]).optional().nullable(),
@@ -587,6 +591,8 @@ function normalizePatientRecord(patient: Partial<Patient>): Patient {
     id: patient.id ?? nextId("patient"),
     wardId: patient.wardId ?? "",
     bed: patient.bed ?? "",
+    hospitalNumber: patient.hospitalNumber ?? null,
+    admissionNumber: patient.admissionNumber ?? null,
     displayName: patient.displayName ?? "Unknown patient",
     age: patient.age ?? null,
     sex: patient.sex ?? null,
@@ -1149,6 +1155,8 @@ function mapPatientRow(row: PatientRow, profiles: Map<string, UserProfile>): Pat
     id: row.id,
     wardId: row.ward_id ?? "",
     bed: row.bed,
+    hospitalNumber: row.hospital_number ?? null,
+    admissionNumber: row.admission_number ?? null,
     displayName: row.display_name,
     age: row.age,
     sex: row.sex,
@@ -1356,11 +1364,11 @@ function isRecoverableTaskProblemLinkError(error: { message: string } | null | u
   );
 }
 
-function isRecoverablePatientUnderlyingSchemaError(error: { message: string } | null | undefined) {
+function isRecoverablePatientCoreOptionalSchemaError(error: { message: string } | null | undefined) {
   const message = error?.message?.toLowerCase() ?? "";
   return (
     message.includes("patients") &&
-    message.includes("underlying_disease") &&
+    ["underlying_disease", "hospital_number", "admission_number"].some((field) => message.includes(field)) &&
     (message.includes("schema cache") || message.includes("column") || message.includes("does not exist"))
   );
 }
@@ -2943,6 +2951,8 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     id: textOrNull(formData.get("id")) ?? undefined,
     wardId: formData.get("wardId"),
     bed: formData.get("bed"),
+    hospitalNumber: textOrNull(formData.get("hospitalNumber")),
+    admissionNumber: textOrNull(formData.get("admissionNumber")),
     displayName: formData.get("displayName"),
     ageText: textOrNull(formData.get("age")),
     sex: textOrNull(formData.get("sex")),
@@ -2980,6 +2990,8 @@ export async function savePatient(formData: FormData, session: SessionContext): 
       const before = structuredClone(existing);
       existing.wardId = parsed.wardId;
       existing.bed = parsed.bed;
+      existing.hospitalNumber = parsed.hospitalNumber ?? null;
+      existing.admissionNumber = parsed.admissionNumber ?? null;
       existing.displayName = parsed.displayName;
       existing.age = parsedAge;
       existing.sex = parsed.sex ?? null;
@@ -3007,6 +3019,8 @@ export async function savePatient(formData: FormData, session: SessionContext): 
         id: nextId("patient"),
         wardId: parsed.wardId,
         bed: parsed.bed,
+        hospitalNumber: parsed.hospitalNumber ?? null,
+        admissionNumber: parsed.admissionNumber ?? null,
         displayName: parsed.displayName,
         age: parsedAge,
         sex: parsed.sex ?? null,
@@ -3052,6 +3066,8 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     const fullUpdatePayload = {
       ward_id: parsed.wardId,
       bed: parsed.bed,
+      hospital_number: parsed.hospitalNumber ?? null,
+      admission_number: parsed.admissionNumber ?? null,
       display_name: parsed.displayName,
       age: parsedAge,
       sex: parsed.sex ?? null,
@@ -3075,7 +3091,7 @@ export async function savePatient(formData: FormData, session: SessionContext): 
       updated_by_id: session.profile.id,
     };
     const result = await supabase.from("patients").update(fullUpdatePayload).eq("id", parsed.id);
-    if (result.error && isRecoverablePatientUnderlyingSchemaError(result.error)) {
+    if (result.error && isRecoverablePatientCoreOptionalSchemaError(result.error)) {
       ensureNoError(
         await supabase.from("patients").update(legacyUpdatePayload).eq("id", parsed.id),
         "Failed to update patient",
@@ -3096,6 +3112,8 @@ export async function savePatient(formData: FormData, session: SessionContext): 
         ...existing,
         ward_id: parsed.wardId,
         bed: parsed.bed,
+        hospital_number: parsed.hospitalNumber ?? null,
+        admission_number: parsed.admissionNumber ?? null,
         display_name: parsed.displayName,
         age: parsedAge,
         sex: parsed.sex ?? null,
@@ -3116,6 +3134,8 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     id: patientId,
     ward_id: parsed.wardId,
     bed: parsed.bed,
+    hospital_number: parsed.hospitalNumber ?? null,
+    admission_number: parsed.admissionNumber ?? null,
     display_name: parsed.displayName,
     age: parsedAge,
     sex: parsed.sex ?? null,
@@ -3140,7 +3160,7 @@ export async function savePatient(formData: FormData, session: SessionContext): 
     updated_by_id: session.profile.id,
   };
   const insertResult = await supabase.from("patients").insert(inserted);
-  if (insertResult.error && isRecoverablePatientUnderlyingSchemaError(insertResult.error)) {
+  if (insertResult.error && isRecoverablePatientCoreOptionalSchemaError(insertResult.error)) {
     ensureNoError(await supabase.from("patients").insert(legacyInserted), "Failed to create patient");
   } else {
     ensureNoError(insertResult, "Failed to create patient");

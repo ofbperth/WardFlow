@@ -117,6 +117,12 @@ export default async function WardsPage({
                         <Field label="Bed">
                           <TextInput name="bed" placeholder="12" required />
                         </Field>
+                        <Field label="HN">
+                          <TextInput name="hospitalNumber" placeholder="HN6600012" />
+                        </Field>
+                        <Field label="AN">
+                          <TextInput name="admissionNumber" placeholder="AN26070001" />
+                        </Field>
                         <Field label="Display name" className="md:col-span-2">
                           <TextInput name="displayName" placeholder="S. Woranit" required />
                         </Field>

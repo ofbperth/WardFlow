@@ -228,6 +228,12 @@ export default async function PatientPage({
                       <Field label="Bed">
                         <TextInput name="bed" defaultValue={bundle.patient.bed} required />
                       </Field>
+                      <Field label="HN">
+                        <TextInput name="hospitalNumber" defaultValue={bundle.patient.hospitalNumber ?? ""} />
+                      </Field>
+                      <Field label="AN">
+                        <TextInput name="admissionNumber" defaultValue={bundle.patient.admissionNumber ?? ""} />
+                      </Field>
                       <Field label="Display name">
                         <TextInput name="displayName" defaultValue={bundle.patient.displayName} required />
                       </Field>

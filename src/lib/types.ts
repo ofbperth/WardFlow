@@ -116,6 +116,8 @@ export type Patient = {
   id: string;
   wardId: string;
   bed: string;
+  hospitalNumber: string | null;
+  admissionNumber: string | null;
   displayName: string;
   age: number | null;
   sex: string | null;
