@@ -278,8 +278,8 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     heading: "Progress Note",
     patientFacts: makeSection("Patient", [
       `Name: ${patient.displayName}`,
-      "HN: -",
-      "AN: -",
+      `HN: ${patient.hospitalNumber ?? "-"}`,
+      `AN: ${patient.admissionNumber ?? "-"}`,
       `Age/Sex: ${patient.age ?? "-"} / ${patient.sex ?? "-"}`,
       `Ward: ${ward?.name ?? "-"}`,
       `Admission date: ${admitDate ? admitDate.slice(0, 10) : "-"}`,
