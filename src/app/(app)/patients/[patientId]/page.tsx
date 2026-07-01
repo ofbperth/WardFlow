@@ -367,16 +367,7 @@ export default async function PatientPage({
                     ))}
                   </datalist>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Problem link">
-                      <SelectBox name="problemId" defaultValue="">
-                        <option value="">No linked problem</option>
-                        {bundle.problems.map((problem) => (
-                          <option key={problem.id} value={problem.id}>
-                            {problem.problemName}
-                          </option>
-                        ))}
-                      </SelectBox>
-                    </Field>
+                    <input type="hidden" name="problemId" value="" />
                     <Field label="Owner">
                       <SelectBox name="ownerId" defaultValue={defaultTaskOwnerId}>
                         <StaffOptions profiles={taskProfiles} />

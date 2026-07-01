@@ -674,8 +674,8 @@ export function ProblemCards({
                   <p className="text-xs text-muted">{incompleteCount} incomplete</p>
                 </div>
                 <div className="mt-2.5 space-y-1.5">
-                  {linkedTasks.length > 0 ? (
-                    [...incompleteTasks, ...linkedTasks.filter((task) => task.status === "done")].map((task) => (
+                  {incompleteTasks.length > 0 ? (
+                    incompleteTasks.map((task) => (
                       <CompactLinkedTaskRow
                         key={task.id}
                         task={task}
@@ -908,7 +908,7 @@ function TaskCard({
   canEdit: boolean;
   compact?: boolean;
 }) {
-  const metaLine = compactTaskMeta(task, problem);
+  const metaLine = compactTaskMeta(task, { problem, showProblem: false, showOwner: true });
   const hasExpandableContent =
     !compact &&
     (Boolean(task.note) || Boolean(task.blockedReason) || task.updates.length > 0 || canEdit);
@@ -976,7 +976,7 @@ function TaskCard({
           </summary>
 
           <div className="mt-2.5 space-y-3">
-            <CompactTaskDetailList task={task} problem={problem} />
+            <CompactTaskDetailList task={task} />
 
             {task.updates.length > 0 ? (
               <div className="space-y-1.5">
@@ -1057,6 +1057,8 @@ function CompactLinkedTaskRow({
   profiles: UserProfile[];
   canEdit: boolean;
 }) {
+  const metaLine = compactTaskMeta(task, { showProblem: false, showOwner: false });
+
   return (
     <div className="flex items-start gap-2 rounded-[12px] border clinical-divider bg-white px-3 py-2">
       <div className="pt-0.5">
@@ -1086,7 +1088,7 @@ function CompactLinkedTaskRow({
         <p className={cn("line-clamp-1 text-sm font-semibold", task.status === "done" ? "text-muted" : "text-foreground")}>
           {task.title}
         </p>
-        <p className="mt-1 line-clamp-1 text-xs text-muted">{compactTaskMeta(task)}</p>
+        {metaLine ? <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p> : null}
       </div>
       {canEdit ? (
         <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
@@ -1104,15 +1106,12 @@ function CompactLinkedTaskRow({
 
 function CompactTaskDetailList({
   task,
-  problem,
 }: {
   task: TaskWithUpdates;
-  problem: Problem | null;
 }) {
   const items = [
     `Status: ${labelForTaskStatus(task.status)}`,
     `Type: ${labelForTaskType(task.type)}`,
-    `Problem: ${problem?.problemName ?? "No linked problem"}`,
     task.blockedReason ? `Blocked: ${task.blockedReason}` : null,
   ].filter(Boolean);
 
@@ -1192,10 +1191,16 @@ function TaskEditorForm({
   );
 }
 
-function compactTaskMeta(task: TaskWithUpdates, problem?: Problem | null) {
+function compactTaskMeta(
+  task: TaskWithUpdates,
+  options?: { problem?: Problem | null; showProblem?: boolean; showOwner?: boolean },
+) {
+  const showProblem = options?.showProblem ?? true;
+  const showOwner = options?.showOwner ?? true;
+
   return [
-    problem?.problemName ?? null,
-    task.ownerName ?? "Unassigned",
+    showProblem ? options?.problem?.problemName ?? null : null,
+    showOwner ? task.ownerName ?? "Unassigned" : null,
     task.dueAt ? `Due ${formatDateTime(task.dueAt)}` : null,
     labelForTaskPriority(task.priority),
   ]
