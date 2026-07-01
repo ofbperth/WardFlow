@@ -1085,9 +1085,12 @@ function CompactLinkedTaskRow({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className={cn("line-clamp-1 text-sm font-semibold", task.status === "done" ? "text-muted" : "text-foreground")}>
-          {task.title}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className={cn("min-w-0 line-clamp-1 text-sm font-semibold", task.status === "done" ? "text-muted" : "text-foreground")}>
+            {task.title}
+          </p>
+          <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+        </div>
         {metaLine ? <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p> : null}
       </div>
       {canEdit ? (
