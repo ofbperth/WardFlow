@@ -365,15 +365,15 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
         <div
           key={item.label}
           className={cn(
-            "rounded-[16px] border clinical-divider bg-white p-3",
+            "min-w-0 max-w-full overflow-hidden rounded-[16px] border clinical-divider bg-white p-3",
             item.label === "Diagnosis" ? "[grid-column:1/-1]" : "",
           )}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
           <p
             className={cn(
-              "mt-1.5 break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]",
-              item.label === "Diagnosis" ? "whitespace-normal" : "",
+              "mt-1.5 min-w-0 max-w-full whitespace-normal break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]",
+              item.label === "Diagnosis" ? "break-all [word-break:break-word]" : "",
             )}
           >
             {item.value}
@@ -387,9 +387,9 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
         </summary>
         <div className="mt-2.5 grid gap-2 grid-cols-1">
           {secondaryItems.map((item) => (
-            <div key={item.label} className="rounded-[14px] border clinical-divider bg-white p-2.5">
+            <div key={item.label} className="min-w-0 max-w-full overflow-hidden rounded-[14px] border clinical-divider bg-white p-2.5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-              <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]">
+              <p className="mt-1.5 min-w-0 max-w-full whitespace-normal break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]">
                 {item.value}
               </p>
             </div>
