@@ -443,14 +443,9 @@ export function ProblemCards({
         const incompleteTasks = linkedTasks.filter((task) => task.status !== "done");
         const olderHistory = problem.historyEntries.slice(1);
         const incompleteCount = incompleteTasks.length;
-        const defaultOpen =
-          problem.priority === "ACTIVE_UNSTABLE" ||
-          incompleteTasks.some((task) => task.priority !== "normal");
-
         return (
           <details
             key={problem.id}
-            open={defaultOpen}
             className="rounded-[16px] border clinical-divider bg-white"
           >
             <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2.5 marker:content-none">
