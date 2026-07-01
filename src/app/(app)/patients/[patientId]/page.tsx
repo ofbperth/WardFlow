@@ -108,7 +108,7 @@ export default async function PatientPage({
               Summary Note
             </Link>
             <Link
-              href={`/wards/${bundle.patient.wardId}`}
+              href="/wards"
               aria-label="Back to ward"
               title="Back to ward"
               className="button-secondary inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
