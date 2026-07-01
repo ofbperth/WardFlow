@@ -197,7 +197,9 @@ export function AppShell({
             </div>
           </aside>
 
-          <main className="min-w-0">{children}</main>
+          <main className="min-w-0 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+1.5rem)] lg:pb-0">
+            {children}
+          </main>
         </div>
 
         <div className="mobile-bottom-dock sticky bottom-0 z-30 mt-3 px-1 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
