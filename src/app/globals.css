@@ -230,6 +230,42 @@ summary {
   text-wrap: balance;
 }
 
+.patient-page-layout,
+.patient-page-layout > * {
+  min-width: 0;
+}
+
+.patient-page-layout :where(section, div, article, details, form, label) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.patient-page-layout :where(p, h1, h2, h3, h4, span, summary) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.patient-page-layout :where(input, textarea, select) {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.patient-page-layout .truncate {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.patient-page-layout .line-clamp-1,
+.patient-page-layout .line-clamp-2 {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
+}
+
 @media (min-width: 768px) {
   .app-canvas {
     padding: 1.5rem;
