@@ -187,6 +187,18 @@ export function labelForTaskStatus(status: TaskStatus) {
   }[status];
 }
 
+export function nextTaskCycleStatus(status: TaskStatus): Exclude<TaskStatus, "blocked"> {
+  switch (status) {
+    case "not_started":
+      return "in_progress";
+    case "in_progress":
+      return "done";
+    case "done":
+    case "blocked":
+      return "not_started";
+  }
+}
+
 export function labelForLifecycle(lifecycle: PatientLifecycle) {
   return {
     active: "Active",

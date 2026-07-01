@@ -10,15 +10,16 @@ import {
   ChevronDown,
   LoaderCircle,
   Shuffle,
-  TriangleAlert,
 } from "lucide-react";
-import { Field, Pill, SelectBox, StaffOptions, SubmitButton, TextInput } from "@/components/wardflow-ui";
+import { TaskEditor } from "@/components/form-feedback";
+import { Field, Pill, SelectBox, StaffOptions, SubmitButton, TaskEditorForm } from "@/components/wardflow-ui";
 import {
   cn,
   formatRelative,
   labelForTaskPriority,
   labelForTaskStatus,
   labelForTaskType,
+  nextTaskCycleStatus,
   priorityTone,
   statusTone,
 } from "@/lib/utils";
@@ -51,6 +52,13 @@ function patchTaskInGroups(
           },
     ),
   }));
+}
+
+function nextWorkspaceTaskPatch(task: TaskWorkspaceGroup["patients"][number]["tasks"][number]) {
+  return {
+    status: nextTaskCycleStatus(task.status),
+    blockedReason: null,
+  };
 }
 
 export function TaskWorkspaceBoard({
@@ -174,7 +182,39 @@ export function TaskWorkspaceBoard({
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-base font-semibold text-foreground">{task.title}</p>
-                            <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+                            <form
+                              action={async (formData) => {
+                                const nextPatch = nextWorkspaceTaskPatch(task);
+
+                                await runTaskAction({
+                                  workingMessage: `Updating ${task.title}...`,
+                                  successMessage: `${task.title} is now ${labelForTaskStatus(nextPatch.status)}`,
+                                  taskId: task.id,
+                                  optimisticUpdate: () => {
+                                    startTransition(() => {
+                                      applyBoardState((current) => ({
+                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, nextPatch),
+                                        archivedGroups: patchTaskInGroups(
+                                          current.archivedGroups,
+                                          patient.id,
+                                          task.id,
+                                          nextPatch,
+                                        ),
+                                      }));
+                                    });
+                                  },
+                                  action: () => updateTaskStatusAction(formData),
+                                });
+                              }}
+                            >
+                              <input type="hidden" name="patientId" value={patient.id} />
+                              <input type="hidden" name="taskId" value={task.id} />
+                              <input type="hidden" name="status" value={nextTaskCycleStatus(task.status)} />
+                              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+                              <button type="submit" className="rounded-full transition hover:opacity-85">
+                                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+                              </button>
+                            </form>
                             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
                             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
                           </div>
@@ -183,8 +223,15 @@ export function TaskWorkspaceBoard({
                             {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
                           </div>
                         </div>
-                        <div className="text-right text-sm text-muted">
-                          <p>{labelForTaskStatus(task.status)}</p>
+                        <div className="flex items-center gap-2">
+                          <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+                            <TaskEditorForm
+                              task={task}
+                              patientId={patient.id}
+                              saveTaskAction={saveTaskAction}
+                              profiles={profilesByWard[patient.wardId] ?? []}
+                            />
+                          </TaskEditor>
                         </div>
                       </div>
 
@@ -293,107 +340,6 @@ export function TaskWorkspaceBoard({
                               </div>
                             </form>
 
-                            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
-                              <form
-                                action={async (formData) => {
-                                  await runTaskAction({
-                                    workingMessage: `Marking ${task.title} as done...`,
-                                    successMessage: `${task.title} marked done`,
-                                    taskId: task.id,
-                                    optimisticUpdate: () => {
-                                      startTransition(() => {
-                                        applyBoardState((current) => ({
-                                          groups: patchTaskInGroups(current.groups, patient.id, task.id, {
-                                            status: "done",
-                                          }),
-                                          archivedGroups: patchTaskInGroups(
-                                            current.archivedGroups,
-                                            patient.id,
-                                            task.id,
-                                            { status: "done" },
-                                          ),
-                                        }));
-                                      });
-                                    },
-                                    action: () => updateTaskStatusAction(formData),
-                                  });
-                                }}
-                                className="rounded-2xl bg-[color:var(--color-accent-soft)]/65 p-3"
-                              >
-                                <input type="hidden" name="patientId" value={patient.id} />
-                                <input type="hidden" name="taskId" value={task.id} />
-                                <input type="hidden" name="status" value="done" />
-                                <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                                <SubmitButton pendingLabel="Marking done...">
-                                  <span className="inline-flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Mark done
-                                  </span>
-                                </SubmitButton>
-                              </form>
-
-                              <form
-                                action={async (formData) => {
-                                  const blockedReason =
-                                    typeof formData.get("blockedReason") === "string"
-                                      ? String(formData.get("blockedReason")).trim()
-                                      : "";
-
-                                  await runTaskAction({
-                                    workingMessage: `Saving block for ${task.title}...`,
-                                    successMessage: `Blocked reason saved for ${task.title}`,
-                                    taskId: task.id,
-                                    optimisticUpdate: () => {
-                                      startTransition(() => {
-                                        applyBoardState((current) => ({
-                                          groups: patchTaskInGroups(current.groups, patient.id, task.id, {
-                                            status: "blocked",
-                                            blockedReason,
-                                          }),
-                                          archivedGroups: patchTaskInGroups(
-                                            current.archivedGroups,
-                                            patient.id,
-                                            task.id,
-                                            {
-                                              status: "blocked",
-                                              blockedReason,
-                                            },
-                                          ),
-                                        }));
-                                      });
-                                    },
-                                    action: () => saveTaskAction(formData),
-                                  });
-                                }}
-                                className="rounded-2xl bg-[color:var(--color-danger-soft)] p-3"
-                              >
-                                <input type="hidden" name="id" value={task.id} />
-                                <input type="hidden" name="patientId" value={patient.id} />
-                                <input type="hidden" name="title" value={task.title} />
-                                <input type="hidden" name="ownerId" value={task.ownerId ?? ""} />
-                                <input type="hidden" name="status" value="blocked" />
-                                <input type="hidden" name="priority" value={task.priority} />
-                                <input type="hidden" name="type" value={task.type} />
-                                <input type="hidden" name="note" value={task.note ?? ""} />
-                                <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                                <Field label="Blocked reason">
-                                  <TextInput
-                                    name="blockedReason"
-                                    defaultValue={task.blockedReason ?? ""}
-                                    placeholder="Why is this blocked?"
-                                    required
-                                  />
-                                </Field>
-                                <div className="mt-3">
-                                  <SubmitButton pendingLabel="Saving block...">
-                                    <span className="inline-flex items-center gap-2">
-                                      <TriangleAlert className="h-4 w-4" />
-                                      Mark blocked
-                                    </span>
-                                  </SubmitButton>
-                                </div>
-                              </form>
-                            </div>
                           </div>
                           </div>
                         ) : null}
@@ -426,7 +372,39 @@ export function TaskWorkspaceBoard({
                         <div key={task.id} className="rounded-2xl bg-[color:var(--color-paper-3)] px-3 py-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm font-semibold text-[color:var(--color-ink)]">{task.title}</p>
-                            <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+                            <form
+                              action={async (formData) => {
+                                const nextPatch = nextWorkspaceTaskPatch(task);
+
+                                await runTaskAction({
+                                  workingMessage: `Updating ${task.title}...`,
+                                  successMessage: `${task.title} is now ${labelForTaskStatus(nextPatch.status)}`,
+                                  taskId: task.id,
+                                  optimisticUpdate: () => {
+                                    startTransition(() => {
+                                      applyBoardState((current) => ({
+                                        groups: patchTaskInGroups(current.groups, patient.id, task.id, nextPatch),
+                                        archivedGroups: patchTaskInGroups(
+                                          current.archivedGroups,
+                                          patient.id,
+                                          task.id,
+                                          nextPatch,
+                                        ),
+                                      }));
+                                    });
+                                  },
+                                  action: () => updateTaskStatusAction(formData),
+                                });
+                              }}
+                            >
+                              <input type="hidden" name="patientId" value={patient.id} />
+                              <input type="hidden" name="taskId" value={task.id} />
+                              <input type="hidden" name="status" value={nextTaskCycleStatus(task.status)} />
+                              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+                              <button type="submit" className="rounded-full transition hover:opacity-85">
+                                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+                              </button>
+                            </form>
                           </div>
                         </div>
                       ))}

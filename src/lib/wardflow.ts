@@ -3962,6 +3962,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     blockedReason: textOrNull(formData.get("blockedReason")),
     updatedAt: textOrNull(formData.get("updatedAt")),
   });
+  const normalizedBlockedReason = parsed.status === "blocked" ? parsed.blockedReason ?? null : null;
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -3997,7 +3998,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       existing.priority = parsed.priority;
       existing.type = parsed.type;
       existing.dueAt = parsed.dueAt ?? null;
-      existing.blockedReason = parsed.blockedReason ?? null;
+      existing.blockedReason = normalizedBlockedReason;
       existing.updatedById = session.profile.id;
       existing.updatedByName = session.profile.name;
       existing.updatedAt = now();
@@ -4023,7 +4024,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
         priority: parsed.priority,
         type: parsed.type,
         dueAt: parsed.dueAt ?? null,
-        blockedReason: parsed.blockedReason ?? null,
+        blockedReason: normalizedBlockedReason,
         updatedById: session.profile.id,
         updatedByName: session.profile.name,
         updatedAt: now(),
@@ -4067,7 +4068,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       priority: parsed.priority,
       type: parsed.type,
       due_at: parsed.dueAt ?? null,
-      blocked_reason: parsed.blockedReason ?? null,
+      blocked_reason: normalizedBlockedReason,
       updated_by_id: session.profile.id,
     };
     const legacyTaskUpdatePayload = {
@@ -4078,7 +4079,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       priority: parsed.priority,
       type: parsed.type,
       due_at: parsed.dueAt ?? null,
-      blocked_reason: parsed.blockedReason ?? null,
+      blocked_reason: normalizedBlockedReason,
       updated_by_id: session.profile.id,
     };
     const updateResult = await supabase
@@ -4112,7 +4113,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
         priority: parsed.priority,
         type: parsed.type,
         due_at: parsed.dueAt ?? null,
-        blocked_reason: parsed.blockedReason ?? null,
+        blocked_reason: normalizedBlockedReason,
       },
     });
   } else {
@@ -4128,7 +4129,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       priority: parsed.priority,
       type: parsed.type,
       due_at: parsed.dueAt ?? null,
-      blocked_reason: parsed.blockedReason ?? null,
+      blocked_reason: normalizedBlockedReason,
       updated_by_id: session.profile.id,
     };
     const legacyTaskInsertPayload = {
@@ -4141,7 +4142,7 @@ export async function saveTask(formData: FormData, session: SessionContext) {
       priority: parsed.priority,
       type: parsed.type,
       due_at: parsed.dueAt ?? null,
-      blocked_reason: parsed.blockedReason ?? null,
+      blocked_reason: normalizedBlockedReason,
       updated_by_id: session.profile.id,
     };
     const insertResult = await supabase.from("ward_tasks").insert(fullTaskInsertPayload);
@@ -4186,6 +4187,9 @@ export async function updateTaskStatus(
   session: SessionContext,
 ) {
   requireClinicalEditor(session);
+  if (status === "blocked") {
+    throw new Error("Blocked status requires editing the task");
+  }
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -4198,6 +4202,7 @@ export async function updateTaskStatus(
 
     const before = { status: task.status };
     task.status = status;
+    task.blockedReason = null;
     task.updatedAt = now();
     task.updatedById = session.profile.id;
     task.updatedByName = session.profile.name;
@@ -4224,6 +4229,7 @@ export async function updateTaskStatus(
       .from("ward_tasks")
       .update({
         status,
+        blocked_reason: null,
         updated_by_id: session.profile.id,
       })
       .eq("id", taskId),
@@ -4238,7 +4244,7 @@ export async function updateTaskStatus(
     entity_type: "ward_task",
     entity_id: taskId,
     before_json: { status: task.status },
-    after_json: { status },
+    after_json: { status, blocked_reason: null },
   });
   ensureNoError(
     await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", patientId),

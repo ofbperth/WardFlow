@@ -1,7 +1,6 @@
 ﻿import Link from "next/link";
 import {
   ArrowUpRight,
-  CheckSquare2,
   ChevronDown,
   Clock3,
   Circle,
@@ -23,6 +22,7 @@ import {
   labelForTaskPriority,
   labelForTaskStatus,
   labelForTaskType,
+  nextTaskCycleStatus,
   problemPriorityTone,
   priorityTone,
   statusTone,
@@ -895,33 +895,17 @@ function TaskCard({
   const hasExpandableContent =
     !compact &&
     (Boolean(task.note) || Boolean(task.blockedReason) || task.updates.length > 0 || canEdit);
+  const nextStatus = nextTaskCycleStatus(task.status);
 
   return (
     <div className="rounded-[16px] border clinical-divider bg-white p-3">
       <div className="flex items-start gap-2">
-        <div className="pt-0.5">
-          {canEdit && task.status !== "done" ? (
-            <form action={updateStatusAction}>
-              <input type="hidden" name="patientId" value={patient.id} />
-              <input type="hidden" name="taskId" value={task.id} />
-              <input type="hidden" name="status" value="done" />
-              <input type="hidden" name="updatedAt" value={task.updatedAt} />
-              <PendingGhostButton
-                pendingLabel="Updating..."
-                className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] border-emerald-500 bg-emerald-50 px-0 text-emerald-600 hover:bg-emerald-100"
-              >
-                <CheckSquare2 className="h-4 w-4 fill-emerald-500 text-emerald-500" />
-              </PendingGhostButton>
-            </form>
-          ) : (
-            <Circle
-              className={cn(
-                "mt-1 h-2.5 w-2.5",
-                task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
-              )}
-            />
+        <Circle
+          className={cn(
+            "mt-1 h-2.5 w-2.5 shrink-0",
+            task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
           )}
-        </div>
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -933,9 +917,19 @@ function TaskCard({
               {task.note ? <p className="mt-1 line-clamp-2 text-sm text-foreground/90">{task.note}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              {!compact ? (
+              {canEdit ? (
+                <form action={updateStatusAction}>
+                  <input type="hidden" name="patientId" value={patient.id} />
+                  <input type="hidden" name="taskId" value={task.id} />
+                  <input type="hidden" name="status" value={nextStatus} />
+                  <input type="hidden" name="updatedAt" value={task.updatedAt} />
+                  <PendingGhostButton pendingLabel="Updating..." className="rounded-full px-0 py-0">
+                    <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+                  </PendingGhostButton>
+                </form>
+              ) : (
                 <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
-              ) : null}
+              )}
               {canEdit ? (
                 <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
                   <TaskEditorForm
@@ -1041,38 +1035,34 @@ function CompactLinkedTaskRow({
   canEdit: boolean;
 }) {
   const metaLine = compactTaskMeta(task, { showProblem: false, showOwner: false });
+  const nextStatus = nextTaskCycleStatus(task.status);
 
   return (
     <div className="flex items-start gap-2 rounded-[12px] border clinical-divider bg-white px-3 py-2">
-      <div className="pt-0.5">
-        {canEdit && task.status !== "done" ? (
-          <form action={updateStatusAction}>
-            <input type="hidden" name="patientId" value={patientId} />
-            <input type="hidden" name="taskId" value={task.id} />
-            <input type="hidden" name="status" value="done" />
-            <input type="hidden" name="updatedAt" value={task.updatedAt} />
-            <PendingGhostButton
-              pendingLabel="Updating..."
-              className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] border-emerald-500 bg-emerald-50 px-0 text-emerald-600 hover:bg-emerald-100"
-            >
-              <CheckSquare2 className="h-4 w-4 fill-emerald-500 text-emerald-500" />
-            </PendingGhostButton>
-          </form>
-        ) : (
-          <Circle
-            className={cn(
-              "mt-1 h-2.5 w-2.5",
-              task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
-            )}
-          />
+      <Circle
+        className={cn(
+          "mt-1 h-2.5 w-2.5 shrink-0",
+          task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
         )}
-      </div>
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn("min-w-0 line-clamp-1 text-sm font-semibold", task.status === "done" ? "text-muted" : "text-foreground")}>
             {task.title}
           </p>
-          <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+          {canEdit ? (
+            <form action={updateStatusAction}>
+              <input type="hidden" name="patientId" value={patientId} />
+              <input type="hidden" name="taskId" value={task.id} />
+              <input type="hidden" name="status" value={nextStatus} />
+              <input type="hidden" name="updatedAt" value={task.updatedAt} />
+              <PendingGhostButton pendingLabel="Updating..." className="rounded-full px-0 py-0">
+                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+              </PendingGhostButton>
+            </form>
+          ) : (
+            <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+          )}
         </div>
         {metaLine ? <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p> : null}
       </div>
@@ -1112,7 +1102,7 @@ function CompactTaskDetailList({
   );
 }
 
-function TaskEditorForm({
+export function TaskEditorForm({
   task,
   patientId,
   saveTaskAction,
