@@ -345,11 +345,14 @@ function formatProgressHistoryLine(problem: Problem, entry: Problem["historyEntr
 }
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
-  const primaryItems = [
+  const topMetrics = [
     { label: "Ward", value: ward ?? "-" },
     { label: "Bed", value: patient.bed },
-    { label: "Age / Sex", value: `${patient.age ?? "-"} / ${formatPatientSex(patient.sex)}` },
-    { label: "Diagnosis", value: patient.diagnosis },
+    { label: "Sex", value: formatPatientSex(patient.sex) },
+    { label: "Age", value: patient.age != null ? String(patient.age) : "-" },
+  ];
+  const primaryItems = [
+    { label: "Diagnosis", value: patient.diagnosis, fullWidth: true },
     { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
     { label: "Status", value: labelForPatientStatus(patient.status) },
   ];
@@ -362,20 +365,32 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
   ];
 
   return (
-    <div className="grid gap-2.5 grid-cols-1">
+    <div className="grid grid-cols-1 gap-2.5">
+      <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-2">
+        {topMetrics.map((item) => (
+          <div
+            key={item.label}
+            className="min-w-0 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-2)] px-2.5 py-2"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{item.label}</p>
+            <p className="mt-1 min-w-0 truncate text-sm font-semibold text-foreground">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
       {primaryItems.map((item) => (
         <div
           key={item.label}
           className={cn(
             "min-w-0 max-w-full overflow-hidden rounded-[16px] border clinical-divider bg-white p-3",
-            item.label === "Diagnosis" ? "[grid-column:1/-1]" : "",
+            item.fullWidth ? "[grid-column:1/-1]" : "",
           )}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
           <p
             className={cn(
               "mt-1.5 min-w-0 max-w-full whitespace-normal break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]",
-              item.label === "Diagnosis" ? "break-all [word-break:break-word]" : "",
+              item.fullWidth ? "break-all [word-break:break-word]" : "",
             )}
           >
             {item.value}
