@@ -100,7 +100,7 @@ export default async function PatientPage({
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
             <Link
               href={`/patients/${bundle.patient.id}/summary-note`}
               className="button-accent inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold"

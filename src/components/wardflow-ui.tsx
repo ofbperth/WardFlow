@@ -152,7 +152,7 @@ export function PageHeader({
       )}
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0 max-w-4xl">
+        <div className="min-w-0 flex-1">
           <h1
             className={cn(
               "font-display font-semibold text-foreground text-balance",
@@ -362,40 +362,40 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
 
   return (
     <>
-      <div className="grid gap-2.5 sm:grid-cols-2 md:hidden">
+      <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))] md:hidden">
         {primaryItems.map((item) => (
           <div
             key={item.label}
             className={cn(
               "rounded-[16px] border clinical-divider bg-white p-3",
-              item.label === "Diagnosis" ? "sm:col-span-2" : "",
+              item.label === "Diagnosis" ? "[grid-column:1/-1]" : "",
             )}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-            <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{item.value}</p>
+            <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground">{item.value}</p>
           </div>
         ))}
 
-        <details className="panel-muted sm:col-span-2 rounded-[16px] p-3">
+        <details className="panel-muted rounded-[16px] p-3 [grid-column:1/-1]">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
             Clinical details
           </summary>
-          <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2.5 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
             {secondaryItems.map((item) => (
               <div key={item.label} className="rounded-[14px] border clinical-divider bg-white p-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-                <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{item.value}</p>
+                <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground">{item.value}</p>
               </div>
             ))}
           </div>
         </details>
       </div>
 
-      <div className="hidden gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+      <div className="hidden gap-2.5 md:grid [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))]">
         {allItems.map((item) => (
           <div key={item.label} className="rounded-[16px] border clinical-divider bg-white p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-            <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{item.value}</p>
+            <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground">{item.value}</p>
           </div>
         ))}
       </div>
