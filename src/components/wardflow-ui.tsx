@@ -195,7 +195,7 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold",
         tone ?? "border-[color:var(--color-rule)] bg-white text-foreground",
       )}
     >
@@ -654,7 +654,9 @@ export function ProblemCards({
               <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
-                  <p className="text-xs text-muted">{incompleteCount} incomplete</p>
+                  <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
+                    {incompleteCount} incomplete
+                  </Pill>
                 </div>
                 <div className="mt-2.5 space-y-1.5">
                   {incompleteTasks.length > 0 ? (
@@ -1096,7 +1098,8 @@ function CompactLinkedTaskRow({
   const nextStatus = nextTaskCycleStatus(task.status);
 
   return (
-    <div className="flex items-start gap-2 rounded-[12px] border clinical-divider bg-white px-3 py-2">
+    <div className="rounded-[12px] border clinical-divider bg-white px-3 py-2.5">
+      <div className="flex items-start gap-2">
       <Circle
         className={cn(
           "mt-1 h-2.5 w-2.5 shrink-0",
@@ -1105,35 +1108,43 @@ function CompactLinkedTaskRow({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className={cn("min-w-0 line-clamp-1 text-sm font-semibold", task.status === "done" ? "text-muted" : "text-foreground")}>
+          <p
+            className={cn(
+              "min-w-0 flex-1 text-sm font-semibold leading-5",
+              task.status === "done" ? "text-muted" : "text-foreground",
+            )}
+          >
             {task.title}
           </p>
           {canEdit ? (
-            <form action={updateStatusAction}>
+            <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+              <TaskEditorForm
+                task={task}
+                patientId={patientId}
+                saveTaskAction={saveTaskAction}
+                profiles={profiles}
+              />
+            </TaskEditor>
+          ) : null}
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          {metaLine ? <p className="min-w-0 line-clamp-1 text-xs text-muted">{metaLine}</p> : <span />}
+          {canEdit ? (
+            <form action={updateStatusAction} className="shrink-0">
               <input type="hidden" name="patientId" value={patientId} />
               <input type="hidden" name="taskId" value={task.id} />
               <input type="hidden" name="status" value={nextStatus} />
               <input type="hidden" name="updatedAt" value={task.updatedAt} />
               <PendingGhostButton pendingLabel="Updating..." className="rounded-full px-0 py-0">
-                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+                <Pill tone={`${statusTone(task.status)} px-2.5`}>{labelForTaskStatus(task.status)}</Pill>
               </PendingGhostButton>
             </form>
           ) : (
-            <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
+            <Pill tone={`${statusTone(task.status)} px-2.5`}>{labelForTaskStatus(task.status)}</Pill>
           )}
         </div>
-        {metaLine ? <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p> : null}
       </div>
-      {canEdit ? (
-        <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
-          <TaskEditorForm
-            task={task}
-            patientId={patientId}
-            saveTaskAction={saveTaskAction}
-            profiles={profiles}
-          />
-        </TaskEditor>
-      ) : null}
+      </div>
     </div>
   );
 }
