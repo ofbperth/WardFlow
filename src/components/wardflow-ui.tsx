@@ -251,6 +251,9 @@ export function PatientCensus({
                     <p className="mt-0.5 text-xs text-muted">
                       {patient.age ?? "-"} y / {patient.sex ?? "-"}
                     </p>
+                    <p className="mt-1 text-xs text-muted">
+                      HN {patient.hospitalNumber ?? "-"} | AN {patient.admissionNumber ?? "-"}
+                    </p>
                     <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-5 text-foreground/90">
                       {patient.diagnosis}
                     </p>
@@ -351,14 +354,16 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
     { label: "Sex", value: formatPatientSex(patient.sex) },
     { label: "Age", value: patient.age != null ? String(patient.age) : "-" },
   ];
+  const identityMetrics = [
+    { label: "HN", value: patient.hospitalNumber ?? "-" },
+    { label: "AN", value: patient.admissionNumber ?? "-" },
+  ];
   const primaryItems = [
     { label: "Diagnosis", value: patient.diagnosis, fullWidth: true },
     { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
     { label: "Status", value: labelForPatientStatus(patient.status) },
   ];
   const secondaryItems = [
-    { label: "HN", value: patient.hospitalNumber ?? "-" },
-    { label: "AN", value: patient.admissionNumber ?? "-" },
     { label: "Precaution", value: labelForPrecaution(patient.precaution) },
     { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
     { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
@@ -368,6 +373,18 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
     <div className="grid grid-cols-1 gap-2.5">
       <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-2">
         {topMetrics.map((item) => (
+          <div
+            key={item.label}
+            className="min-w-0 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-2)] px-2.5 py-2"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{item.label}</p>
+            <p className="mt-1 min-w-0 truncate text-sm font-semibold text-foreground">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {identityMetrics.map((item) => (
           <div
             key={item.label}
             className="min-w-0 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-2)] px-2.5 py-2"
