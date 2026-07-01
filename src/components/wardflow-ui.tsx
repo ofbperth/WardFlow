@@ -10,15 +10,12 @@ import {
 import {
   cn,
   formatDateTime,
-  formatPatientSex,
   formatRelative,
   getInitials,
   labelForActivityAction,
-  labelForLifecycle,
   labelForProblemDiagnosisStatus,
   labelForProblemPriority,
   labelForPatientStatus,
-  labelForPrecaution,
   labelForRole,
   labelForTaskPriority,
   labelForTaskStatus,
@@ -40,6 +37,7 @@ import {
   TaskCreator,
   TaskEditor,
 } from "@/components/form-feedback";
+import { PatientSummaryGrid } from "@/components/patient-summary-grid";
 import type {
   ActivityLog,
   DischargedDirectoryItem,
@@ -345,62 +343,7 @@ function formatProgressHistoryLine(problem: Problem, entry: Problem["historyEntr
 }
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
-  const primaryItems = [
-    { label: "Ward", value: ward ?? "-" },
-    { label: "Bed", value: patient.bed },
-    { label: "Age / Sex", value: `${patient.age ?? "-"} / ${formatPatientSex(patient.sex)}` },
-    { label: "Diagnosis", value: patient.diagnosis },
-    { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
-    { label: "Status", value: labelForPatientStatus(patient.status) },
-  ];
-  const secondaryItems = [
-    { label: "Precaution", value: labelForPrecaution(patient.precaution) },
-    { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
-    { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
-  ];
-  const allItems = [...primaryItems, ...secondaryItems];
-
-  return (
-    <>
-      <div className="grid gap-2.5 grid-cols-1 [@media(hover:hover)_and_(pointer:fine)]:hidden">
-        {primaryItems.map((item) => (
-          <div
-            key={item.label}
-            className={cn(
-              "rounded-[16px] border clinical-divider bg-white p-3",
-              item.label === "Diagnosis" ? "[grid-column:1/-1]" : "",
-            )}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-            <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground">{item.value}</p>
-          </div>
-        ))}
-
-        <details className="panel-muted rounded-[16px] p-3 [grid-column:1/-1]">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
-            Clinical details
-          </summary>
-          <div className="mt-2.5 grid gap-2 grid-cols-1">
-            {secondaryItems.map((item) => (
-              <div key={item.label} className="rounded-[14px] border clinical-divider bg-white p-2.5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-                <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </details>
-      </div>
-
-      <div className="hidden gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))] [@media(hover:hover)_and_(pointer:fine)]:grid">
-        {allItems.map((item) => (
-          <div key={item.label} className="rounded-[16px] border clinical-divider bg-white p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-            <p className="mt-1.5 break-words text-sm font-semibold leading-5 text-foreground">{item.value}</p>
-          </div>
-        ))}
-      </div>
-    </>
-  );
+  return <PatientSummaryGrid patient={patient} ward={ward} />;
 }
 
 export function ProblemCards({
