@@ -197,13 +197,13 @@ export function AppShell({
             </div>
           </aside>
 
-          <main className="min-w-0 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+1.5rem)] lg:pb-0">
+          <main className="min-w-0 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+1rem)] lg:pb-0">
             {children}
           </main>
         </div>
 
-        <div className="mobile-bottom-dock sticky bottom-0 z-30 mt-3 px-1 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
-          <nav className="app-panel mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-full max-w-[760px] items-center justify-between px-1.5 py-1.5 shadow-[0_-10px_30px_rgba(15,23,42,0.06)]">
+        <div className="mobile-bottom-dock sticky bottom-0 z-30 mt-2 px-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
+          <nav className="app-panel mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-full max-w-[760px] items-center justify-between px-1 py-1 shadow-[0_-10px_30px_rgba(15,23,42,0.06)]">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname.startsWith(item.href);
@@ -213,7 +213,7 @@ export function AppShell({
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "nav-chip flex min-h-[3rem] flex-1 flex-col items-center justify-center gap-1 rounded-[16px] px-1 py-1.5 text-[10px] font-semibold",
+                    "nav-chip flex min-h-[2.55rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1 py-1 text-[10px] font-semibold",
                     active && "nav-chip-active",
                   )}
                 >
