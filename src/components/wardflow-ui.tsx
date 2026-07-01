@@ -814,11 +814,44 @@ export function TaskCards({
   const active = tasks.filter((task) => task.status !== "done");
   const archived = tasks.filter((task) => task.status === "done");
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
+  const statusSummary = [
+    {
+      label: "Open",
+      value: active.length,
+      tone: "border-[color:var(--color-rule)] bg-white text-foreground",
+    },
+    {
+      label: "In progress",
+      value: active.filter((task) => task.status === "in_progress").length,
+      tone: "border-sky-200 bg-sky-50 text-sky-700",
+    },
+    {
+      label: "Blocked",
+      value: active.filter((task) => task.status === "blocked").length,
+      tone: "border-rose-200 bg-rose-50 text-rose-700",
+    },
+    {
+      label: "Done",
+      value: archived.length,
+      tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    },
+  ];
 
   return (
     <div className="space-y-3">
-      <div className="max-w-[12rem]">
-        <InfoBlock label="All incomplete" value={String(active.length)} />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {statusSummary.map((item) => (
+          <div
+            key={item.label}
+            className={cn(
+              "rounded-[14px] border px-3 py-2.5",
+              item.tone,
+            )}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-75">{item.label}</p>
+            <p className="mt-1 text-lg font-semibold leading-none">{item.value}</p>
+          </div>
+        ))}
       </div>
 
       {active.length > 0 ? (
@@ -896,25 +929,39 @@ function TaskCard({
     !compact &&
     (Boolean(task.note) || Boolean(task.blockedReason) || task.updates.length > 0 || canEdit);
   const nextStatus = nextTaskCycleStatus(task.status);
+  const latestUpdate = task.updates[0];
+  const detailItems = compactTaskDetailList(task, problem);
 
   return (
-    <div className="rounded-[16px] border clinical-divider bg-white p-3">
-      <div className="flex items-start gap-2">
+    <div className={cn("rounded-[16px] border clinical-divider bg-white", compact ? "p-2.5" : "p-3")}>
+      <div className="flex items-start gap-2.5">
         <Circle
           className={cn(
             "mt-1 h-2.5 w-2.5 shrink-0",
-            task.status === "done" ? "fill-emerald-500 text-emerald-500" : "fill-slate-300 text-slate-300",
+            task.status === "done"
+              ? "fill-emerald-500 text-emerald-500"
+              : task.status === "blocked"
+                ? "fill-rose-500 text-rose-500"
+                : task.status === "in_progress"
+                  ? "fill-sky-500 text-sky-500"
+                  : "fill-slate-300 text-slate-300",
           )}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2.5">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
-                <p className="line-clamp-1 text-sm font-semibold text-foreground">{task.title}</p>
+                <p className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">{task.title}</p>
+                <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
                 <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
               </div>
-              <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p>
-              {task.note ? <p className="mt-1 line-clamp-2 text-sm text-foreground/90">{task.note}</p> : null}
+              {metaLine ? <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p> : null}
+              {problem ? (
+                <p className="mt-1 line-clamp-1 text-xs font-medium text-[color:var(--color-accent-strong)]">
+                  {problem.problemName}
+                </p>
+              ) : null}
+              {task.note ? <p className="mt-1.5 line-clamp-2 text-sm text-foreground/90">{task.note}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {canEdit ? (
@@ -945,15 +992,32 @@ function TaskCard({
         </div>
       </div>
 
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+        <span>{task.updatedByName ?? "Unknown"}</span>
+        <span>{formatRelative(task.updatedAt)}</span>
+        {latestUpdate ? <span>Latest note {formatRelative(latestUpdate.createdAt)}</span> : null}
+      </div>
+
       {hasExpandableContent ? (
         <details className="mt-2 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[color:var(--color-ink)]">
-            <span>Details</span>
+            <span>{latestUpdate ? "Latest note / details" : "Details"}</span>
             <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
           </summary>
 
-          <div className="mt-2.5 space-y-3">
-            <CompactTaskDetailList task={task} />
+          <div className="mt-2.5 space-y-2.5">
+            {detailItems.length ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {detailItems.map((item) => (
+                  <div key={item.label} className="rounded-[12px] border clinical-divider bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             {task.updates.length > 0 ? (
               <div className="space-y-1.5">
@@ -985,12 +1049,6 @@ function TaskCard({
             ) : null}
           </div>
         </details>
-      ) : null}
-
-      {!compact ? (
-        <p className="mt-2.5 text-xs text-muted">
-          Updated by {task.updatedByName ?? "Unknown"} | {formatRelative(task.updatedAt)}
-        </p>
       ) : null}
     </div>
   );
@@ -1080,26 +1138,15 @@ function CompactLinkedTaskRow({
   );
 }
 
-function CompactTaskDetailList({
-  task,
-}: {
-  task: TaskWithUpdates;
-}) {
-  const items = [
-    `Status: ${labelForTaskStatus(task.status)}`,
-    `Type: ${labelForTaskType(task.type)}`,
-    task.blockedReason ? `Blocked: ${task.blockedReason}` : null,
-  ].filter(Boolean);
-
-  return (
-    <ul className="space-y-1 text-sm text-foreground">
-      {items.map((item) => (
-        <li key={item} className="line-clamp-2">
-          • {item}
-        </li>
-      ))}
-    </ul>
-  );
+function compactTaskDetailList(task: TaskWithUpdates, problem: Problem | null) {
+  return [
+    { label: "Status", value: labelForTaskStatus(task.status) },
+    { label: "Owner", value: task.ownerName ?? "Unassigned" },
+    { label: "Type", value: labelForTaskType(task.type) },
+    problem ? { label: "Problem", value: problem.problemName } : null,
+    task.dueAt ? { label: "Due", value: formatDateTime(task.dueAt) } : null,
+    task.blockedReason ? { label: "Blocked", value: task.blockedReason } : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item));
 }
 
 export function TaskEditorForm({
@@ -1676,15 +1723,6 @@ export function StaffRoleCards({
 }
 
 export { DangerZone };
-
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-[color:var(--color-accent-soft)]/70 p-3">
-      <p className="text-xs uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-2 text-sm text-foreground">{value}</p>
-    </div>
-  );
-}
 
 function MiniList({ title, items }: { title: string; items: string[] }) {
   return (
