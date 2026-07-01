@@ -532,7 +532,12 @@ export function DischargeSummaryEditor({
 
   if (!open) {
     return (
-      <div className={cn("mt-3 flex justify-stretch md:mt-5 md:justify-end", className)}>
+      <div
+        className={cn(
+          iconOnly ? "inline-flex items-center" : "mt-3 flex justify-stretch md:mt-5 md:justify-end",
+          className,
+        )}
+      >
         <button
           type="button"
           onClick={() => setOpen(true)}
