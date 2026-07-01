@@ -209,8 +209,11 @@ export default async function PatientPage({
             <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
 
             {canManagePatient ? (
-              <div className="mt-4 flex flex-wrap items-start gap-3">
+              <div className="mt-4 flex items-center gap-2">
                 <PatientEditor
+                  iconOnly
+                  compactTrigger
+                  buttonTitle="Edit patient detail"
                   className="mt-0"
                   buttonClassName="mt-0"
                   panelClassName="mt-0 order-last w-full"
@@ -278,8 +281,11 @@ export default async function PatientPage({
 
                 {bundle.patient.lifecycle === "active" && dischargeDraft ? (
                   <DischargeSummaryEditor
+                    iconOnly
+                    compactTrigger
+                    buttonTitle="Discharge patient"
                     className="mt-0"
-                    buttonClassName="w-full md:w-auto"
+                    buttonClassName=""
                     panelClassName="mt-0 order-last w-full"
                     headerClassName="items-start"
                     contentClassName="space-y-3"

@@ -355,6 +355,9 @@ export function TaskEditor({
 
 export function PatientEditor({
   children,
+  iconOnly = false,
+  compactTrigger = false,
+  buttonTitle,
   className,
   buttonClassName,
   panelClassName,
@@ -362,6 +365,9 @@ export function PatientEditor({
   contentClassName,
 }: {
   children: React.ReactNode;
+  iconOnly?: boolean;
+  compactTrigger?: boolean;
+  buttonTitle?: string;
   className?: string;
   buttonClassName?: string;
   panelClassName?: string;
@@ -372,6 +378,9 @@ export function PatientEditor({
     <InlineEditor
       buttonLabel="Edit patient detail"
       panelTitle="Edit patient detail"
+      iconOnly={iconOnly}
+      compactTrigger={compactTrigger}
+      buttonTitle={buttonTitle}
       className={className}
       buttonClassName={buttonClassName}
       panelClassName={panelClassName}
@@ -500,6 +509,9 @@ export function AdmitPatientCreator({
 
 export function DischargeSummaryEditor({
   children,
+  iconOnly = false,
+  compactTrigger = false,
+  buttonTitle,
   className,
   buttonClassName,
   panelClassName,
@@ -507,6 +519,9 @@ export function DischargeSummaryEditor({
   contentClassName,
 }: {
   children: React.ReactNode;
+  iconOnly?: boolean;
+  compactTrigger?: boolean;
+  buttonTitle?: string;
   className?: string;
   buttonClassName?: string;
   panelClassName?: string;
@@ -521,13 +536,20 @@ export function DischargeSummaryEditor({
         <button
           type="button"
           onClick={() => setOpen(true)}
+          title={buttonTitle ?? "Discharge patient"}
+          aria-label={buttonTitle ?? "Discharge patient"}
           className={cn(
-            "inline-flex w-full items-center justify-center gap-2 rounded-full border border-[color:var(--color-warning)] bg-[color:var(--color-warning)]/15 px-4 py-2.5 text-sm font-semibold text-[color:var(--color-ink)] md:w-auto md:px-5 md:py-3",
+            iconOnly
+              ? cn(
+                  "inline-flex items-center justify-center rounded-full border border-[color:var(--color-warning)] bg-[color:var(--color-warning)]/15 text-[color:var(--color-ink)]",
+                  compactTrigger ? "h-7 w-7" : "h-8 w-8",
+                )
+              : "inline-flex w-full items-center justify-center gap-2 rounded-full border border-[color:var(--color-warning)] bg-[color:var(--color-warning)]/15 px-4 py-2.5 text-sm font-semibold text-[color:var(--color-ink)] md:w-auto md:px-5 md:py-3",
             buttonClassName,
           )}
         >
           <TriangleAlert className="h-4 w-4" />
-          Discharge patient
+          {iconOnly ? <span className="sr-only">Discharge patient</span> : "Discharge patient"}
         </button>
       </div>
     );
