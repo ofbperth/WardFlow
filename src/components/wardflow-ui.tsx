@@ -815,7 +815,7 @@ export function TaskCards({
 }) {
   const active = tasks.filter((task) => task.status !== "done");
   const archived = tasks.filter((task) => task.status === "done");
-  const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
+  void problems;
   const statusSummary = [
     {
       label: "Open",
@@ -863,7 +863,6 @@ export function TaskCards({
               key={task.id}
               task={task}
               patient={patient}
-              problem={task.problemId ? problemMap.get(task.problemId) ?? null : null}
               updateStatusAction={updateStatusAction}
               saveTaskAction={saveTaskAction}
               saveTaskUpdateAction={saveTaskUpdateAction}
@@ -889,7 +888,6 @@ export function TaskCards({
                 key={task.id}
                 task={task}
                 patient={patient}
-                problem={task.problemId ? problemMap.get(task.problemId) ?? null : null}
                 updateStatusAction={updateStatusAction}
                 saveTaskAction={saveTaskAction}
                 saveTaskUpdateAction={saveTaskUpdateAction}
@@ -908,7 +906,6 @@ export function TaskCards({
 function TaskCard({
   task,
   patient,
-  problem,
   updateStatusAction,
   saveTaskAction,
   saveTaskUpdateAction,
@@ -918,7 +915,6 @@ function TaskCard({
 }: {
   task: TaskWithUpdates;
   patient: Patient;
-  problem: Problem | null;
   updateStatusAction: (formData: FormData) => Promise<void>;
   saveTaskAction: (formData: FormData) => Promise<void>;
   saveTaskUpdateAction: (formData: FormData) => Promise<void>;
@@ -926,13 +922,11 @@ function TaskCard({
   canEdit: boolean;
   compact?: boolean;
 }) {
-  const metaLine = compactTaskMeta(task, { problem, showProblem: false, showOwner: true });
   const hasExpandableContent =
     !compact &&
     (Boolean(task.note) || Boolean(task.blockedReason) || task.updates.length > 0 || canEdit);
   const nextStatus = nextTaskCycleStatus(task.status);
-  const latestUpdate = task.updates[0];
-  const detailItems = compactTaskDetailList(task, problem);
+  const detailItems = compactTaskDetailList(task);
 
   return (
     <div className={cn("rounded-[16px] border clinical-divider bg-white", compact ? "p-2.5" : "p-3")}>
@@ -957,12 +951,6 @@ function TaskCard({
                 <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
                 <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
               </div>
-              {metaLine ? <p className="mt-1 line-clamp-1 text-xs text-muted">{metaLine}</p> : null}
-              {problem ? (
-                <p className="mt-1 line-clamp-1 text-xs font-medium text-[color:var(--color-accent-strong)]">
-                  {problem.problemName}
-                </p>
-              ) : null}
               {task.note ? <p className="mt-1.5 line-clamp-2 text-sm text-foreground/90">{task.note}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
@@ -994,16 +982,10 @@ function TaskCard({
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-        <span>{task.updatedByName ?? "Unknown"}</span>
-        <span>{formatRelative(task.updatedAt)}</span>
-        {latestUpdate ? <span>Latest note {formatRelative(latestUpdate.createdAt)}</span> : null}
-      </div>
-
       {hasExpandableContent ? (
         <details className="mt-2 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[color:var(--color-ink)]">
-            <span>{latestUpdate ? "Latest note / details" : "Details"}</span>
+            <span>Details</span>
             <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
           </summary>
 
@@ -1149,12 +1131,10 @@ function CompactLinkedTaskRow({
   );
 }
 
-function compactTaskDetailList(task: TaskWithUpdates, problem: Problem | null) {
+function compactTaskDetailList(task: TaskWithUpdates) {
   return [
     { label: "Status", value: labelForTaskStatus(task.status) },
-    { label: "Owner", value: task.ownerName ?? "Unassigned" },
     { label: "Type", value: labelForTaskType(task.type) },
-    problem ? { label: "Problem", value: problem.problemName } : null,
     task.dueAt ? { label: "Due", value: formatDateTime(task.dueAt) } : null,
     task.blockedReason ? { label: "Blocked", value: task.blockedReason } : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item));
