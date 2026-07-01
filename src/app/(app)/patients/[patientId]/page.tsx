@@ -95,7 +95,7 @@ export default async function PatientPage({
       />
 
       <PageHeader
-        className="sticky top-3 z-20"
+        className="md:sticky md:top-3 md:z-20"
         compact
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
