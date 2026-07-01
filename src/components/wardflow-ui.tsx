@@ -362,7 +362,7 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
 
   return (
     <>
-      <div className="grid gap-2.5 grid-cols-1 lg:hidden [@media(pointer:coarse)]:grid">
+      <div className="grid gap-2.5 grid-cols-1 [@media(hover:hover)_and_(pointer:fine)]:hidden">
         {primaryItems.map((item) => (
           <div
             key={item.label}
@@ -391,7 +391,7 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
         </details>
       </div>
 
-      <div className="hidden gap-2.5 lg:grid [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))] [@media(pointer:coarse)]:hidden">
+      <div className="hidden gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))] [@media(hover:hover)_and_(pointer:fine)]:grid">
         {allItems.map((item) => (
           <div key={item.label} className="rounded-[16px] border clinical-divider bg-white p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
