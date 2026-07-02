@@ -732,13 +732,16 @@ export function ProblemCards({
                 </div>
               </div>
 
-              <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
-                <div className="flex items-center justify-between gap-2">
+              <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
-                  <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
-                    {incompleteCount} incomplete
-                  </Pill>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
+                      {incompleteCount} open
+                    </Pill>
+                    <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
+                  </div>
+                </summary>
                 <div className="mt-2.5 space-y-1.5">
                   {incompleteTasks.length > 0 ? (
                     incompleteTasks.map((task) => (
@@ -756,7 +759,7 @@ export function ProblemCards({
                     <p className="text-sm text-muted">No linked tasks yet</p>
                   )}
                 </div>
-              </div>
+              </details>
 
               <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
