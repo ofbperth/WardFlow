@@ -148,35 +148,18 @@ export default async function PatientPage({
               >
                 <form action={saveProblemMasterAction} className="space-y-3">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Problem name">
-                      <TextInput name="problemName" required placeholder="Diffuse alveolar hemorrhage" />
-                    </Field>
-                    <Field label="Priority">
-                      <SelectBox name="priority" defaultValue="ACTIVE_STABLE">
-                        <option value="ACTIVE_UNSTABLE">Active unstable</option>
-                        <option value="ACTIVE_STABLE">Active stable</option>
-                        <option value="MONITORING">Monitoring</option>
-                        <option value="RESOLVED_CHRONIC">Resolved / chronic</option>
-                      </SelectBox>
-                    </Field>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Diagnosis status">
-                      <SelectBox name="diagnosisStatus" defaultValue="CONFIRMED">
-                        <option value="SUSPECTED">Suspected</option>
-                        <option value="CONFIRMED">Confirmed</option>
-                        <option value="RULED_OUT">Ruled out</option>
-                      </SelectBox>
-                    </Field>
-                    <Field label="Current summary">
-                      <TextInput name="currentStatusSummary" placeholder="Stable after PLEX" />
-                    </Field>
-                  </div>
-                  <label className="flex items-center gap-2 text-sm text-foreground">
-                    <input type="checkbox" name="includeInHandover" defaultChecked />
-                    Include in handover
-                  </label>
+                  <input type="hidden" name="priority" value="ACTIVE_STABLE" />
+                  <input type="hidden" name="diagnosisStatus" value="CONFIRMED" />
+                  <input type="hidden" name="includeInHandover" value="on" />
+                  <Field label="Problem name">
+                    <TextInput name="problemName" required placeholder="Diffuse alveolar hemorrhage" />
+                  </Field>
+                  <Field label="Short note">
+                    <TextArea
+                      name="shortNote"
+                      placeholder={"08:00 first note\nKey update for this problem\nPlan or concern if needed"}
+                    />
+                  </Field>
                   <div className="flex justify-end">
                     <SubmitButton>Save problem</SubmitButton>
                   </div>

@@ -109,19 +109,19 @@ function buildProblemHistory(problem: Problem) {
     return ["No historical progress entry yet"];
   }
 
-  return problem.historyEntries.map((entry) =>
-    [
+  return problem.historyEntries.map((entry) => {
+    const pendingTasks = problem.linkedTasks
+      .filter((task) => entry.pendingTaskIds.includes(task.id))
+      .map((task) => task.title);
+
+    return [
       entry.dateTime.slice(0, 16).replace("T", " "),
-      entry.statusUpdate ? `Status: ${entry.statusUpdate}` : null,
-      entry.newEvidence ? `Evidence: ${entry.newEvidence}` : null,
-      entry.treatmentChange ? `Treatment: ${entry.treatmentChange}` : null,
-      entry.reasoningUpdate ? `Reasoning: ${entry.reasoningUpdate}` : null,
-      entry.todayPlan ? `Plan: ${entry.todayPlan}` : null,
-      entry.pendingTaskIds.length ? `Pending tasks: ${entry.pendingTaskIds.join(", ")}` : null,
+      entry.note,
+      pendingTasks.length ? `Pending tasks: ${pendingTasks.join(", ")}` : null,
     ]
       .filter(Boolean)
-      .join(" | "),
-  );
+      .join("\n");
+  });
 }
 
 function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
@@ -134,15 +134,11 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
     currentSummary: withFallback(
       [
         `${labelForProblemDiagnosisStatus(problem.diagnosisStatus)} diagnosis`,
-        ...splitBullets(problem.currentStatusSummary),
+        ...splitBullets(problem.currentStatusSummary ?? latestEntry?.note),
       ],
       "No current summary",
     ),
-    latestUpdate: withFallback(splitBullets(latestEntry?.statusUpdate), "No latest update"),
-    evidence: withFallback(splitBullets(latestEntry?.newEvidence), "No new evidence"),
-    treatment: withFallback(splitBullets(latestEntry?.treatmentChange), "No treatment change"),
-    reasoning: withFallback(splitBullets(latestEntry?.reasoningUpdate), "No reasoning update"),
-    todayPlan: withFallback(splitBullets(latestEntry?.todayPlan), "No today's plan"),
+    latestNote: withFallback(splitBullets(latestEntry?.note), "No latest note"),
     history: withFallback(buildProblemHistory(problem), "No history"),
     pendingTasks: withFallback(
       problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
@@ -181,11 +177,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
         `${index + 1}. ${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
       );
       lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
-      lines.push(`   Latest Update: ${problem.latestUpdate.join(" | ")}`);
-      lines.push(`   Evidence: ${problem.evidence.join(" | ")}`);
-      lines.push(`   Treatment: ${problem.treatment.join(" | ")}`);
-      lines.push(`   Reasoning: ${problem.reasoning.join(" | ")}`);
-      lines.push(`   Today's Plan: ${problem.todayPlan.join(" | ")}`);
+      lines.push(`   Latest Note: ${problem.latestNote.join(" | ")}`);
       lines.push(`   History: ${problem.history.join(" || ")}`);
       lines.push(`   Pending Tasks: ${problem.pendingTasks.join(" | ")}`);
     });
@@ -253,7 +245,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     ...(handover?.note ? [handover.note] : []),
   ];
   const suggestedPlan = [
-    ...activeProblems.flatMap((problem) => problem.todayPlan.filter((item) => item !== "-")),
+    ...activeProblems.flatMap((problem) => problem.latestNote.filter((item) => item !== "-")),
     ...(handover?.escalationInstruction ? [handover.escalationInstruction] : []),
   ];
   const safetyAlerts = [
@@ -301,8 +293,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
         [
           problem.problemName,
           problem.currentStatusSummary,
-          problem.latestEntry?.statusUpdate,
-          problem.latestEntry?.todayPlan ? `Plan: ${problem.latestEntry.todayPlan}` : null,
+          problem.latestEntry?.note,
         ]
           .filter(Boolean)
           .join(" | "),

@@ -154,11 +154,7 @@ export type ProblemProgressEntry = {
   dateTime: string;
   authorId: string | null;
   authorName: string | null;
-  statusUpdate: string | null;
-  newEvidence: string | null;
-  treatmentChange: string | null;
-  reasoningUpdate: string | null;
-  todayPlan: string | null;
+  note: string | null;
   pendingTaskIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -335,11 +331,7 @@ export type SummaryNoteProblemEntry = {
   priority: ProblemPriority;
   diagnosisStatus: ProblemDiagnosisStatus;
   currentSummary: string[];
-  latestUpdate: string[];
-  evidence: string[];
-  treatment: string[];
-  reasoning: string[];
-  todayPlan: string[];
+  latestNote: string[];
   history: string[];
   pendingTasks: string[];
 };

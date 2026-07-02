@@ -280,37 +280,108 @@ export function PatientCensus({
 }
 
 function compactProblemStatus(problem: Problem) {
-  return problem.latestEntry?.statusUpdate ?? problem.currentStatusSummary ?? "No status line yet";
+  return problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet";
 }
 
-function compactProblemEvidence(problem: Problem) {
-  return problem.latestEntry?.newEvidence ?? "No key evidence yet";
-}
-
-function compactProblemTreatment(problem: Problem) {
-  return problem.latestEntry?.treatmentChange ?? "No treatment change documented";
-}
-
-function compactProblemReasoning(problem: Problem) {
-  return problem.latestEntry?.reasoningUpdate ?? "No reasoning update documented";
-}
-
-function compactProblemPlan(problem: Problem) {
-  return problem.latestEntry?.todayPlan ?? "No today's plan documented";
-}
-
-function formatProgressHistoryLine(problem: Problem, entry: Problem["historyEntries"][number]) {
-  const selectedPendingTasks = problem.linkedTasks
+function formatProgressPendingTasks(problem: Problem, entry: Problem["historyEntries"][number]) {
+  return problem.linkedTasks
     .filter((task) => entry.pendingTaskIds.includes(task.id) && task.status !== "done")
     .map((task) => task.title);
-  return [
-    entry.statusUpdate,
-    entry.newEvidence,
-    entry.treatmentChange,
-    selectedPendingTasks.length ? `Tasks: ${selectedPendingTasks.join(", ")}` : null,
-  ]
-    .filter(Boolean)
-    .join(" | ");
+}
+
+function ProgressNoteCard({
+  problem,
+  entry,
+  canEdit,
+  patientId,
+  saveProblemProgressEntryAction,
+  title,
+}: {
+  problem: Problem;
+  entry: Problem["historyEntries"][number];
+  canEdit: boolean;
+  patientId: string;
+  saveProblemProgressEntryAction: (formData: FormData) => Promise<void>;
+  title: string;
+}) {
+  const selectedPendingTasks = formatProgressPendingTasks(problem, entry);
+
+  return (
+    <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{title}</p>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+            {formatDateTime(entry.dateTime)}
+          </p>
+          {entry.authorName ? (
+            <p className="mt-1 text-xs text-muted">By {entry.authorName}</p>
+          ) : null}
+          {entry.note ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{entry.note}</p>
+          ) : (
+            <p className="mt-2 text-sm text-muted">No note text</p>
+          )}
+          {selectedPendingTasks.length ? (
+            <div className="mt-2 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                Linked pending tasks
+              </p>
+              <ul className="space-y-1">
+                {selectedPendingTasks.map((taskTitle) => (
+                  <li key={taskTitle} className="text-sm text-foreground">
+                    {taskTitle}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+        {canEdit ? (
+          <ProgressEntryHistoryEditor iconOnly compactTrigger buttonTitle="Edit progress note">
+            <form action={saveProblemProgressEntryAction} className="space-y-3">
+              <input type="hidden" name="id" value={entry.id} />
+              <input type="hidden" name="patientId" value={patientId} />
+              <input type="hidden" name="problemId" value={problem.id} />
+              <input type="hidden" name="dateTime" value={entry.dateTime} />
+              <input type="hidden" name="updatedAt" value={entry.updatedAt} />
+              <Field label="Progress note">
+                <TextArea
+                  name="note"
+                  defaultValue={entry.note ?? ""}
+                  placeholder={"08:00 reviewed on round\nPatient breathing easier\nPlan continue current support"}
+                />
+              </Field>
+              {problem.linkedTasks.filter((task) => task.status !== "done").length ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Linked pending tasks</p>
+                  <div className="space-y-2">
+                    {problem.linkedTasks
+                      .filter((task) => task.status !== "done")
+                      .map((task) => (
+                        <label
+                          key={task.id}
+                          className="flex items-start gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
+                        >
+                          <input
+                            type="checkbox"
+                            name="pendingTaskIds"
+                            value={task.id}
+                            defaultChecked={entry.pendingTaskIds.includes(task.id)}
+                          />
+                          <span>{task.title}</span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              ) : null}
+              <SubmitButton pendingLabel="Saving update...">Save progress note</SubmitButton>
+            </form>
+          </ProgressEntryHistoryEditor>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
@@ -441,6 +512,7 @@ export function ProblemCards({
       {active.map((problem) => {
         const linkedTasks = problem.linkedTasks;
         const incompleteTasks = linkedTasks.filter((task) => task.status !== "done");
+        const latestEntry = problem.latestEntry;
         const olderHistory = problem.historyEntries.slice(1);
         const incompleteCount = incompleteTasks.length;
         return (
@@ -465,7 +537,7 @@ export function ProblemCards({
                     <p className="truncate text-sm font-semibold text-foreground md:text-[15px]">
                       {problem.problemName}
                     </p>
-                    <p className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-muted">
+                    <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-muted">
                       {compactProblemStatus(problem)}
                     </p>
                     <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
@@ -514,10 +586,10 @@ export function ProblemCards({
                           </SelectBox>
                         </Field>
                         <Field label="Current summary">
-                          <TextInput
+                          <TextArea
                             name="currentStatusSummary"
                             defaultValue={problem.currentStatusSummary ?? ""}
-                            placeholder="Stable after PLEX"
+                            placeholder={"Stable after PLEX\nAdd concise ongoing summary if needed"}
                           />
                         </Field>
                       </div>
@@ -537,20 +609,11 @@ export function ProblemCards({
                     <form action={saveProblemProgressEntryAction} className="space-y-3">
                       <input type="hidden" name="patientId" value={patientId} />
                       <input type="hidden" name="problemId" value={problem.id} />
-                      <Field label="Latest update">
-                        <TextArea name="statusUpdate" placeholder="Hb dropped today" />
-                      </Field>
-                      <Field label="Evidence">
-                        <TextArea name="newEvidence" placeholder="Cr improved" />
-                      </Field>
-                      <Field label="Treatment">
-                        <TextArea name="treatmentChange" placeholder="Antibiotic changed" />
-                      </Field>
-                      <Field label="Reasoning">
-                        <TextArea name="reasoningUpdate" placeholder="Waiting for culture" />
-                      </Field>
-                      <Field label="Today's plan">
-                        <TextArea name="todayPlan" placeholder="Plan discharge tomorrow" />
+                      <Field label="Progress note">
+                        <TextArea
+                          name="note"
+                          placeholder={"08:00 reviewed on round\nPatient breathing easier\nPlan continue current support"}
+                        />
                       </Field>
                       {incompleteTasks.length ? (
                         <div className="space-y-2">
@@ -568,7 +631,7 @@ export function ProblemCards({
                           </div>
                         </div>
                       ) : null}
-                      <SubmitButton pendingLabel="Saving update...">Add update</SubmitButton>
+                      <SubmitButton pendingLabel="Saving update...">Add progress note</SubmitButton>
                     </form>
                   </ProgressEntryEditor>
 
@@ -648,6 +711,29 @@ export function ProblemCards({
 
               <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
                 <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">Latest progress note</p>
+                  <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
+                    {problem.historyEntries.length} note{problem.historyEntries.length === 1 ? "" : "s"}
+                  </Pill>
+                </div>
+                <div className="mt-2.5">
+                  {latestEntry ? (
+                    <ProgressNoteCard
+                      problem={problem}
+                      entry={latestEntry}
+                      canEdit={canEdit}
+                      patientId={patientId}
+                      saveProblemProgressEntryAction={saveProblemProgressEntryAction}
+                      title="Latest"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted">No progress note yet</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
+                <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
                   <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
                     {incompleteCount} incomplete
@@ -674,79 +760,21 @@ export function ProblemCards({
 
               <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
-                  <span>History</span>
+                  <span>Older notes ({olderHistory.length})</span>
                   <ChevronDown className="h-4 w-4 transition-transform details-open:rotate-180" />
                 </summary>
                 <div className="mt-2.5 space-y-1.5">
                   {olderHistory.length ? (
                     olderHistory.map((entry) => (
-                      <div
+                      <ProgressNoteCard
                         key={entry.id}
-                        className="rounded-[12px] border clinical-divider bg-white px-3 py-2"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-                              {formatDateTime(entry.dateTime)}
-                            </p>
-                            <p className="mt-1 line-clamp-2 text-sm text-foreground">
-                              {formatProgressHistoryLine(problem, entry)}
-                            </p>
-                          </div>
-                          {canEdit ? (
-                            <ProgressEntryHistoryEditor
-                              iconOnly
-                              compactTrigger
-                              buttonTitle="Edit history entry"
-                            >
-                              <form action={saveProblemProgressEntryAction} className="space-y-3">
-                                <input type="hidden" name="id" value={entry.id} />
-                                <input type="hidden" name="patientId" value={patientId} />
-                                <input type="hidden" name="problemId" value={problem.id} />
-                                <input type="hidden" name="dateTime" value={entry.dateTime} />
-                                <input type="hidden" name="updatedAt" value={entry.updatedAt} />
-                                <Field label="Latest update">
-                                  <TextArea name="statusUpdate" defaultValue={entry.statusUpdate ?? ""} />
-                                </Field>
-                                <Field label="Evidence">
-                                  <TextArea name="newEvidence" defaultValue={entry.newEvidence ?? ""} />
-                                </Field>
-                                <Field label="Treatment">
-                                  <TextArea name="treatmentChange" defaultValue={entry.treatmentChange ?? ""} />
-                                </Field>
-                                <Field label="Reasoning">
-                                  <TextArea name="reasoningUpdate" defaultValue={entry.reasoningUpdate ?? ""} />
-                                </Field>
-                                <Field label="Today's plan">
-                                  <TextArea name="todayPlan" defaultValue={entry.todayPlan ?? ""} />
-                                </Field>
-                                {incompleteTasks.length ? (
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-semibold text-foreground">Linked pending tasks</p>
-                                    <div className="space-y-2">
-                                      {incompleteTasks.map((task) => (
-                                        <label
-                                          key={task.id}
-                                          className="flex items-start gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            name="pendingTaskIds"
-                                            value={task.id}
-                                            defaultChecked={entry.pendingTaskIds.includes(task.id)}
-                                          />
-                                          <span>{task.title}</span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ) : null}
-                                <SubmitButton pendingLabel="Saving update...">Save history edit</SubmitButton>
-                              </form>
-                            </ProgressEntryHistoryEditor>
-                          ) : null}
-                        </div>
-                      </div>
+                        problem={problem}
+                        entry={entry}
+                        canEdit={canEdit}
+                        patientId={patientId}
+                        saveProblemProgressEntryAction={saveProblemProgressEntryAction}
+                        title="Previous"
+                      />
                     ))
                   ) : (
                     <p className="text-sm text-muted">No older history yet</p>
@@ -778,7 +806,7 @@ export function ProblemCards({
                   </p>
                 </div>
                 {compactProblemStatus(problem) ? (
-                  <p className="mt-1 text-sm text-muted">{compactProblemStatus(problem)}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{compactProblemStatus(problem)}</p>
                 ) : null}
               </div>
             ))}
@@ -1036,10 +1064,7 @@ function TaskCard({
 function CompactProblemBulletList({ problem }: { problem: Problem }) {
   const entries = [
     { label: "Summary", value: problem.currentStatusSummary ?? "" },
-    { label: "Evidence", value: compactProblemEvidence(problem) },
-    { label: "Treatment", value: compactProblemTreatment(problem) },
-    { label: "Reasoning", value: compactProblemReasoning(problem) },
-    { label: "Plan", value: compactProblemPlan(problem) },
+    { label: "Latest note", value: problem.latestEntry?.note ?? "" },
   ].filter((entry) => isMeaningfulValue(entry.value));
 
   return (
@@ -1049,7 +1074,7 @@ function CompactProblemBulletList({ problem }: { problem: Problem }) {
           <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
             {entry.label}
           </span>
-          <span className="line-clamp-2">{entry.value}</span>
+          <span className="whitespace-pre-wrap">{entry.value}</span>
         </li>
       ))}
     </ul>
@@ -1277,7 +1302,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                   patient.problems.some(
                     (problem) =>
                       Boolean(problem.currentStatusSummary) ||
-                      Boolean(problem.latestEntry?.newEvidence) ||
+                      Boolean(problem.latestEntry?.note) ||
                       problem.linkedTasks.some((task) => task.status !== "done"),
                   ),
               )

@@ -233,11 +233,7 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
       );
       insertBullets([
         `Current Summary: ${problem.currentSummary.join(" | ")}`,
-        `Latest Update: ${problem.latestUpdate.join(" | ")}`,
-        `Evidence: ${problem.evidence.join(" | ")}`,
-        `Treatment: ${problem.treatment.join(" | ")}`,
-        `Reasoning: ${problem.reasoning.join(" | ")}`,
-        `Today's Plan: ${problem.todayPlan.join(" | ")}`,
+        `Latest Note: ${problem.latestNote.join(" | ")}`,
         `History: ${problem.history.join(" || ")}`,
         `Pending Tasks: ${problem.pendingTasks.join(" | ")}`,
       ]);

@@ -84,11 +84,7 @@ export default async function SummaryNotePage({
                   </div>
                   <div className="mt-3 space-y-3">
                     <NoteMini title="Current Summary" items={problem.currentSummary} />
-                    <NoteMini title="Latest Update" items={problem.latestUpdate} />
-                    <NoteMini title="Evidence" items={problem.evidence} />
-                    <NoteMini title="Treatment" items={problem.treatment} />
-                    <NoteMini title="Reasoning" items={problem.reasoning} />
-                    <NoteMini title="Today's Plan" items={problem.todayPlan} />
+                    <NoteMini title="Latest Note" items={problem.latestNote} />
                     <NoteMini title="History" items={problem.history} />
                     <NoteMini title="Pending Tasks" items={problem.pendingTasks} />
                   </div>
@@ -125,7 +121,10 @@ function NoteSection({ title, items }: { title: string; items: string[] }) {
       <h2 className="text-lg font-semibold text-foreground">{title}</h2>
       <ul className="space-y-2">
         {items.map((item, index) => (
-          <li key={`${title}-${index}`} className="rounded-[18px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground">
+          <li
+            key={`${title}-${index}`}
+            className="whitespace-pre-wrap rounded-[18px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
+          >
             {item}
           </li>
         ))}
@@ -140,7 +139,7 @@ function NoteMini({ title, items }: { title: string; items: string[] }) {
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{title}</p>
       <ul className="mt-1.5 space-y-1">
         {items.map((item, index) => (
-          <li key={`${title}-${index}`} className="text-sm leading-6 text-foreground">
+          <li key={`${title}-${index}`} className="whitespace-pre-wrap text-sm leading-6 text-foreground">
             {item}
           </li>
         ))}

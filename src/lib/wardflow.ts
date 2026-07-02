@@ -172,6 +172,7 @@ type ProblemProgressEntryRow = {
   date_time: string;
   author_id: string | null;
   pending_task_ids?: string[] | null;
+  note?: string | null;
   status_update: string | null;
   new_evidence: string | null;
   treatment_change: string | null;
@@ -309,6 +310,7 @@ const problemMasterSchema = z.object({
   id: z.string().optional(),
   patientId: z.string().min(1),
   problemName: z.string().min(1),
+  shortNote: z.string().optional().nullable(),
   priority: z.enum(["ACTIVE_UNSTABLE", "ACTIVE_STABLE", "MONITORING", "RESOLVED_CHRONIC"]),
   currentStatusSummary: z.string().optional().nullable(),
   diagnosisStatus: z.enum(["SUSPECTED", "CONFIRMED", "RULED_OUT"]).default("CONFIRMED"),
@@ -323,27 +325,17 @@ const problemProgressEntrySchema = z
     patientId: z.string().min(1),
     problemId: z.string().min(1),
     dateTime: z.string().optional().nullable(),
-    statusUpdate: z.string().optional().nullable(),
-    newEvidence: z.string().optional().nullable(),
-    treatmentChange: z.string().optional().nullable(),
-    reasoningUpdate: z.string().optional().nullable(),
-    todayPlan: z.string().optional().nullable(),
+    note: z.string().optional().nullable(),
     pendingTaskIds: z.array(z.string()).default([]),
     updatedAt: z.string().optional().nullable(),
   })
   .superRefine((value, ctx) => {
-    const hasContent = [
-      value.statusUpdate,
-      value.newEvidence,
-      value.treatmentChange,
-      value.reasoningUpdate,
-      value.todayPlan,
-    ].some((item) => Boolean(item?.trim())) || value.pendingTaskIds.length > 0;
+    const hasContent = Boolean(value.note?.trim()) || value.pendingTaskIds.length > 0;
 
     if (!hasContent) {
       ctx.addIssue({
         code: "custom",
-        message: "Progress update must include at least one clinical update or linked pending task.",
+        message: "Progress update must include note text or linked pending task.",
       });
     }
 });
@@ -549,17 +541,28 @@ function normalizeProblemProgressEntryRecord(
   entry: Partial<ProblemProgressEntry>,
 ): ProblemProgressEntry {
   const timestamp = entry.dateTime ?? entry.createdAt ?? now();
+  const legacyEntry = entry as Partial<ProblemProgressEntry> & {
+    statusUpdate?: string | null;
+    newEvidence?: string | null;
+    treatmentChange?: string | null;
+    reasoningUpdate?: string | null;
+    todayPlan?: string | null;
+  };
   return {
     id: entry.id ?? nextId("problem-progress"),
     problemId: entry.problemId ?? "",
     dateTime: timestamp,
     authorId: entry.authorId ?? null,
     authorName: entry.authorName ?? null,
-    statusUpdate: entry.statusUpdate ?? null,
-    newEvidence: entry.newEvidence ?? null,
-    treatmentChange: entry.treatmentChange ?? null,
-    reasoningUpdate: entry.reasoningUpdate ?? null,
-    todayPlan: entry.todayPlan ?? null,
+    note:
+      entry.note ??
+      buildProblemProgressNoteFromLegacy({
+        statusUpdate: legacyEntry.statusUpdate,
+        newEvidence: legacyEntry.newEvidence,
+        treatmentChange: legacyEntry.treatmentChange,
+        reasoningUpdate: legacyEntry.reasoningUpdate,
+        todayPlan: legacyEntry.todayPlan,
+      }),
     pendingTaskIds: entry.pendingTaskIds ?? [],
     createdAt: entry.createdAt ?? timestamp,
     updatedAt: entry.updatedAt ?? timestamp,
@@ -608,6 +611,31 @@ function normalizePatientRecord(patient: Partial<Patient>): Patient {
     dischargedAt: patient.dischargedAt ?? null,
     lastUpdate: patient.lastUpdate ?? now(),
   };
+}
+
+function buildProblemProgressNoteFromLegacy(input: {
+  note?: string | null;
+  statusUpdate?: string | null;
+  newEvidence?: string | null;
+  treatmentChange?: string | null;
+  reasoningUpdate?: string | null;
+  todayPlan?: string | null;
+}) {
+  if (typeof input.note === "string" && input.note.trim()) {
+    return input.note;
+  }
+
+  const sections = [
+    input.statusUpdate,
+    input.newEvidence,
+    input.treatmentChange,
+    input.reasoningUpdate,
+    input.todayPlan ? `Plan: ${input.todayPlan}` : null,
+  ]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return sections.length ? sections.join("\n") : null;
 }
 
 function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore {
@@ -667,26 +695,29 @@ function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore
         authorId: null,
         authorName: null,
         dateTime: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
-        statusUpdate:
-          typeof problem.currentStatus === "string"
-            ? problem.currentStatus
-            : typeof problem.keyData === "string"
-              ? problem.keyData
-              : null,
-        newEvidence:
-          typeof problem.evidence === "string"
-            ? problem.evidence
-            : typeof problem.keyData === "string"
-              ? problem.keyData
-              : null,
-        treatmentChange: typeof problem.treatment === "string" ? problem.treatment : null,
-        reasoningUpdate: typeof problem.reasoning === "string" ? problem.reasoning : null,
-        todayPlan:
-          typeof problem.todayPlan === "string"
-            ? problem.todayPlan
-            : typeof problem.plan === "string"
-              ? problem.plan
-              : null,
+        note: buildProblemProgressNoteFromLegacy({
+          note: typeof problem.note === "string" ? problem.note : null,
+          statusUpdate:
+            typeof problem.currentStatus === "string"
+              ? problem.currentStatus
+              : typeof problem.keyData === "string"
+                ? problem.keyData
+                : null,
+          newEvidence:
+            typeof problem.evidence === "string"
+              ? problem.evidence
+              : typeof problem.keyData === "string"
+                ? problem.keyData
+                : null,
+          treatmentChange: typeof problem.treatment === "string" ? problem.treatment : null,
+          reasoningUpdate: typeof problem.reasoning === "string" ? problem.reasoning : null,
+          todayPlan:
+            typeof problem.todayPlan === "string"
+              ? problem.todayPlan
+              : typeof problem.plan === "string"
+                ? problem.plan
+                : null,
+        }),
         pendingTaskIds: [],
         createdAt: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
         updatedAt: typeof problem.updatedAt === "string" ? problem.updatedAt : now(),
@@ -908,15 +939,7 @@ function getProblemViews(input: DemoStore, patientId: string) {
 }
 
 function getProblemLatestStatus(problem: Problem) {
-  return problem.latestEntry?.statusUpdate ?? problem.currentStatusSummary;
-}
-
-function getProblemLatestEvidence(problem: Problem) {
-  return problem.latestEntry?.newEvidence ?? null;
-}
-
-function getProblemLatestPlan(problem: Problem) {
-  return problem.latestEntry?.todayPlan ?? null;
+  return problem.latestEntry?.note ?? problem.currentStatusSummary;
 }
 
 function getProblemPendingTasks(problem: Problem) {
@@ -927,7 +950,6 @@ function getProblemHandoverWatch(problem: Problem) {
   const warning = [
     problem.currentStatusSummary,
     getProblemLatestStatus(problem),
-    getProblemLatestEvidence(problem),
   ]
     .filter(Boolean)
     .join(" | ");
@@ -1077,7 +1099,6 @@ function buildDischargeDraft(input: DemoStore, patientId: string) {
       [
         problem.problemName,
         getProblemLatestStatus(problem) ?? problem.currentStatusSummary,
-        getProblemLatestPlan(problem) ? `Plan: ${getProblemLatestPlan(problem)}` : null,
         getProblemPendingTasks(problem).length
           ? `Pending: ${getProblemPendingTasks(problem)
               .map((task) => task.title)
@@ -1204,11 +1225,14 @@ function mapProblemProgressEntryRow(
     dateTime: row.date_time,
     authorId: row.author_id,
     authorName: row.author_id ? profiles.get(row.author_id)?.name ?? null : null,
-    statusUpdate: row.status_update,
-    newEvidence: row.new_evidence,
-    treatmentChange: row.treatment_change,
-    reasoningUpdate: row.reasoning_update,
-    todayPlan: row.today_plan,
+    note: buildProblemProgressNoteFromLegacy({
+      note: row.note,
+      statusUpdate: row.status_update,
+      newEvidence: row.new_evidence,
+      treatmentChange: row.treatment_change,
+      reasoningUpdate: row.reasoning_update,
+      todayPlan: row.today_plan,
+    }),
     pendingTaskIds: row.pending_task_ids ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -3473,6 +3497,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
     problemName: formData.get("problemName"),
+    shortNote: textOrNull(formData.get("shortNote")),
     priority: formData.get("priority"),
     currentStatusSummary: textOrNull(formData.get("currentStatusSummary")),
     diagnosisStatus: formData.get("diagnosisStatus"),
@@ -3482,6 +3507,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
   });
   const resolvedAt =
     parsed.priority === "RESOLVED_CHRONIC" ? parsed.resolvedAt ?? now() : null;
+  const initialShortNote = parsed.shortNote?.trim() ? parsed.shortNote : null;
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -3517,7 +3543,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
         patientId: parsed.patientId,
         problemName: parsed.problemName,
         priority: parsed.priority,
-        currentStatusSummary: parsed.currentStatusSummary ?? null,
+        currentStatusSummary: parsed.currentStatusSummary ?? initialShortNote,
         diagnosisStatus: parsed.diagnosisStatus,
         includeInHandover: parsed.includeInHandover,
         sortOrder:
@@ -3529,6 +3555,19 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
         resolvedAt,
       };
       store.problemMasters.push(problem);
+      if (initialShortNote) {
+        store.problemProgressEntries.unshift({
+          id: nextId("problem-progress"),
+          problemId: problem.id,
+          dateTime: problem.createdAt,
+          authorId: session.profile.id,
+          authorName: session.profile.name,
+          note: initialShortNote,
+          pendingTaskIds: [],
+          createdAt: problem.createdAt,
+          updatedAt: problem.createdAt,
+        });
+      }
       addActivityToDemoStore(
         session,
         parsed.patientId,
@@ -3599,7 +3638,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
         title: parsed.problemName,
         problem_name: parsed.problemName,
         priority: parsed.priority,
-        current_status_summary: parsed.currentStatusSummary ?? null,
+        current_status_summary: parsed.currentStatusSummary ?? initialShortNote,
         diagnosis_status: parsed.diagnosisStatus,
         include_in_handover: parsed.includeInHandover,
         sort_order: sortOrder,
@@ -3623,6 +3662,20 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
         sort_order: sortOrder,
       },
     });
+
+    if (initialShortNote) {
+      ensureNoError(
+        await supabase.from("problem_progress_entries").insert({
+          id: nextId("problem-progress"),
+          problem_id: problemId,
+          date_time: now(),
+          author_id: session.profile.id,
+          note: initialShortNote,
+          pending_task_ids: [],
+        }),
+        "Failed to create initial problem note",
+      );
+    }
   }
 
   ensureNoError(
@@ -3647,11 +3700,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
     patientId: formData.get("patientId"),
     problemId: formData.get("problemId"),
     dateTime: textOrNull(formData.get("dateTime")),
-    statusUpdate: textOrNull(formData.get("statusUpdate")),
-    newEvidence: textOrNull(formData.get("newEvidence")),
-    treatmentChange: textOrNull(formData.get("treatmentChange")),
-    reasoningUpdate: textOrNull(formData.get("reasoningUpdate")),
-    todayPlan: textOrNull(formData.get("todayPlan")),
+    note: textOrNull(formData.get("note")),
     pendingTaskIds: [...new Set(rawPendingTaskIds)],
     updatedAt: textOrNull(formData.get("updatedAt")),
   });
@@ -3688,11 +3737,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
 
       const before = structuredClone(existing);
       existing.dateTime = entryDateTime;
-      existing.statusUpdate = parsed.statusUpdate ?? null;
-      existing.newEvidence = parsed.newEvidence ?? null;
-      existing.treatmentChange = parsed.treatmentChange ?? null;
-      existing.reasoningUpdate = parsed.reasoningUpdate ?? null;
-      existing.todayPlan = parsed.todayPlan ?? null;
+      existing.note = parsed.note ?? null;
       existing.pendingTaskIds = parsed.pendingTaskIds;
       existing.updatedAt = now();
       addActivityToDemoStore(
@@ -3711,11 +3756,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
         dateTime: entryDateTime,
         authorId: session.profile.id,
         authorName: session.profile.name,
-        statusUpdate: parsed.statusUpdate ?? null,
-        newEvidence: parsed.newEvidence ?? null,
-        treatmentChange: parsed.treatmentChange ?? null,
-        reasoningUpdate: parsed.reasoningUpdate ?? null,
-        todayPlan: parsed.todayPlan ?? null,
+        note: parsed.note ?? null,
         pendingTaskIds: parsed.pendingTaskIds,
         createdAt: now(),
         updatedAt: now(),
@@ -3773,11 +3814,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
 
     const payload = {
       date_time: entryDateTime,
-      status_update: parsed.statusUpdate ?? null,
-      new_evidence: parsed.newEvidence ?? null,
-      treatment_change: parsed.treatmentChange ?? null,
-      reasoning_update: parsed.reasoningUpdate ?? null,
-      today_plan: parsed.todayPlan ?? null,
+      note: parsed.note ?? null,
       pending_task_ids: parsed.pendingTaskIds,
     };
     ensureNoError(
@@ -3803,11 +3840,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
         problem_id: parsed.problemId,
         date_time: entryDateTime,
         author_id: session.profile.id,
-        status_update: parsed.statusUpdate ?? null,
-        new_evidence: parsed.newEvidence ?? null,
-        treatment_change: parsed.treatmentChange ?? null,
-        reasoning_update: parsed.reasoningUpdate ?? null,
-        today_plan: parsed.todayPlan ?? null,
+        note: parsed.note ?? null,
         pending_task_ids: parsed.pendingTaskIds,
       }),
       "Failed to create problem progress entry",
@@ -3823,11 +3856,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
       before_json: null,
       after_json: {
         date_time: entryDateTime,
-        status_update: parsed.statusUpdate ?? null,
-        new_evidence: parsed.newEvidence ?? null,
-        treatment_change: parsed.treatmentChange ?? null,
-        reasoning_update: parsed.reasoningUpdate ?? null,
-        today_plan: parsed.todayPlan ?? null,
+        note: parsed.note ?? null,
         pending_task_ids: parsed.pendingTaskIds,
       },
     });
