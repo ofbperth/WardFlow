@@ -326,16 +326,15 @@ const problemProgressEntrySchema = z
     problemId: z.string().min(1),
     dateTime: z.string().optional().nullable(),
     note: z.string().optional().nullable(),
-    pendingTaskIds: z.array(z.string()).default([]),
     updatedAt: z.string().optional().nullable(),
   })
   .superRefine((value, ctx) => {
-    const hasContent = Boolean(value.note?.trim()) || value.pendingTaskIds.length > 0;
+    const hasContent = Boolean(value.note?.trim());
 
     if (!hasContent) {
       ctx.addIssue({
         code: "custom",
-        message: "Progress update must include note text or linked pending task.",
+        message: "Progress update must include note text.",
       });
     }
 });
@@ -3687,21 +3686,12 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
 
 export async function saveProblemProgressEntry(formData: FormData, session: SessionContext) {
   requireClinicalEditor(session);
-  const rawPendingTaskIds = formData.getAll("pendingTaskIds").flatMap((value) =>
-    typeof value === "string"
-      ? value
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : [],
-  );
   const parsed = problemProgressEntrySchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),
     problemId: formData.get("problemId"),
     dateTime: textOrNull(formData.get("dateTime")),
     note: textOrNull(formData.get("note")),
-    pendingTaskIds: [...new Set(rawPendingTaskIds)],
     updatedAt: textOrNull(formData.get("updatedAt")),
   });
   const entryDateTime = parsed.dateTime ?? now();
@@ -3716,20 +3706,6 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
       throw new Error("Problem not found");
     }
 
-    const allowedPendingTaskIds = new Set(
-      store.tasks
-        .filter(
-          (task) =>
-            task.patientId === parsed.patientId &&
-            task.problemId === parsed.problemId &&
-            task.status !== "done",
-        )
-        .map((task) => task.id),
-    );
-    if (parsed.pendingTaskIds.some((taskId) => !allowedPendingTaskIds.has(taskId))) {
-      throw new Error("Selected pending tasks must be incomplete tasks linked to this problem");
-    }
-
     if (parsed.id) {
       const existing = store.problemProgressEntries.find((entry) => entry.id === parsed.id);
       if (!existing) throw new Error("Problem progress entry not found");
@@ -3738,7 +3714,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
       const before = structuredClone(existing);
       existing.dateTime = entryDateTime;
       existing.note = parsed.note ?? null;
-      existing.pendingTaskIds = parsed.pendingTaskIds;
+      existing.pendingTaskIds = [];
       existing.updatedAt = now();
       addActivityToDemoStore(
         session,
@@ -3757,7 +3733,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
         authorId: session.profile.id,
         authorName: session.profile.name,
         note: parsed.note ?? null,
-        pendingTaskIds: parsed.pendingTaskIds,
+        pendingTaskIds: [],
         createdAt: now(),
         updatedAt: now(),
       };
@@ -3792,21 +3768,6 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
     throw new Error("Problem not found");
   }
 
-  const pendingTasksResult = await supabase
-    .from("ward_tasks")
-    .select("id, status")
-    .eq("patient_id", parsed.patientId)
-    .eq("problem_id", parsed.problemId);
-  ensureNoError(pendingTasksResult, "Failed to load linked tasks for progress update");
-  const allowedPendingTaskIds = new Set(
-    ((pendingTasksResult.data ?? []) as Array<{ id: string; status: WardTask["status"] }>)
-      .filter((task) => task.status !== "done")
-      .map((task) => task.id),
-  );
-  if (parsed.pendingTaskIds.some((taskId) => !allowedPendingTaskIds.has(taskId))) {
-    throw new Error("Selected pending tasks must be incomplete tasks linked to this problem");
-  }
-
   if (parsed.id) {
     const existing = await fetchLiveProblemProgressEntry(supabase, parsed.id);
     if (!existing) throw new Error("Problem progress entry not found");
@@ -3815,7 +3776,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
     const payload = {
       date_time: entryDateTime,
       note: parsed.note ?? null,
-      pending_task_ids: parsed.pendingTaskIds,
+      pending_task_ids: [],
     };
     ensureNoError(
       await supabase.from("problem_progress_entries").update(payload).eq("id", parsed.id),
@@ -3841,7 +3802,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
         date_time: entryDateTime,
         author_id: session.profile.id,
         note: parsed.note ?? null,
-        pending_task_ids: parsed.pendingTaskIds,
+        pending_task_ids: [],
       }),
       "Failed to create problem progress entry",
     );
@@ -3857,7 +3818,7 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
       after_json: {
         date_time: entryDateTime,
         note: parsed.note ?? null,
-        pending_task_ids: parsed.pendingTaskIds,
+        pending_task_ids: [],
       },
     });
   }

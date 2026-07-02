@@ -109,19 +109,9 @@ function buildProblemHistory(problem: Problem) {
     return ["No historical progress entry yet"];
   }
 
-  return problem.historyEntries.map((entry) => {
-    const pendingTasks = problem.linkedTasks
-      .filter((task) => entry.pendingTaskIds.includes(task.id))
-      .map((task) => task.title);
-
-    return [
-      entry.dateTime.slice(0, 16).replace("T", " "),
-      entry.note,
-      pendingTasks.length ? `Pending tasks: ${pendingTasks.join(", ")}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-  });
+  return problem.historyEntries.map((entry) =>
+    [entry.dateTime.slice(0, 16).replace("T", " "), entry.note].filter(Boolean).join("\n"),
+  );
 }
 
 function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {

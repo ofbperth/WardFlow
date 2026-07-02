@@ -283,29 +283,21 @@ function compactProblemStatus(problem: Problem) {
   return problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet";
 }
 
-function formatProgressPendingTasks(problem: Problem, entry: Problem["historyEntries"][number]) {
-  return problem.linkedTasks
-    .filter((task) => entry.pendingTaskIds.includes(task.id) && task.status !== "done")
-    .map((task) => task.title);
-}
-
 function ProgressNoteCard({
-  problem,
+  problemId,
   entry,
   canEdit,
   patientId,
   saveProblemProgressEntryAction,
   title,
 }: {
-  problem: Problem;
+  problemId: string;
   entry: Problem["historyEntries"][number];
   canEdit: boolean;
   patientId: string;
   saveProblemProgressEntryAction: (formData: FormData) => Promise<void>;
   title: string;
 }) {
-  const selectedPendingTasks = formatProgressPendingTasks(problem, entry);
-
   return (
     <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
@@ -322,27 +314,13 @@ function ProgressNoteCard({
           ) : (
             <p className="mt-2 text-sm text-muted">No note text</p>
           )}
-          {selectedPendingTasks.length ? (
-            <div className="mt-2 space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-                Linked pending tasks
-              </p>
-              <ul className="space-y-1">
-                {selectedPendingTasks.map((taskTitle) => (
-                  <li key={taskTitle} className="text-sm text-foreground">
-                    {taskTitle}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </div>
         {canEdit ? (
           <ProgressEntryHistoryEditor iconOnly compactTrigger buttonTitle="Edit progress note">
             <form action={saveProblemProgressEntryAction} className="space-y-3">
               <input type="hidden" name="id" value={entry.id} />
               <input type="hidden" name="patientId" value={patientId} />
-              <input type="hidden" name="problemId" value={problem.id} />
+              <input type="hidden" name="problemId" value={problemId} />
               <input type="hidden" name="dateTime" value={entry.dateTime} />
               <input type="hidden" name="updatedAt" value={entry.updatedAt} />
               <Field label="Progress note">
@@ -352,29 +330,6 @@ function ProgressNoteCard({
                   placeholder={"08:00 reviewed on round\nPatient breathing easier\nPlan continue current support"}
                 />
               </Field>
-              {problem.linkedTasks.filter((task) => task.status !== "done").length ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-foreground">Linked pending tasks</p>
-                  <div className="space-y-2">
-                    {problem.linkedTasks
-                      .filter((task) => task.status !== "done")
-                      .map((task) => (
-                        <label
-                          key={task.id}
-                          className="flex items-start gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
-                        >
-                          <input
-                            type="checkbox"
-                            name="pendingTaskIds"
-                            value={task.id}
-                            defaultChecked={entry.pendingTaskIds.includes(task.id)}
-                          />
-                          <span>{task.title}</span>
-                        </label>
-                      ))}
-                  </div>
-                </div>
-              ) : null}
               <SubmitButton pendingLabel="Saving update...">Save progress note</SubmitButton>
             </form>
           </ProgressEntryHistoryEditor>
@@ -615,22 +570,6 @@ export function ProblemCards({
                           placeholder={"08:00 reviewed on round\nPatient breathing easier\nPlan continue current support"}
                         />
                       </Field>
-                      {incompleteTasks.length ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-semibold text-foreground">Linked pending tasks</p>
-                          <div className="space-y-2">
-                            {incompleteTasks.map((task) => (
-                              <label
-                                key={task.id}
-                                className="flex items-start gap-2 rounded-[16px] border clinical-divider bg-white px-3 py-2 text-sm text-foreground"
-                              >
-                                <input type="checkbox" name="pendingTaskIds" value={task.id} />
-                                <span>{task.title}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
                       <SubmitButton pendingLabel="Saving update...">Add progress note</SubmitButton>
                     </form>
                   </ProgressEntryEditor>
@@ -719,7 +658,7 @@ export function ProblemCards({
                 <div className="mt-2.5">
                   {latestEntry ? (
                     <ProgressNoteCard
-                      problem={problem}
+                      problemId={problem.id}
                       entry={latestEntry}
                       canEdit={canEdit}
                       patientId={patientId}
@@ -771,7 +710,7 @@ export function ProblemCards({
                     olderHistory.map((entry) => (
                       <ProgressNoteCard
                         key={entry.id}
-                        problem={problem}
+                        problemId={problem.id}
                         entry={entry}
                         canEdit={canEdit}
                         patientId={patientId}
