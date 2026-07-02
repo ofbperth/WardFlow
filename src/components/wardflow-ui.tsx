@@ -283,6 +283,29 @@ function compactProblemStatus(problem: Problem) {
   return problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet";
 }
 
+function ProgressNoteMeta({
+  entry,
+  noteCount,
+}: {
+  entry: Problem["historyEntries"][number];
+  noteCount: number;
+}) {
+  return (
+    <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Latest update</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">{formatDateTime(entry.dateTime)}</p>
+          {entry.authorName ? <p className="mt-0.5 text-xs text-muted">By {entry.authorName}</p> : null}
+        </div>
+        <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-2)] text-[color:var(--color-ink-2)]">
+          {noteCount} note{noteCount === 1 ? "" : "s"}
+        </Pill>
+      </div>
+    </div>
+  );
+}
+
 function ProgressNoteCard({
   problemId,
   entry,
@@ -648,28 +671,13 @@ export function ProblemCards({
 
               <CompactProblemBulletList problem={problem} />
 
-              <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">Latest progress note</p>
-                  <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
-                    {problem.historyEntries.length} note{problem.historyEntries.length === 1 ? "" : "s"}
-                  </Pill>
+              {latestEntry ? (
+                <ProgressNoteMeta entry={latestEntry} noteCount={problem.historyEntries.length} />
+              ) : (
+                <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5 text-sm text-muted">
+                  No progress note yet
                 </div>
-                <div className="mt-2.5">
-                  {latestEntry ? (
-                    <ProgressNoteCard
-                      problemId={problem.id}
-                      entry={latestEntry}
-                      canEdit={canEdit}
-                      patientId={patientId}
-                      saveProblemProgressEntryAction={saveProblemProgressEntryAction}
-                      title="Latest"
-                    />
-                  ) : (
-                    <p className="text-sm text-muted">No progress note yet</p>
-                  )}
-                </div>
-              </div>
+              )}
 
               <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
@@ -702,10 +710,20 @@ export function ProblemCards({
 
               <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
-                  <span>Older notes ({olderHistory.length})</span>
+                  <span>Progress history ({problem.historyEntries.length})</span>
                   <ChevronDown className="h-4 w-4 transition-transform details-open:rotate-180" />
                 </summary>
                 <div className="mt-2.5 space-y-1.5">
+                  {latestEntry ? (
+                    <ProgressNoteCard
+                      problemId={problem.id}
+                      entry={latestEntry}
+                      canEdit={canEdit}
+                      patientId={patientId}
+                      saveProblemProgressEntryAction={saveProblemProgressEntryAction}
+                      title="Latest"
+                    />
+                  ) : null}
                   {olderHistory.length ? (
                     olderHistory.map((entry) => (
                       <ProgressNoteCard
@@ -719,7 +737,9 @@ export function ProblemCards({
                       />
                     ))
                   ) : (
-                    <p className="text-sm text-muted">No older history yet</p>
+                    <p className="text-sm text-muted">
+                      {latestEntry ? "No older history yet" : "No progress note yet"}
+                    </p>
                   )}
                 </div>
               </details>
