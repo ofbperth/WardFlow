@@ -1,9 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const InlineEditorCloseContext = createContext<(() => void) | null>(null);
+
+function useAutoCloseInlineEditorOnSubmit(pending: boolean) {
+  const closeInlineEditor = useContext(InlineEditorCloseContext);
+  const wasPendingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasPendingRef.current && !pending) {
+      closeInlineEditor?.();
+    }
+
+    wasPendingRef.current = pending;
+  }, [closeInlineEditor, pending]);
+}
 
 export function PendingSubmitButton({
   children,
@@ -16,6 +31,7 @@ export function PendingSubmitButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  useAutoCloseInlineEditorOnSubmit(pending);
 
   return (
     <button
@@ -52,6 +68,7 @@ export function ConfirmingSubmitButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  useAutoCloseInlineEditorOnSubmit(pending);
 
   return (
     <button
@@ -96,6 +113,7 @@ export function PendingGhostButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  useAutoCloseInlineEditorOnSubmit(pending);
 
   return (
     <button
@@ -134,6 +152,7 @@ export function PendingIconButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  useAutoCloseInlineEditorOnSubmit(pending);
 
   return (
     <button
@@ -242,9 +261,9 @@ export function InlineEditor({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className={contentClassName}>
-          {children}
-        </div>
+        <InlineEditorCloseContext.Provider value={() => setOpen(false)}>
+          <div className={contentClassName}>{children}</div>
+        </InlineEditorCloseContext.Provider>
       </div>
     </div>
   );
