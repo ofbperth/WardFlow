@@ -1024,10 +1024,9 @@ function TaskCard({
 }
 
 function CompactProblemBulletList({ problem }: { problem: Problem }) {
-  const entries = [
-    { label: "Summary", value: problem.currentStatusSummary ?? "" },
-    { label: "Latest note", value: problem.latestEntry?.note ?? "" },
-  ].filter((entry) => isMeaningfulValue(entry.value));
+  const entries = [{ label: "Summary", value: problem.currentStatusSummary ?? "" }].filter((entry) =>
+    isMeaningfulValue(entry.value),
+  );
 
   return (
     <ul className="space-y-1.5 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
