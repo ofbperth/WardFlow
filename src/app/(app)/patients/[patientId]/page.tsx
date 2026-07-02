@@ -150,7 +150,6 @@ export default async function PatientPage({
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
                   <input type="hidden" name="priority" value="ACTIVE_STABLE" />
                   <input type="hidden" name="diagnosisStatus" value="CONFIRMED" />
-                  <input type="hidden" name="includeInHandover" value="on" />
                   <Field label="Problem name">
                     <TextInput name="problemName" required placeholder="Diffuse alveolar hemorrhage" />
                   </Field>

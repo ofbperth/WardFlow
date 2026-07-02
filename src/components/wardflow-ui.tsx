@@ -571,14 +571,6 @@ export function ProblemCards({
                           />
                         </Field>
                       </div>
-                      <label className="flex items-center gap-2 text-sm text-foreground">
-                        <input
-                          type="checkbox"
-                          name="includeInHandover"
-                          defaultChecked={problem.includeInHandover}
-                        />
-                        Include in handover
-                      </label>
                       <SubmitButton pendingLabel="Updating problem...">Save problem</SubmitButton>
                     </form>
                   </ProblemEditor>

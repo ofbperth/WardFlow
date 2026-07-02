@@ -314,7 +314,7 @@ const problemMasterSchema = z.object({
   priority: z.enum(["ACTIVE_UNSTABLE", "ACTIVE_STABLE", "MONITORING", "RESOLVED_CHRONIC"]),
   currentStatusSummary: z.string().optional().nullable(),
   diagnosisStatus: z.enum(["SUSPECTED", "CONFIRMED", "RULED_OUT"]).default("CONFIRMED"),
-  includeInHandover: z.coerce.boolean(),
+  includeInHandover: z.coerce.boolean().default(true),
   updatedAt: z.string().optional().nullable(),
   resolvedAt: z.string().optional().nullable(),
 });
@@ -3517,7 +3517,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
     priority: formData.get("priority"),
     currentStatusSummary: textOrNull(formData.get("currentStatusSummary")),
     diagnosisStatus: formData.get("diagnosisStatus"),
-    includeInHandover: formData.get("includeInHandover") === "on",
+    includeInHandover: true,
     updatedAt: textOrNull(formData.get("updatedAt")),
     resolvedAt: textOrNull(formData.get("resolvedAt")),
   });
