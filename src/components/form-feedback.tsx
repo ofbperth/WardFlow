@@ -242,12 +242,7 @@ export function InlineEditor({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div
-          className={contentClassName}
-          onSubmit={() => {
-            setOpen(false);
-          }}
-        >
+        <div className={contentClassName}>
           {children}
         </div>
       </div>
