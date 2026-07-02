@@ -472,6 +472,23 @@ function textOrNull(value: FormDataEntryValue | null) {
   return trimmed.length ? trimmed : null;
 }
 
+function isMissingProblemProgressNoteColumnError(error: { message?: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return message.includes("note") && (message.includes("column") || message.includes("schema cache"));
+}
+
+function buildLegacyProblemProgressMutation(note: string | null, dateTime: string) {
+  return {
+    date_time: dateTime,
+    status_update: note,
+    new_evidence: null,
+    treatment_change: null,
+    reasoning_update: null,
+    today_plan: null,
+    pending_task_ids: [],
+  };
+}
+
 function parseAgeInput(value: string | null | undefined) {
   const trimmed = value?.trim() ?? "";
   if (!trimmed) return null;
@@ -3663,17 +3680,25 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
     });
 
     if (initialShortNote) {
-      ensureNoError(
-        await supabase.from("problem_progress_entries").insert({
-          id: nextId("problem-progress"),
+      const initialEntryId = nextId("problem-progress");
+      const initialEntryDateTime = now();
+      let insertInitialNoteResult = await supabase.from("problem_progress_entries").insert({
+        id: initialEntryId,
+        problem_id: problemId,
+        date_time: initialEntryDateTime,
+        author_id: session.profile.id,
+        note: initialShortNote,
+        pending_task_ids: [],
+      });
+      if (isMissingProblemProgressNoteColumnError(insertInitialNoteResult.error)) {
+        insertInitialNoteResult = await supabase.from("problem_progress_entries").insert({
+          id: initialEntryId,
           problem_id: problemId,
-          date_time: now(),
           author_id: session.profile.id,
-          note: initialShortNote,
-          pending_task_ids: [],
-        }),
-        "Failed to create initial problem note",
-      );
+          ...buildLegacyProblemProgressMutation(initialShortNote, initialEntryDateTime),
+        });
+      }
+      ensureNoError(insertInitialNoteResult, "Failed to create initial problem note");
     }
   }
 
@@ -3778,10 +3803,14 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
       note: parsed.note ?? null,
       pending_task_ids: [],
     };
-    ensureNoError(
-      await supabase.from("problem_progress_entries").update(payload).eq("id", parsed.id),
-      "Failed to update problem progress entry",
-    );
+    let updateResult = await supabase.from("problem_progress_entries").update(payload).eq("id", parsed.id);
+    if (isMissingProblemProgressNoteColumnError(updateResult.error)) {
+      updateResult = await supabase
+        .from("problem_progress_entries")
+        .update(buildLegacyProblemProgressMutation(parsed.note ?? null, entryDateTime))
+        .eq("id", parsed.id);
+    }
+    ensureNoError(updateResult, "Failed to update problem progress entry");
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
@@ -3795,17 +3824,23 @@ export async function saveProblemProgressEntry(formData: FormData, session: Sess
     });
   } else {
     const entryId = nextId("problem-progress");
-    ensureNoError(
-      await supabase.from("problem_progress_entries").insert({
+    let insertResult = await supabase.from("problem_progress_entries").insert({
+      id: entryId,
+      problem_id: parsed.problemId,
+      date_time: entryDateTime,
+      author_id: session.profile.id,
+      note: parsed.note ?? null,
+      pending_task_ids: [],
+    });
+    if (isMissingProblemProgressNoteColumnError(insertResult.error)) {
+      insertResult = await supabase.from("problem_progress_entries").insert({
         id: entryId,
         problem_id: parsed.problemId,
-        date_time: entryDateTime,
         author_id: session.profile.id,
-        note: parsed.note ?? null,
-        pending_task_ids: [],
-      }),
-      "Failed to create problem progress entry",
-    );
+        ...buildLegacyProblemProgressMutation(parsed.note ?? null, entryDateTime),
+      });
+    }
+    ensureNoError(insertResult, "Failed to create problem progress entry");
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,
