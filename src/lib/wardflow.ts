@@ -3112,12 +3112,12 @@ export async function savePatient(formData: FormData, session: SessionContext): 
       display_name: parsed.displayName,
       age: parsedAge,
       sex: parsed.sex ?? null,
-      underlying_disease: parsed.underlyingDisease ?? null,
       diagnosis: parsed.diagnosis,
       status: parsed.status,
       responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,
       precaution: parsed.precaution,
       updated_by_id: session.profile.id,
+      ...(hasUnderlyingDiseaseField ? { underlying_disease: parsed.underlyingDisease ?? null } : {}),
     };
     const legacyUpdatePayload = {
       ward_id: parsed.wardId,
@@ -3158,7 +3158,9 @@ export async function savePatient(formData: FormData, session: SessionContext): 
         display_name: parsed.displayName,
         age: parsedAge,
         sex: parsed.sex ?? null,
-        underlying_disease: parsed.underlyingDisease ?? null,
+        ...(hasUnderlyingDiseaseField
+          ? { underlying_disease: parsed.underlyingDisease ?? null }
+          : { underlying_disease: existing.underlying_disease ?? null }),
         diagnosis: parsed.diagnosis,
         status: parsed.status,
         responsible_doctor_id: parsed.responsibleDoctorId ?? session.profile.id,

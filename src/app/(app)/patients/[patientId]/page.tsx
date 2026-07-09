@@ -238,6 +238,14 @@ export default async function PatientPage({
                         </SelectBox>
                       </Field>
                     </div>
+                    <Field label="Underlying disease">
+                      <TextArea
+                        name="underlyingDisease"
+                        rows={3}
+                        defaultValue={bundle.patient.underlyingDisease ?? ""}
+                        placeholder="DM, HT, CKD"
+                      />
+                    </Field>
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label="Status">
                         <SelectBox name="status" defaultValue={bundle.patient.status}>

@@ -15,6 +15,7 @@ import {
   SetupNotice,
   StaffOptions,
   SubmitButton,
+  TextArea,
   TextInput,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
@@ -142,7 +143,11 @@ export default async function WardsPage({
                           </SelectBox>
                         </Field>
                         <Field label="Underlying disease">
-                          <TextInput name="underlyingDisease" placeholder="DM, HT, CKD" />
+                          <TextArea
+                            name="underlyingDisease"
+                            rows={3}
+                            placeholder="DM, HT, CKD"
+                          />
                         </Field>
                       </div>
                       <div className="grid gap-3 md:grid-cols-3">
