@@ -375,11 +375,10 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
   ];
   const primaryItems = [
     { label: "Diagnosis", value: patient.diagnosis, fullWidth: true },
-    { label: "Responsible", value: patient.responsibleDoctorName ?? "Unassigned" },
+    { label: "Underlying disease", value: patient.underlyingDisease ?? "-" },
     { label: "Status", value: labelForPatientStatus(patient.status) },
   ];
   const secondaryItems = [
-    { label: "Underlying disease", value: patient.underlyingDisease ?? "-" },
     { label: "Precaution", value: labelForPrecaution(patient.precaution) },
     { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
     { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
