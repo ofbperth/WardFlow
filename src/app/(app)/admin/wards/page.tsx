@@ -8,6 +8,7 @@ import {
 import { AdminFeedbackToast } from "@/components/admin-feedback-toast";
 import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { AdminCreator, AdminEditor, PendingSubmitButton } from "@/components/form-feedback";
+import { ResidentWardAssignmentBoard } from "@/components/resident-ward-assignment-board";
 import {
   DangerZone,
   Field,
@@ -37,7 +38,7 @@ export default async function AdminWardsPage({
 
       <PageHeader
         title="Admin | Ward management"
-        subtitle="Control ward setup, student assignment entry points, and staff access from one operations surface."
+        subtitle="Control ward setup, Resident multi-ward access, student assignment, and staff roles from one operations surface."
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -55,6 +56,13 @@ export default async function AdminWardsPage({
           </div>
         }
       />
+
+      <GlassPanel
+        title="Resident Ward Assignment"
+        subtitle="Assign one Resident to any number of Wards. Changes save per Ward."
+      >
+        <ResidentWardAssignmentBoard />
+      </GlassPanel>
 
       <div className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">

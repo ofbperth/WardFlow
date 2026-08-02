@@ -22,6 +22,7 @@ function mapProfileRow(row: Record<string, unknown>): UserProfile {
     email: String(row.email ?? ""),
     avatarUrl: (row.avatar_url as string | null | undefined) ?? null,
     role: (row.role as UserProfile["role"] | undefined) ?? "student",
+    residentWardIds: [],
     wardAssignment: (row.ward_assignment as string | null | undefined) ?? null,
     studentCode: (row.student_code as string | null | undefined) ?? null,
     academicYear: (row.academic_year as string | null | undefined) ?? null,
@@ -97,7 +98,21 @@ async function ensureLiveProfile() {
       return null;
     }
 
-    return mapProfileRow(profileResult.data);
+    const profile = mapProfileRow(profileResult.data);
+    if (profile.role === "resident") {
+      const assignmentsResult = await (profileClient as unknown as {
+        from: (table: string) => { select: (columns: string) => { eq: (column: string, value: string) => Promise<{ error?: { message?: string } | null; data?: Array<{ ward_id?: unknown }> | null }> } };
+      })
+        .from("resident_ward_assignments")
+        .select("ward_id")
+        .eq("resident_id", profile.id);
+      if (!assignmentsResult.error) {
+        profile.residentWardIds = (assignmentsResult.data ?? [])
+          .map((row: { ward_id?: unknown }) => typeof row.ward_id === "string" ? row.ward_id : "")
+          .filter(Boolean);
+      }
+    }
+    return profile;
   });
 }
 

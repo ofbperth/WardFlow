@@ -66,6 +66,8 @@ export type UserProfile = {
   email: string;
   avatarUrl: string | null;
   role: Role;
+  /** Resident assignments are many-to-many; wardAssignment remains student-only legacy data. */
+  residentWardIds: string[];
   wardAssignment: string | null;
   studentCode?: string | null;
   academicYear?: string | null;
@@ -94,6 +96,26 @@ export type StudentWardAssignment = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ResidentWardAssignment = {
+  id: string;
+  residentId: string;
+  wardId: string;
+  assignedByUserId: string | null;
+  assignedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ResidentWardAssignmentWard = {
+  ward: Ward;
+  residentIds: string[];
+};
+
+export type ResidentWardAssignmentBoardData = {
+  wards: ResidentWardAssignmentWard[];
+  residents: UserProfile[];
 };
 
 export type StudentWardAssignmentEntry = {

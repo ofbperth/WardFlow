@@ -235,7 +235,7 @@ export function PatientCensus({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                        Bed {patient.bed}
+                        {summary.ward.name} · Bed {patient.bed}
                       </p>
                       <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                     </div>

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:resident-ward": "tsc -p tsconfig.test.json && node --test .test-build/tests/resident-ward-assignment.test.js",
     "verify": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {

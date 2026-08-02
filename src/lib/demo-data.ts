@@ -18,6 +18,7 @@ export const demoUser: UserProfile = {
   email: "demo@wardflow.local",
   avatarUrl: null,
   role: "admin",
+  residentWardIds: [],
   wardAssignment: "ward-med-a",
 };
 
@@ -34,6 +35,7 @@ export const demoProfiles: UserProfile[] = [
     email: "pakorn@wardflow.local",
     avatarUrl: null,
     role: "resident",
+    residentWardIds: ["ward-med-a"],
     wardAssignment: "ward-med-a",
   },
   {
@@ -42,6 +44,7 @@ export const demoProfiles: UserProfile[] = [
     email: "mint@wardflow.local",
     avatarUrl: null,
     role: "student",
+    residentWardIds: [],
     wardAssignment: "ward-med-a",
   },
 ];

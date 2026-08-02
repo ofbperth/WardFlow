@@ -158,7 +158,7 @@ export function TaskWorkspaceBoard({
               <div key={patient.id} className="panel-surface rounded-[28px] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted">{group.ward.name} · Bed {patient.bed}</p>
                     <h4 className="mt-1 text-lg font-semibold text-foreground">{patient.displayName}</h4>
                     <p className="mt-1 text-sm text-muted">{patient.diagnosis}</p>
                   </div>

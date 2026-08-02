@@ -79,6 +79,10 @@ export default async function WardsPage({
         }
       />
 
+      {session.profile.role === "resident" && session.profile.residentWardIds.length === 0 ? (
+        <SetupNotice title="Resident ward assignment required" body="Ask an admin to assign one or more Wards before patient and task lists can be shown." />
+      ) : null}
+
       {session.profile.role === "student" && !session.profile.wardAssignment ? (
         <SetupNotice title="Student ward assignment required" body="Ask admin to assign your ward." />
       ) : null}

@@ -44,6 +44,9 @@ import type {
   SummaryNotePayload,
   ProblemStatus,
   Role,
+  ResidentWardAssignment,
+  ResidentWardAssignmentBoardData,
+  ResidentWardAssignmentWard,
   Student,
   StudentWardAssignment,
   StudentWardAssignmentBoardData,
@@ -62,6 +65,7 @@ import type {
 } from "@/lib/types";
 import { exportSummaryNoteToGoogleDocs } from "@/lib/google-docs";
 import { buildSummaryNotePayload } from "@/lib/summary-note";
+import { visibleWardIdsForRole } from "@/lib/resident-ward-assignment";
 
 type DemoStore = {
   wards: Ward[];
@@ -76,6 +80,7 @@ type DemoStore = {
   templates: TaskTemplate[];
   profiles: UserProfile[];
   studentWardAssignments: StudentWardAssignment[];
+  residentWardAssignments: ResidentWardAssignment[];
 };
 
 type WardOverviewData = {
@@ -162,6 +167,16 @@ type ProblemRow = {
   include_in_handover: boolean;
   sort_order: number;
   updated_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ResidentWardAssignmentRow = {
+  id: string;
+  resident_id: string;
+  ward_id: string;
+  assigned_by_user_id: string | null;
+  assigned_at: string;
   created_at: string;
   updated_at: string;
 };
@@ -275,6 +290,7 @@ function buildSessionCacheSeed(
   profileId: string,
   role: Role,
   wardAssignment: string | null,
+  residentWardIds: string[] = [],
 ): SessionContext {
   return {
     mode,
@@ -284,6 +300,7 @@ function buildSessionCacheSeed(
       email: "",
       avatarUrl: null,
       role,
+      residentWardIds,
       wardAssignment,
     },
   };
@@ -431,6 +448,11 @@ const userRoleSchema = z.object({
   wardAssignment: z.string().optional().nullable(),
 });
 
+const saveResidentWardAssignmentsSchema = z.object({
+  wardId: z.string().min(1),
+  residentIds: z.array(z.string().min(1)).default([]),
+});
+
 const saveStudentWardAssignmentsSchema = z.object({
   wardId: z.string().min(1),
   studentIds: z.array(z.string().uuid()).default([]),
@@ -532,6 +554,19 @@ function createSeedStore(): DemoStore {
     templates: structuredClone(demoTemplatesSeed),
     profiles,
     studentWardAssignments: buildStudentAssignmentsFromProfiles(profiles),
+    residentWardAssignments: profiles.flatMap((profile) =>
+      profile.role === "resident"
+        ? profile.residentWardIds.map((wardId) => ({
+            id: `resident-assignment-seed-${profile.id}-${wardId}`,
+            residentId: profile.id,
+            wardId,
+            assignedByUserId: null,
+            assignedAt: now(),
+            createdAt: now(),
+            updatedAt: now(),
+          }))
+        : [],
+    ),
   };
 }
 
@@ -755,6 +790,21 @@ function normalizeStore(input: Partial<DemoStore> | null | undefined): DemoStore
     profiles: input?.profiles ?? seed.profiles,
     studentWardAssignments:
       input?.studentWardAssignments ?? buildStudentAssignmentsFromProfiles(input?.profiles ?? seed.profiles),
+    residentWardAssignments:
+      input?.residentWardAssignments ??
+      (input?.profiles ?? seed.profiles).flatMap((profile) =>
+        profile.role === "resident"
+          ? (profile.residentWardIds ?? (profile.wardAssignment ? [profile.wardAssignment] : [])).map((wardId) => ({
+              id: `resident-assignment-legacy-${profile.id}-${wardId}`,
+              residentId: profile.id,
+              wardId,
+              assignedByUserId: null,
+              assignedAt: profile.updatedAt ?? now(),
+              createdAt: profile.createdAt ?? now(),
+              updatedAt: profile.updatedAt ?? now(),
+            }))
+          : [],
+      ),
   };
 }
 
@@ -793,16 +843,24 @@ function canManageClinicalEntries(session: SessionContext) {
   );
 }
 
-function canManageTaskWorkflowEveryWard(session: SessionContext) {
-  return session.profile.role === "admin" || session.profile.role === "resident";
+function canViewAllWards(session: SessionContext) {
+  return session.profile.role === "admin";
 }
 
-function canViewAllWards(session: SessionContext) {
-  return session.profile.role === "admin" || session.profile.role === "resident";
+function assignedWardIds(profile: UserProfile) {
+  return profile.role === "resident"
+    ? profile.residentWardIds
+    : profile.role === "student" && profile.wardAssignment
+      ? [profile.wardAssignment]
+      : [];
+}
+
+function isAwaitingWardAssignment(session: SessionContext) {
+  return session.profile.role !== "admin" && assignedWardIds(session.profile).length === 0;
 }
 
 function isStudentAwaitingWardAssignment(session: SessionContext) {
-  return session.profile.role === "student" && !session.profile.wardAssignment;
+  return session.profile.role === "student" && isAwaitingWardAssignment(session);
 }
 
 function isProfileVisibleToSession(profile: UserProfile, session: SessionContext) {
@@ -814,7 +872,7 @@ function isProfileVisibleToSession(profile: UserProfile, session: SessionContext
     canViewAllWards(session) ||
     profile.role === "admin" ||
     profile.role === "resident" ||
-    profile.wardAssignment === session.profile.wardAssignment ||
+    assignedWardIds(profile).some((wardId) => assignedWardIds(session.profile).includes(wardId)) ||
     profile.id === session.profile.id
   );
 }
@@ -828,7 +886,7 @@ function requireWardReadAccess(session: SessionContext, wardId: string | null) {
   }
 
   if (canViewAllWards(session)) return;
-  if (session.profile.wardAssignment !== wardId) {
+  if (!assignedWardIds(session.profile).includes(wardId)) {
     throw new Error("Ward access denied");
   }
 }
@@ -838,8 +896,8 @@ function requireWardWriteAccess(session: SessionContext, wardId: string | null) 
     throw new Error("Missing ward assignment");
   }
 
-  if (canManagePatients(session)) return;
-  if (session.profile.wardAssignment !== wardId) {
+  if (session.profile.role === "admin") return;
+  if (!assignedWardIds(session.profile).includes(wardId)) {
     throw new Error("Ward access denied");
   }
 }
@@ -849,11 +907,11 @@ function requireTaskWorkflowWriteAccess(session: SessionContext, wardId: string 
     throw new Error("Missing ward assignment");
   }
 
-  if (canManageTaskWorkflowEveryWard(session)) {
+  if (session.profile.role === "admin") {
     return;
   }
 
-  if (session.profile.role === "student" && session.profile.wardAssignment === wardId) {
+  if (assignedWardIds(session.profile).includes(wardId)) {
     return;
   }
 
@@ -877,13 +935,16 @@ function patientById(input: DemoStore, patientId: string) {
 }
 
 function visibleWardIds(input: DemoStore, session: SessionContext) {
-  if (isStudentAwaitingWardAssignment(session)) {
+  if (isAwaitingWardAssignment(session)) {
     return [];
   }
 
-  return canViewAllWards(session)
-    ? input.wards.map((ward) => ward.id)
-    : [session.profile.wardAssignment].filter(Boolean) as string[];
+  return visibleWardIdsForRole({
+    role: session.profile.role,
+    residentWardIds: session.profile.residentWardIds,
+    studentWardId: session.profile.wardAssignment,
+    allWardIds: input.wards.map((ward) => ward.id),
+  });
 }
 
 function compareBed(left: string, right: string) {
@@ -1154,6 +1215,7 @@ function mapProfileRow(row: ProfileRow): UserProfile {
     email: row.email ?? "",
     avatarUrl: row.avatar_url ?? null,
     role: row.role ?? "student",
+    residentWardIds: [],
     wardAssignment: row.ward_assignment ?? null,
     studentCode: row.student_code ?? null,
     academicYear: row.academic_year ?? null,
@@ -1228,6 +1290,18 @@ function mapProblemRow(row: ProblemRow): ProblemMaster {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     resolvedAt: row.resolved_at ?? (priority === "RESOLVED_CHRONIC" ? row.updated_at : null),
+  };
+}
+
+function mapResidentWardAssignmentRow(row: ResidentWardAssignmentRow): ResidentWardAssignment {
+  return {
+    id: row.id,
+    residentId: row.resident_id,
+    wardId: row.ward_id,
+    assignedByUserId: row.assigned_by_user_id,
+    assignedAt: row.assigned_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -1499,6 +1573,12 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       ensureNoError(studentAssignmentsResult, "Failed to load student ward assignments");
     }
 
+    const residentAssignmentsResult = await supabase
+      .from("resident_ward_assignments")
+      .select("id, resident_id, ward_id, assigned_by_user_id, assigned_at, created_at, updated_at")
+      .order("assigned_at", { ascending: true });
+    ensureNoError(residentAssignmentsResult, "Failed to load resident ward assignments");
+
     const taskUpdatesResult = await supabase
       .from("task_updates")
       .select("id, task_id, note, created_by_id, created_by_name, created_at")
@@ -1507,7 +1587,20 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
       ensureNoError(taskUpdatesResult, "Failed to load task updates");
     }
 
-    const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map(mapProfileRow);
+    const residentWardAssignments = ((residentAssignmentsResult.data ?? []) as ResidentWardAssignmentRow[]).map(
+      mapResidentWardAssignmentRow,
+    );
+    const residentWardIdsByResidentId = new Map<string, string[]>();
+    for (const assignment of residentWardAssignments) {
+      residentWardIdsByResidentId.set(assignment.residentId, [
+        ...(residentWardIdsByResidentId.get(assignment.residentId) ?? []),
+        assignment.wardId,
+      ]);
+    }
+    const profiles = ((profilesResult.data ?? []) as unknown as ProfileRow[]).map((row) => ({
+      ...mapProfileRow(row),
+      residentWardIds: residentWardIdsByResidentId.get(row.id) ?? [],
+    }));
     const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
     const problemMasters = ((problemsResult.data ?? []) as ProblemRow[]).map(mapProblemRow);
     const problemProgressEntries = ((problemProgressEntriesResult.data ?? []) as ProblemProgressEntryRow[]).map(
@@ -1537,6 +1630,7 @@ async function loadLiveStore(session: SessionContext): Promise<DemoStore> {
         : studentAssignmentsResult.data) ?? []) as StudentWardAssignmentRow[]).map(
         mapStudentWardAssignmentRow,
       ),
+      residentWardAssignments,
     };
   });
 }
@@ -1558,6 +1652,9 @@ const getStoreForSessionCached = cache(
 );
 
 async function getStoreForSession(session: SessionContext) {
+  if (session.mode === "live" && hasLiveSupabase()) {
+    return loadLiveStore(session);
+  }
   return getStoreForSessionCached(
     session.mode,
     session.profile.id,
@@ -1615,6 +1712,8 @@ function buildWardOverviewSummaries(
     .filter((summary) => summary.patients.length > 0 || summary.ward.isActive !== false);
 }
 
+// Retained for the optimized legacy live overview path; the assignment-aware path uses getStoreForSession.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getWardOverviewDataCached = cache(
   async (
     mode: SessionContext["mode"],
@@ -1797,7 +1896,7 @@ function getProfilesForWard(input: DemoStore, wardId: string) {
   return input.profiles.filter(
     (profile) =>
       profile.role === "admin" ||
-      profile.role === "resident" ||
+      (profile.role === "resident" && profile.residentWardIds.includes(wardId)) ||
       profile.wardAssignment === wardId,
   );
 }
@@ -1909,12 +2008,8 @@ export async function getWardSummaries(session: SessionContext): Promise<WardSum
 }
 
 export async function getWardOverviewData(session: SessionContext): Promise<WardOverviewData> {
-  return getWardOverviewDataCached(
-    session.mode,
-    session.profile.id,
-    session.profile.role,
-    session.profile.wardAssignment,
-  );
+  const input = await getStoreForSession(session);
+  return { summaries: buildWardSummary(input, session, "active"), profiles: getVisibleProfiles(input, session) };
 }
 
 export async function getDischargedSummaries(session: SessionContext): Promise<WardSummary[]> {
@@ -2599,8 +2694,13 @@ export async function deleteWard(formData: FormData, session: SessionContext) {
         ? { ...assignment, isActive: false, updatedAt: dischargeTimestamp }
         : assignment,
     );
+    store.residentWardAssignments = store.residentWardAssignments.filter(
+      (assignment) => assignment.wardId !== parsed.wardId,
+    );
     store.profiles = store.profiles.map((profile) =>
-      profile.wardAssignment === parsed.wardId ? { ...profile, wardAssignment: null } : profile,
+      profile.wardAssignment === parsed.wardId || profile.residentWardIds.includes(parsed.wardId)
+        ? { ...profile, wardAssignment: profile.wardAssignment === parsed.wardId ? null : profile.wardAssignment, residentWardIds: profile.residentWardIds.filter((wardId) => wardId !== parsed.wardId) }
+        : profile,
     );
 
     await persistDemoStore();
@@ -2653,6 +2753,11 @@ export async function deleteWard(formData: FormData, session: SessionContext) {
     .update({ ward_assignment: null })
     .eq("ward_assignment", parsed.wardId);
   ensureNoError(clearAssignmentsResult, "Failed to clear ward assignment");
+  const clearResidentAssignmentsResult = await supabase
+    .from("resident_ward_assignments")
+    .delete()
+    .eq("ward_id", parsed.wardId);
+  ensureNoError(clearResidentAssignmentsResult, "Failed to clear resident ward assignments");
 
   const deleteResult = await supabase.from("wards").delete().eq("id", parsed.wardId);
   ensureNoError(deleteResult, "Failed to delete ward");
@@ -2677,6 +2782,10 @@ export async function updateUserRole(formData: FormData, session: SessionContext
     if (!profile) throw new Error("User not found");
     profile.role = parsed.role;
     profile.wardAssignment = nextWardAssignment;
+    profile.residentWardIds = parsed.role === "resident" ? profile.residentWardIds : [];
+    if (parsed.role !== "resident") {
+      store.residentWardAssignments = store.residentWardAssignments.filter((assignment) => assignment.residentId !== profile.id);
+    }
     await persistDemoStore();
     revalidateWardflowPaths();
     return;
@@ -2688,6 +2797,12 @@ export async function updateUserRole(formData: FormData, session: SessionContext
     .update({ role: parsed.role, ward_assignment: nextWardAssignment })
     .eq("id", parsed.userId);
   ensureNoError(result, "Failed to update user role");
+  if (parsed.role !== "resident") {
+    ensureNoError(
+      await supabase.from("resident_ward_assignments").delete().eq("resident_id", parsed.userId),
+      "Failed to clear resident ward assignments",
+    );
+  }
   revalidateWardflowPaths();
 }
 
@@ -2958,6 +3073,14 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
   ) {
     ensureNoError(studentAssignmentsDeleteResult, "Failed to clear student ward assignments");
   }
+
+  ensureNoError(
+    await supabase
+      .from("resident_ward_assignments")
+      .delete()
+      .or(`resident_id.eq.${parsed.userId},assigned_by_user_id.eq.${parsed.userId}`),
+    "Failed to clear resident ward assignments",
+  );
 
   ensureNoError(
     await supabase
@@ -3241,6 +3364,79 @@ export async function savePatient(formData: FormData, session: SessionContext): 
 
   revalidateWardflowPaths(patientId);
   return patientId;
+}
+
+export async function getResidentWardAssignmentBoardData(
+  session: SessionContext,
+): Promise<ResidentWardAssignmentBoardData> {
+  if (!canManageAdmin(session)) throw new Error("Admin only");
+  const input = await getStoreForSession(session);
+  const residents = input.profiles
+    .filter((profile) => profile.role === "resident" && (profile.isActive ?? true))
+    .sort((left, right) => left.name.localeCompare(right.name, "th"));
+  return {
+    residents,
+    wards: input.wards
+      .filter((ward) => ward.isActive ?? true)
+      .sort((left, right) => left.name.localeCompare(right.name, "th"))
+      .map((ward): ResidentWardAssignmentWard => ({
+        ward,
+        residentIds: input.residentWardAssignments
+          .filter((assignment) => assignment.wardId === ward.id)
+          .map((assignment) => assignment.residentId),
+      })),
+  };
+}
+
+export async function saveResidentWardAssignments(
+  input: z.input<typeof saveResidentWardAssignmentsSchema>,
+  session: SessionContext,
+) {
+  if (!canManageAdmin(session)) throw new Error("Admin only");
+  const parsed = saveResidentWardAssignmentsSchema.parse({
+    wardId: input.wardId,
+    residentIds: [...new Set(input.residentIds ?? [])],
+  });
+  if (parsed.residentIds.length !== (input.residentIds ?? []).length) {
+    throw new Error("Duplicate resident selection is not allowed");
+  }
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    if (!store.wards.some((ward) => ward.id === parsed.wardId && (ward.isActive ?? true))) {
+      throw new Error("Ward not found");
+    }
+    const residents = store.profiles.filter(
+      (profile) => profile.role === "resident" && (profile.isActive ?? true) && parsed.residentIds.includes(profile.id),
+    );
+    if (residents.length !== parsed.residentIds.length) throw new Error("One or more selected residents are unavailable");
+    const timestamp = now();
+    store.residentWardAssignments = store.residentWardAssignments.filter(
+      (assignment) => assignment.wardId !== parsed.wardId,
+    );
+    store.residentWardAssignments.push(
+      ...parsed.residentIds.map((residentId) => ({
+        id: nextId("resident-assignment"), residentId, wardId: parsed.wardId,
+        assignedByUserId: session.profile.id, assignedAt: timestamp, createdAt: timestamp, updatedAt: timestamp,
+      })),
+    );
+    store.profiles = store.profiles.map((profile) => profile.role === "resident" ? {
+      ...profile,
+      residentWardIds: store.residentWardAssignments.filter((assignment) => assignment.residentId === profile.id).map((assignment) => assignment.wardId),
+      wardAssignment: null,
+      updatedAt: timestamp,
+    } : profile);
+    await persistDemoStore();
+  } else {
+    const supabase = await getLiveClient();
+    const result = await supabase.rpc("admin_save_resident_ward_assignments", {
+      target_ward_id: parsed.wardId,
+      target_resident_ids: parsed.residentIds,
+    });
+    ensureNoError(result, "Failed to save resident ward assignments");
+  }
+  revalidateWardflowPaths();
+  return { wardId: parsed.wardId, residentIds: parsed.residentIds };
 }
 
 function createInitialProblemForDemoPatient(patient: Patient, session: SessionContext) {
@@ -3996,12 +4192,12 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     const patient = patientById(store, parsed.patientId);
     if (!patient) throw new Error("Patient not found");
     requireTaskWorkflowWriteAccess(session, patient.wardId);
-    if (
+  if (
       parsed.problemId &&
       !store.problemMasters.some(
         (problem) => problem.id === parsed.problemId && problem.patientId === parsed.patientId,
       )
-    ) {
+  ) {
       throw new Error("Selected problem is not linked to this patient");
     }
 
