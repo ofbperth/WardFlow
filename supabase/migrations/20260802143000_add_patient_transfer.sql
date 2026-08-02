@@ -80,7 +80,7 @@ begin
     coalesce(actor_name, ''),
     'patient.transferred',
     'patient',
-    transferred_patient.id::text,
+    transferred_patient.id,
     to_jsonb(current_patient),
     to_jsonb(transferred_patient)
   );
