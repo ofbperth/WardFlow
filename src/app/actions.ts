@@ -129,7 +129,6 @@ export async function savePatientWardAction(formData: FormData) {
 
   try {
     await savePatient(formData, session);
-    redirect("/wards?toast=patient-saved");
   } catch (error) {
     console.error("savePatientWardAction failed", {
       role: session.profile.role,
@@ -141,6 +140,8 @@ export async function savePatientWardAction(formData: FormData) {
     });
     redirect("/wards?error=patient-save-failed");
   }
+
+  redirect("/wards?toast=patient-saved");
 }
 
 export async function savePatientDetailAction(formData: FormData) {
