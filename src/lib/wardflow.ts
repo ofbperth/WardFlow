@@ -339,7 +339,7 @@ const problemMasterSchema = z.object({
 const patientTransferSchema = z.object({
   patientId: z.string().min(1),
   destinationWardId: z.string().min(1),
-  destinationBed: z.string().min(1),
+  destinationBed: z.string().trim().min(1),
   updatedAt: z.string().optional().nullable(),
 });
 
@@ -2262,7 +2262,7 @@ export async function getVisibleWards(session: SessionContext) {
   const input = await getStoreForSession(session);
   const wardIds = visibleWardIds(input, session);
   return input.wards
-    .filter((ward) => wardIds.includes(ward.id))
+    .filter((ward) => wardIds.includes(ward.id) && ward.isActive !== false)
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
@@ -3386,7 +3386,7 @@ export async function transferPatient(formData: FormData, session: SessionContex
     if (!patient) throw new Error("Patient not found");
     if (patient.lifecycle !== "active") throw new Error("Only active patients can be transferred");
     if (patient.wardId === parsed.destinationWardId) throw new Error("Choose a different destination ward");
-    if (!store.wards.some((ward) => ward.id === parsed.destinationWardId)) {
+    if (!store.wards.some((ward) => ward.id === parsed.destinationWardId && ward.isActive !== false)) {
       throw new Error("Destination ward not found");
     }
 
