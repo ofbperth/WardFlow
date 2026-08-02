@@ -11,10 +11,12 @@ import {
   saveTaskAction,
   saveTaskUpdateAction,
   updateTaskStatusAction,
+  transferPatientAction,
 } from "@/app/actions";
 import {
   DischargeSummaryEditor,
   PatientEditor,
+  PatientTransferEditor,
   ProblemCreator,
   TaskCreator,
 } from "@/components/form-feedback";
@@ -42,6 +44,7 @@ import {
   getPatientBundle,
   getProfiles,
   getTaskTemplates,
+  getVisibleWards,
 } from "@/lib/wardflow";
 
 export default async function PatientPage({
@@ -51,11 +54,12 @@ export default async function PatientPage({
 }) {
   const session = await requireAppSession();
   const { patientId } = await params;
-  const [bundle, profiles, templates, dischargeDraft] = await Promise.all([
+  const [bundle, profiles, templates, dischargeDraft, visibleWards] = await Promise.all([
     getPatientBundle(session, patientId),
     getProfiles(session),
     getTaskTemplates(session),
     getDischargeDraft(session, patientId),
+    getVisibleWards(session),
   ]);
 
   if (!bundle) {
@@ -79,6 +83,7 @@ export default async function PatientPage({
     session.profile.role === "admin" ||
     session.profile.role === "resident" ||
     (session.profile.role === "student" && isAssignedWard);
+  const transferWards = visibleWards.filter((ward) => ward.id !== bundle.patient.wardId);
 
   return (
     <div className="patient-page-layout min-w-0 space-y-4 md:space-y-5">
@@ -274,6 +279,40 @@ export default async function PatientPage({
                     <SubmitButton pendingLabel="Updating patient...">Update patient detail</SubmitButton>
                   </form>
                 </PatientEditor>
+
+                {bundle.patient.lifecycle === "active" && transferWards.length ? (
+                  <PatientTransferEditor
+                    className="mt-0"
+                    buttonClassName="mt-0"
+                    panelClassName="mt-0 order-last w-full"
+                    headerClassName="items-start"
+                    contentClassName="space-y-3"
+                  >
+                    <form action={transferPatientAction} className="space-y-3">
+                      <input type="hidden" name="patientId" value={bundle.patient.id} />
+                      <input type="hidden" name="updatedAt" value={bundle.patient.lastUpdate} />
+                      <p className="text-sm text-muted">
+                        Move from {bundle.ward?.name ?? "current ward"} · Bed {bundle.patient.bed}
+                      </p>
+                      <Field label="Destination ward">
+                        <SelectBox name="destinationWardId" defaultValue="" required>
+                          <option value="" disabled>
+                            Select ward
+                          </option>
+                          {transferWards.map((ward) => (
+                              <option key={ward.id} value={ward.id}>
+                                {ward.name}
+                              </option>
+                            ))}
+                        </SelectBox>
+                      </Field>
+                      <Field label="Destination bed">
+                        <TextInput name="destinationBed" required placeholder="e.g. 12" />
+                      </Field>
+                      <SubmitButton pendingLabel="Transferring patient...">Transfer patient</SubmitButton>
+                    </form>
+                  </PatientTransferEditor>
+                ) : null}
 
                 {bundle.patient.lifecycle === "active" && dischargeDraft ? (
                   <DischargeSummaryEditor

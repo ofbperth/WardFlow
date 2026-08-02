@@ -336,6 +336,13 @@ const problemMasterSchema = z.object({
   resolvedAt: z.string().optional().nullable(),
 });
 
+const patientTransferSchema = z.object({
+  patientId: z.string().min(1),
+  destinationWardId: z.string().min(1),
+  destinationBed: z.string().min(1),
+  updatedAt: z.string().optional().nullable(),
+});
+
 const problemProgressEntrySchema = z
   .object({
     id: z.string().optional(),
@@ -3361,6 +3368,53 @@ export async function savePatient(formData: FormData, session: SessionContext): 
 
   revalidateWardflowPaths(patientId);
   return patientId;
+}
+
+export async function transferPatient(formData: FormData, session: SessionContext): Promise<string> {
+  const parsed = patientTransferSchema.parse({
+    patientId: formData.get("patientId"),
+    destinationWardId: formData.get("destinationWardId"),
+    destinationBed: formData.get("destinationBed"),
+    updatedAt: textOrNull(formData.get("updatedAt")),
+  });
+
+  requirePatientManager(session);
+
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient) throw new Error("Patient not found");
+    if (patient.lifecycle !== "active") throw new Error("Only active patients can be transferred");
+    if (patient.wardId === parsed.destinationWardId) throw new Error("Choose a different destination ward");
+    if (!store.wards.some((ward) => ward.id === parsed.destinationWardId)) {
+      throw new Error("Destination ward not found");
+    }
+
+    requireWardWriteAccess(session, patient.wardId);
+    requireWardWriteAccess(session, parsed.destinationWardId);
+    assertNoConflict(parsed.updatedAt, patient.lastUpdate, "patient");
+
+    const before = structuredClone(patient);
+    patient.wardId = parsed.destinationWardId;
+    patient.bed = parsed.destinationBed;
+    patient.lastUpdate = now();
+    addActivityToDemoStore(session, patient.id, "patient.transferred", "patient", patient.id, before, patient);
+    await persistDemoStore();
+    revalidateWardflowPaths(patient.id);
+    return patient.id;
+  }
+
+  const supabase = await getLiveClient();
+  const result = await supabase.rpc("transfer_patient", {
+    target_patient_id: parsed.patientId,
+    target_ward_id: parsed.destinationWardId,
+    target_bed: parsed.destinationBed,
+    expected_updated_at: parsed.updatedAt ?? null,
+  });
+  ensureNoError(result, "Failed to transfer patient");
+
+  revalidateWardflowPaths(parsed.patientId);
+  return parsed.patientId;
 }
 
 export async function getResidentWardAssignmentBoardData(

@@ -22,6 +22,7 @@ import {
   saveTask,
   saveTaskUpdate,
   saveTemplate,
+  transferPatient,
   updateUserRole,
   saveWard,
   updateTaskStatus,
@@ -145,6 +146,12 @@ export async function savePatientWardAction(formData: FormData) {
 export async function savePatientDetailAction(formData: FormData) {
   const session = await requireAppSession();
   const patientId = await savePatient(formData, session);
+  redirect(`/patients/${patientId}`);
+}
+
+export async function transferPatientAction(formData: FormData) {
+  const session = await requireAppSession();
+  const patientId = await transferPatient(formData, session);
   redirect(`/patients/${patientId}`);
 }
 

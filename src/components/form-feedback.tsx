@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert, X } from "lucide-react";
+import { ArrowRightLeft, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const InlineEditorCloseContext = createContext<(() => void) | null>(null);
@@ -186,7 +186,7 @@ export function InlineEditor({
 }: {
   buttonLabel: string;
   panelTitle: string;
-  buttonIcon?: "edit" | "create";
+  buttonIcon?: "edit" | "create" | "transfer";
   iconOnly?: boolean;
   compactTrigger?: boolean;
   buttonTitle?: string;
@@ -198,7 +198,7 @@ export function InlineEditor({
   contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const Icon = buttonIcon === "create" ? Plus : Pencil;
+  const Icon = buttonIcon === "create" ? Plus : buttonIcon === "transfer" ? ArrowRightLeft : Pencil;
 
   if (!open) {
     return (
@@ -395,6 +395,40 @@ export function PatientEditor({
       iconOnly={iconOnly}
       compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
+      className={className}
+      buttonClassName={buttonClassName}
+      panelClassName={panelClassName}
+      headerClassName={headerClassName}
+      contentClassName={contentClassName}
+    >
+      {children}
+    </InlineEditor>
+  );
+}
+
+export function PatientTransferEditor({
+  children,
+  className,
+  buttonClassName,
+  panelClassName,
+  headerClassName,
+  contentClassName,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  buttonClassName?: string;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <InlineEditor
+      buttonLabel="Transfer patient"
+      panelTitle="Transfer patient"
+      buttonIcon="transfer"
+      iconOnly
+      compactTrigger
+      buttonTitle="Transfer patient"
       className={className}
       buttonClassName={buttonClassName}
       panelClassName={panelClassName}

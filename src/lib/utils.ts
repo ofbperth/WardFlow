@@ -220,6 +220,7 @@ export function labelForActivityAction(action: string) {
     {
       "patient.created": "สร้างผู้ป่วยใหม่",
       "patient.updated": "อัปเดตข้อมูลผู้ป่วย",
+      "patient.transferred": "ย้าย Ward ผู้ป่วย",
       "patient.discharged": "จำหน่ายผู้ป่วย",
       "problem.created": "เพิ่ม problem list",
       "problem.updated": "อัปเดต problem list",
