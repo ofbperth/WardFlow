@@ -50,7 +50,7 @@ export default async function PendingTaskHandoverPage({
         subtitle="A work-only brief for unfinished, blocked, and owner-dependent tasks."
       >
         {data.blockedByMissingWard ? (
-          <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
+          <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before pending tasks can be shown." />
         ) : (
           <>
             <ExpandableFilters title="Filter pending tasks">

@@ -65,7 +65,7 @@ import type {
 } from "@/lib/types";
 import { exportSummaryNoteToGoogleDocs } from "@/lib/google-docs";
 import { buildSummaryNotePayload } from "@/lib/summary-note";
-import { visibleWardIdsForRole } from "@/lib/resident-ward-assignment";
+import { isProfileAssignableToWard, visibleWardIdsForRole } from "@/lib/resident-ward-assignment";
 
 type DemoStore = {
   wards: Ward[];
@@ -871,7 +871,6 @@ function isProfileVisibleToSession(profile: UserProfile, session: SessionContext
   return (
     canViewAllWards(session) ||
     profile.role === "admin" ||
-    profile.role === "resident" ||
     assignedWardIds(profile).some((wardId) => assignedWardIds(session.profile).includes(wardId)) ||
     profile.id === session.profile.id
   );
@@ -1895,9 +1894,7 @@ function getVisibleProfiles(input: DemoStore, session: SessionContext): UserProf
 function getProfilesForWard(input: DemoStore, wardId: string) {
   return input.profiles.filter(
     (profile) =>
-      profile.role === "admin" ||
-      (profile.role === "resident" && profile.residentWardIds.includes(wardId)) ||
-      profile.wardAssignment === wardId,
+      isProfileAssignableToWard(profile, wardId),
   );
 }
 
@@ -2454,7 +2451,7 @@ export async function getMyTasks(session: SessionContext, filters?: Partial<Task
   });
 
   return {
-    blockedByMissingWard: isStudentAwaitingWardAssignment(session),
+    blockedByMissingWard: isAwaitingWardAssignment(session),
     wards: input.wards.filter((ward) => visibleWardIds(input, session).includes(ward.id)),
     profiles: getVisibleProfiles(input, session),
     profilesByWard: Object.fromEntries(
@@ -2546,7 +2543,7 @@ export async function getBulkTaskEntryData(session: SessionContext) {
   }));
 
   return {
-    blockedByMissingWard: isStudentAwaitingWardAssignment(session),
+    blockedByMissingWard: isAwaitingWardAssignment(session),
     wardSummaries: summaries,
     templates: [...input.templates].sort((left, right) => left.title.localeCompare(right.title)),
     profilesByWard: Object.fromEntries(
@@ -2574,7 +2571,7 @@ export async function getPendingTaskHandoverData(
   });
 
   return {
-    blockedByMissingWard: isStudentAwaitingWardAssignment(session),
+    blockedByMissingWard: isAwaitingWardAssignment(session),
     wards: input.wards.filter((ward) => visibleWardIds(input, session).includes(ward.id)),
     groups: groupTaskWorkspaceItems(items, false),
   };
@@ -4160,13 +4157,21 @@ function resolveAssignableOwnerFromProfiles(
 }
 
 async function getLiveAssignableProfilesForWard(supabase: LiveClient, wardId: string) {
-  const result = await supabase
-    .from("profiles")
-    .select("id, name, email, avatar_url, role, ward_assignment")
-    .or(`role.eq.admin,role.eq.resident,ward_assignment.eq.${wardId}`)
-    .order("name", { ascending: true });
-  ensureNoError(result, "Failed to load assignable profiles");
-  return ((result.data ?? []) as ProfileRow[]).map(mapProfileRow);
+  const [profilesResult, assignmentsResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, name, email, avatar_url, role, ward_assignment")
+      .order("name", { ascending: true }),
+    supabase.from("resident_ward_assignments").select("resident_id").eq("ward_id", wardId),
+  ]);
+  ensureNoError(profilesResult, "Failed to load assignable profiles");
+  ensureNoError(assignmentsResult, "Failed to load resident ward assignments");
+  const residentIds = new Set(
+    ((assignmentsResult.data ?? []) as Array<{ resident_id: string }>).map((assignment) => assignment.resident_id),
+  );
+  return ((profilesResult.data ?? []) as ProfileRow[])
+    .map((row) => ({ ...mapProfileRow(row), residentWardIds: residentIds.has(row.id) ? [wardId] : [] }))
+    .filter((profile) => isProfileAssignableToWard(profile, wardId));
 }
 
 export async function saveTask(formData: FormData, session: SessionContext) {

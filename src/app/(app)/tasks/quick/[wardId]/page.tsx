@@ -37,7 +37,7 @@ export default async function QuickTaskEntryWardPage({
       />
 
       {data.blockedByMissingWard ? (
-        <SetupNotice title="Student ward assignment required" body="Ask admin to assign a ward first." />
+            <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards first." />
       ) : wardSummary ? (
         <BulkTaskEntryBuilder
           wardSummary={wardSummary}

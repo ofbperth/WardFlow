@@ -19,7 +19,7 @@ export default async function QuickTaskEntryLandingPage({
       <PageHeader compact title="Quick task entry" />
 
       {data.blockedByMissingWard ? (
-        <SetupNotice title="Student ward assignment required" body="Ask admin to assign a ward first." />
+        <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards first." />
       ) : data.wardSummaries.length ? (
         <section className="grid gap-3 xl:grid-cols-2">
           {data.wardSummaries.map((summary) => (

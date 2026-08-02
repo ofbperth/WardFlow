@@ -35,7 +35,7 @@ export default async function MyTasksPage({
 
       <GlassPanel headingLevel={1} title="Task">
         {data.blockedByMissingWard ? (
-          <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
+          <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before tasks can be shown." />
         ) : (
           <>
             <ExpandableFilters title="Filter tasks">

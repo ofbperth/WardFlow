@@ -24,3 +24,12 @@ export function replaceResidentsForWard(
     ...residentIds.map((residentId) => ({ residentId, wardId })),
   ];
 }
+
+export function isProfileAssignableToWard(
+  profile: { role: "admin" | "resident" | "student"; residentWardIds?: string[]; wardAssignment?: string | null },
+  wardId: string,
+) {
+  return profile.role === "admin" ||
+    (profile.role === "resident" && (profile.residentWardIds ?? []).includes(wardId)) ||
+    (profile.role === "student" && profile.wardAssignment === wardId);
+}

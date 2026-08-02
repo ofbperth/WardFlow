@@ -32,6 +32,10 @@ export default async function HandoverPage({
     (total, bundle) => total + bundle.patients.reduce((sum, patient) => sum + patient.tasks.length, 0),
     0,
   );
+  const awaitingWardAssignment =
+    session.profile.role === "resident"
+      ? session.profile.residentWardIds.length === 0
+      : session.profile.role === "student" && !session.profile.wardAssignment;
 
   return (
     <div className="space-y-6">
@@ -82,8 +86,8 @@ export default async function HandoverPage({
             </form>
           </ExpandableFilters>
 
-          {session.profile.role === "student" && !session.profile.wardAssignment ? (
-            <SetupNotice title="Student ward assignment required" body="รอ admin assign ward ก่อน" />
+          {awaitingWardAssignment ? (
+            <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before handover items can be shown." />
           ) : null}
         </div>
       </GlassPanel>
