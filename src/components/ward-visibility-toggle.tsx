@@ -1,10 +1,10 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
 export function WardVisibilityToggle({ wardName, contentId }: { wardName: string; contentId: string }) {
-  const [isHidden, setIsHidden] = useState(false);
+  const [isHidden, setIsHidden] = useState(true);
   const label = isHidden ? "Show ward" : "Hide ward";
 
   function toggleVisibility() {
@@ -24,10 +24,9 @@ export function WardVisibilityToggle({ wardName, contentId }: { wardName: string
       aria-expanded={!isHidden}
       aria-label={`${label}: ${wardName}`}
       title={label}
-      className="button-secondary inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold"
+      className="button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full"
     >
-      {isHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-      <span>{label}</span>
+      {isHidden ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
     </button>
   );
 }

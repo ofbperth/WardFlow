@@ -228,7 +228,7 @@ export function PatientCensus({
             </div>
           }
         >
-          <div id={`ward-census-${summary.ward.id}`}>
+          <div id={`ward-census-${summary.ward.id}`} hidden>
             <div className="grid gap-2.5 md:grid-cols-2 xl:gap-3 2xl:grid-cols-3">
               {summary.patients.map((patient) => (
                 <Link
