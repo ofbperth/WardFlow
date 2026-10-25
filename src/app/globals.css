@@ -79,6 +79,11 @@ summary {
   outline-offset: 2px;
 }
 
+/* The editor wrapper supplies the focus ring around both text and toolbar. */
+.progress-note-input:focus-visible {
+  outline: none;
+}
+
 ::selection {
   background: oklch(0.9 0.028 203);
 }

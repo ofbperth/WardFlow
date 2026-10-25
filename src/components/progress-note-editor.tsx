@@ -37,7 +37,7 @@ export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBl
     extensions, enableInputRules: false, immediatelyRender: false, content: documentFor(value), editable: !readOnly,
     editorProps: { attributes: {
       id: id ?? "", role: "textbox", "aria-label": "Progress note", "aria-multiline": "true",
-      class: "min-h-36 whitespace-pre-wrap break-words px-3 py-3 text-sm leading-7 outline-none [&_h3]:text-lg [&_h3]:font-bold [&_h3]:leading-8",
+      class: "progress-note-input min-h-36 whitespace-pre-wrap break-words px-3 py-3 text-sm leading-7 outline-none [&_h3]:text-lg [&_h3]:font-bold [&_h3]:leading-8",
     } },
     onUpdate: ({ editor }) => onChange(serializeDocument(editor.getJSON())),
   });
