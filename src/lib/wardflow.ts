@@ -1,3 +1,4 @@
+import { progressNoteText } from "@/lib/progress-format";
 import fs from "node:fs";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
@@ -1023,7 +1024,7 @@ function getProblemViews(input: DemoStore, patientId: string) {
 }
 
 function getProblemLatestStatus(problem: Problem) {
-  return problem.latestEntry?.note ?? problem.currentStatusSummary;
+  return progressNoteText(problem.latestEntry?.note ?? problem.currentStatusSummary);
 }
 
 function getProblemPendingTasks(problem: Problem) {

@@ -1,3 +1,6 @@
+import { ProgressNoteContent } from "@/components/progress-note-content";
+import { ProgressNoteHistoryField } from "@/components/progress-note-editor";
+import { progressNoteText } from "@/lib/progress-format";
 import { ProgressNoteAutosave } from "@/components/progress-note-autosave";
 import Link from "next/link";
 import {
@@ -288,7 +291,7 @@ export function PatientCensus({
 }
 
 function compactProblemStatus(problem: Problem) {
-  return problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet";
+  return progressNoteText(problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet");
 }
 
 function ProgressNoteCard({
@@ -318,7 +321,7 @@ function ProgressNoteCard({
             <p className="mt-1 text-xs text-muted">By {entry.authorName}</p>
           ) : null}
           {entry.note ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{entry.note}</p>
+            <div className="mt-2"><ProgressNoteContent value={entry.note} /></div>
           ) : (
             <p className="mt-2 text-sm text-muted">No note text</p>
           )}
@@ -332,11 +335,7 @@ function ProgressNoteCard({
               <input type="hidden" name="dateTime" value={entry.dateTime} />
               <input type="hidden" name="updatedAt" value={entry.updatedAt} />
               <Field label="Progress note">
-                <TextArea
-                  name="note"
-                  defaultValue={entry.note ?? ""}
-                  placeholder={"08:00 reviewed on round\nPatient breathing easier\nPlan continue current support"}
-                />
+                <ProgressNoteHistoryField initial={entry.note ?? ""} />
               </Field>
               <SubmitButton pendingLabel="Saving update...">Save progress note</SubmitButton>
             </form>

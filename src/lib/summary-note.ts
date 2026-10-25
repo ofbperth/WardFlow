@@ -1,3 +1,4 @@
+import { progressNoteText } from "@/lib/progress-format";
 import type {
   ActivityLog,
   HandoverNote,
@@ -118,7 +119,7 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
       ],
       "No current summary",
     ),
-    latestNote: withFallback(splitBullets(latestEntry?.note), "No latest note"),
+    latestNote: withFallback(splitBullets(progressNoteText(latestEntry?.note)), "No latest note"),
     pendingTasks: withFallback(
       problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
       "No linked pending ward work",
@@ -271,7 +272,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
         [
           problem.problemName,
           problem.currentStatusSummary,
-          problem.latestEntry?.note,
+          progressNoteText(problem.latestEntry?.note),
         ]
           .filter(Boolean)
           .join(" | "),

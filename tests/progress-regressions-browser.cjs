@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const readNote = locator => locator.evaluate(el => {
+  const text = node => node.nodeType === 3 ? node.textContent : node.nodeName === 'BR'
+    ? (node.classList.contains('ProseMirror-trailingBreak') ? '' : '\n') : Array.from(node.childNodes).map(text).join('');
+  return Array.from(el.children).map(text).join('\n');
+});
 const base = process.env.TEST_BASE_URL || 'http://localhost:3100';
 if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw new Error('Local demo only');
 const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) return; await new Promise(r => setTimeout(r, 200)); } throw new Error('Condition timed out'); };
@@ -17,10 +22,11 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.locator('article:visible a').first().click();
     await page.waitForURL('**/patients/**');
     const patientUrl = page.url();
-    const note = page.locator('textarea[id^="progress-"]').first();
+    const note = page.locator('[role="textbox"][id^="progress-"]').first();
     await wait(async () => await note.isEditable());
-    const original = await note.inputValue();
-    const status = note.locator('..').getByRole('status');
+    await wait(async () => await note.isEditable());
+    const original = await readNote(note);
+    const status = note.locator('xpath=ancestor::div[div/span[@role="status"]][1]').getByRole('status');
     const saved = () => wait(async () => await status.innerText() === 'บันทึกแล้ว');
     await context.setOffline(true);
     await note.fill('REGRESSION draft survives browser Back');
@@ -29,10 +35,10 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await context.setOffline(false);
     await page.goto(patientUrl);
     await wait(async () => await note.isEditable());
-    assert.equal(await note.inputValue(), 'REGRESSION draft survives browser Back');
+    assert.equal(await readNote(note), 'REGRESSION draft survives browser Back');
     await saved();
     await page.reload();
-    assert.equal(await note.inputValue(), 'REGRESSION draft survives browser Back');
+    assert.equal(await readNote(note), 'REGRESSION draft survives browser Back');
     console.log('PASS offline Back, draft recovery, autosave and reload');
 
     // Drop only writes so the document can reload while the server is unreachable for saving.
@@ -41,7 +47,7 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await wait(async () => (await status.innerText()).includes('ไม่สำเร็จ'));
     await page.reload();
     await wait(async () => await note.isEditable());
-    assert.equal(await note.inputValue(), 'REGRESSION draft survives reload');
+    assert.equal(await readNote(note), 'REGRESSION draft survives reload');
     await page.unroute('**/*');
     await saved();
     console.log('PASS unsaved draft survives full reload and retries');
@@ -62,11 +68,11 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.goBack();
     await page.goto(patientUrl);
     await wait(async () => await note.isEditable());
-    assert.equal(await note.inputValue(), 'REGRESSION latest typing before Back');
+    assert.equal(await readNote(note), 'REGRESSION latest typing before Back');
     await saved();
     await page.unroute('**/*');
     await page.reload();
-    assert.equal(await note.inputValue(), 'REGRESSION latest typing before Back');
+    assert.equal(await readNote(note), 'REGRESSION latest typing before Back');
     console.log('PASS late response after unmount does not discard newer draft');
 
     await note.fill('REGRESSION obsolete snapshot text'); await saved();
@@ -77,6 +83,7 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     assert(!summary.includes('REGRESSION obsolete snapshot text'));
     assert(summary.includes('REGRESSION final snapshot text'));
     await page.goto(patientUrl);
+    await wait(() => note.isEditable());
     await page.getByText(/^Progress history \(/).click();
     assert((await page.locator('body').innerText()).includes('REGRESSION obsolete snapshot text'));
     await note.fill(original); await saved();

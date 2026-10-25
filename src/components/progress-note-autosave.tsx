@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { ProgressNoteEditor } from "@/components/progress-note-editor";
 import { autosaveProblemNoteAction } from "@/app/actions";
 import type { ProgressSaveInput, ProgressSnapshot } from "@/lib/progress-autosave";
 import { acknowledgeProgressDraft, progressDraftKey, readProgressDraft, removeProgressDraft, writeProgressDraft } from "@/lib/progress-draft";
@@ -19,7 +20,6 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
   const [failed, setFailed] = useState(false);
   const [restored, setRestored] = useState(false);
   const [storageAvailable, setStorageAvailable] = useState(true);
-  const field = useRef<HTMLTextAreaElement>(null);
   const current = useRef(initial.note);
   const saved = useRef(initial);
   const sending = useRef(false);
@@ -56,21 +56,6 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
     }
   });
   useEffect(() => { acceptRemote(); }, [initial.id, initial.updatedAt, initial.note, restored]);
-
-  useEffect(() => {
-    const textarea = field.current;
-    if (!textarea) return;
-    const resize = () => {
-      if (!textarea.getClientRects().length) return;
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight + 2}px`;
-    };
-    resize();
-    const observer = new ResizeObserver(resize);
-    observer.observe(textarea);
-    window.addEventListener("resize", resize);
-    return () => { observer.disconnect(); window.removeEventListener("resize", resize); };
-  }, [value]);
 
   useEffect(() => {
     if (readOnly || !restored) return;
@@ -149,22 +134,19 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
           {readOnly ? "อ่านอย่างเดียว" : status}
         </span>
       </div>
-      <textarea
-        ref={field} id={`progress-${problemId}`} value={value} readOnly={readOnly || !hydrated || !restored} rows={5}
-        placeholder="คลิกแล้วพิมพ์ข้อมูลต่อได้เลย…"
-        className="block min-h-36 w-full resize-none overflow-hidden rounded-xl border clinical-divider bg-white px-3 py-3 text-sm leading-7 text-foreground focus:border-[color:var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-accent)]"
-        onChange={(event) => {
-          current.current = event.target.value;
-          setValue(event.target.value);
+      <ProgressNoteEditor
+        id={`progress-${problemId}`} value={value} readOnly={readOnly || !hydrated || !restored}
+        onChange={(note) => {
+          current.current = note;
+          setValue(note);
           persistDraft();
-          if (!blocked.current) setStatus("รอบันทึก…");
+          if (!blocked.current) setStatus(note === saved.current.note && !request.current ? "บันทึกแล้ว" : "รอบันทึก…");
           schedule.current();
         }}
         onCompositionStart={() => { composing.current = true; }}
         onCompositionEnd={() => { composing.current = false; schedule.current(); }}
         onBlur={() => schedule.current(0)}
       />
-      {!readOnly ? <p className="mt-2 text-xs text-muted">บันทึกอัตโนมัติเมื่อหยุดพิมพ์ · ช่องขยายตามข้อความทั้งหมด</p> : null}
       {!readOnly && !storageAvailable ? <p role="alert" className="mt-2 text-xs text-red-700">เบราว์เซอร์ไม่อนุญาตเก็บ draft กรุณารอให้บันทึกแล้วก่อนรีโหลดหรือปิดแท็บ</p> : null}
     </div>
   );

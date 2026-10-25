@@ -9,5 +9,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/lib/resident-ward-assignment.ts", "tests/resident-ward-assignment.test.ts", "src/lib/progress-autosave.ts", "src/lib/progress-draft.ts", "tests/progress-draft.test.ts"]
+  "include": [
+    "src/lib/resident-ward-assignment.ts",
+    "tests/resident-ward-assignment.test.ts",
+    "src/lib/progress-autosave.ts",
+    "src/lib/progress-draft.ts",
+    "tests/progress-draft.test.ts",
+    "src/lib/progress-format.ts",
+    "tests/progress-format.test.ts"
+  ]
 }
