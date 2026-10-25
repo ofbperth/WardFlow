@@ -19,8 +19,12 @@ begin
   if r2->>'conflict' <> 'true' then raise exception 'Conflict not rejected'; end if;
   r2 := public.autosave_problem_note(p,pr,gen_random_uuid()::text,r#>>'{snapshot,id}',(r#>>'{snapshot,updatedAt}')::timestamptz,'');
   if not (r2->>'ok')::boolean or r2#>>'{snapshot,note}' <> '' then raise exception 'Clear failed'; end if;
-  if (select count(*) from public.problem_progress_entries where problem_id=pr) <> 2 then raise exception 'History count incorrect'; end if;
+  if (select count(*) from public.problem_progress_entries where problem_id=pr) <> 1 then raise exception 'More than one current note stored'; end if;
+  if r#>>'{snapshot,id}' = r2#>>'{snapshot,id}' then raise exception 'Request token was not advanced'; end if;
+  r := public.autosave_problem_note(p,pr,req,null,null,E'line 1\nline 2');
+  if r->>'conflict' <> 'true' then raise exception 'Superseded retry overwrote current note'; end if;
+  if (select note from public.problem_progress_entries where problem_id=pr) <> '' then raise exception 'Blank current note lost'; end if;
   if has_function_privilege('anon','public.autosave_problem_note(uuid,uuid,text,text,timestamptz,text)','execute') then raise exception 'Anon permission exposed'; end if;
 end $test$;
-select 'PASS: save, retry, stale conflict, clear, history, anon denied; fixtures rolled back' as result;
+select 'PASS: save, retry, stale conflict, clear, one current note, superseded retry conflict, anon denied; fixtures rolled back' as result;
 rollback;

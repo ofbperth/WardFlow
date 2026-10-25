@@ -346,26 +346,6 @@ const patientTransferSchema = z.object({
   updatedAt: z.string().optional().nullable(),
 });
 
-const problemProgressEntrySchema = z
-  .object({
-    id: z.string().optional(),
-    patientId: z.string().min(1),
-    problemId: z.string().min(1),
-    dateTime: z.string().optional().nullable(),
-    note: z.string().optional().nullable(),
-    updatedAt: z.string().optional().nullable(),
-  })
-  .superRefine((value, ctx) => {
-    const hasContent = Boolean(value.note?.trim());
-
-    if (!hasContent) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Progress update must include note text.",
-      });
-    }
-});
-
 const taskSchema = z.object({
   id: z.string().optional(),
   patientId: z.string().min(1),
@@ -1943,17 +1923,6 @@ async function fetchLiveProblem(supabase: LiveClient, problemId: string) {
 
   ensureNoError(result, "Failed to load problem");
   return (result.data as ProblemRow | null) ?? null;
-}
-
-async function fetchLiveProblemProgressEntry(supabase: LiveClient, entryId: string) {
-  const result = await supabase
-    .from("problem_progress_entries")
-    .select("*")
-    .eq("id", entryId)
-    .maybeSingle();
-
-  ensureNoError(result, "Failed to load problem progress entry");
-  return (result.data as ProblemProgressEntryRow | null) ?? null;
 }
 
 async function fetchLiveTask(supabase: LiveClient, taskId: string) {
@@ -3991,8 +3960,10 @@ export async function autosaveProblemNote(input: ProgressSaveInput, session: Ses
     const entry: ProblemProgressEntry = {
       id: parsed.requestId, problemId: parsed.problemId, dateTime: timestamp,
       authorId: session.profile.id, authorName: session.profile.name, note: parsed.note,
-      pendingTaskIds: [], createdAt: timestamp, updatedAt: timestamp,
+      pendingTaskIds: latest?.pendingTaskIds ?? [], createdAt: latest?.createdAt ?? timestamp, updatedAt: timestamp,
     };
+    // Keep just the current note; IDs remain request tokens for safe retries.
+    store.problemProgressEntries = store.problemProgressEntries.filter(item => item.problemId !== parsed.problemId);
     store.problemProgressEntries.unshift(entry);
     problem.updatedAt = timestamp;
     refreshDemoPatient(parsed.patientId);
@@ -4020,168 +3991,10 @@ export async function autosaveProblemNote(input: ProgressSaveInput, session: Ses
   return saved;
 }
 
-export async function saveProblemProgressEntry(formData: FormData, session: SessionContext) {
+export async function saveProblemProgressEntry(_formData: FormData, session: SessionContext) {
+  void _formData;
   requireClinicalEditor(session);
-  if (session.profile.role === "student") throw new Error("Student can only read progress notes");
-  const parsed = problemProgressEntrySchema.parse({
-    id: textOrNull(formData.get("id")) ?? undefined,
-    patientId: formData.get("patientId"),
-    problemId: formData.get("problemId"),
-    dateTime: textOrNull(formData.get("dateTime")),
-    note: textOrNull(formData.get("note")),
-    updatedAt: textOrNull(formData.get("updatedAt")),
-  });
-  const entryDateTime = parsed.dateTime ?? now();
-
-  if (session.mode === "demo" || !hasLiveSupabase()) {
-    await ensureDemoStoreLoaded();
-    const patient = patientById(store, parsed.patientId);
-    if (!patient) throw new Error("Patient not found");
-    requireWardWriteAccess(session, patient.wardId);
-    const problem = store.problemMasters.find((entry) => entry.id === parsed.problemId);
-    if (!problem || problem.patientId !== parsed.patientId) {
-      throw new Error("Problem not found");
-    }
-
-    if (parsed.id) {
-      const existing = store.problemProgressEntries.find((entry) => entry.id === parsed.id);
-      if (!existing) throw new Error("Problem progress entry not found");
-      assertNoConflict(parsed.updatedAt, existing.updatedAt, "problem progress");
-
-      const before = structuredClone(existing);
-      existing.dateTime = entryDateTime;
-      existing.note = parsed.note ?? null;
-      existing.pendingTaskIds = [];
-      existing.updatedAt = now();
-      addActivityToDemoStore(
-        session,
-        parsed.patientId,
-        "problem_progress.updated",
-        "problem_progress_entry",
-        existing.id,
-        before,
-        existing,
-      );
-    } else {
-      const entry: ProblemProgressEntry = {
-        id: nextId("problem-progress"),
-        problemId: parsed.problemId,
-        dateTime: entryDateTime,
-        authorId: session.profile.id,
-        authorName: session.profile.name,
-        note: parsed.note ?? null,
-        pendingTaskIds: [],
-        createdAt: now(),
-        updatedAt: now(),
-      };
-      store.problemProgressEntries.unshift(entry);
-      addActivityToDemoStore(
-        session,
-        parsed.patientId,
-        "problem_progress.created",
-        "problem_progress_entry",
-        entry.id,
-        null,
-        entry,
-      );
-    }
-
-    const master = store.problemMasters.find((entry) => entry.id === parsed.problemId);
-    if (master) {
-      master.updatedAt = now();
-    }
-    refreshDemoPatient(parsed.patientId);
-    await persistDemoStore();
-    revalidateWardflowPaths(parsed.patientId);
-    return;
-  }
-
-  const supabase = await getLiveClient();
-  const patient = await fetchLivePatient(supabase, parsed.patientId);
-  if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.ward_id);
-  const problem = await fetchLiveProblem(supabase, parsed.problemId);
-  if (!problem || problem.patient_id !== parsed.patientId) {
-    throw new Error("Problem not found");
-  }
-
-  if (parsed.id) {
-    const existing = await fetchLiveProblemProgressEntry(supabase, parsed.id);
-    if (!existing) throw new Error("Problem progress entry not found");
-    assertNoConflict(parsed.updatedAt, existing.updated_at, "problem progress");
-
-    const payload = {
-      date_time: entryDateTime,
-      note: parsed.note ?? null,
-      pending_task_ids: [],
-    };
-    let updateResult = await supabase.from("problem_progress_entries").update(payload).eq("id", parsed.id);
-    if (isMissingProblemProgressNoteColumnError(updateResult.error)) {
-      updateResult = await supabase
-        .from("problem_progress_entries")
-        .update(buildLegacyProblemProgressMutation(parsed.note ?? null, entryDateTime))
-        .eq("id", parsed.id);
-    }
-    ensureNoError(updateResult, "Failed to update problem progress entry");
-
-    await insertActivityLog(supabase, {
-      patient_id: parsed.patientId,
-      actor_id: session.profile.id,
-      actor_name: session.profile.name,
-      action: "problem_progress.updated",
-      entity_type: "problem_progress_entry",
-      entity_id: parsed.id,
-      before_json: existing,
-      after_json: { ...existing, ...payload },
-    });
-  } else {
-    const entryId = nextId("problem-progress");
-    let insertResult = await supabase.from("problem_progress_entries").insert({
-      id: entryId,
-      problem_id: parsed.problemId,
-      date_time: entryDateTime,
-      author_id: session.profile.id,
-      note: parsed.note ?? null,
-      pending_task_ids: [],
-    });
-    if (isMissingProblemProgressNoteColumnError(insertResult.error)) {
-      insertResult = await supabase.from("problem_progress_entries").insert({
-        id: entryId,
-        problem_id: parsed.problemId,
-        author_id: session.profile.id,
-        ...buildLegacyProblemProgressMutation(parsed.note ?? null, entryDateTime),
-      });
-    }
-    ensureNoError(insertResult, "Failed to create problem progress entry");
-
-    await insertActivityLog(supabase, {
-      patient_id: parsed.patientId,
-      actor_id: session.profile.id,
-      actor_name: session.profile.name,
-      action: "problem_progress.created",
-      entity_type: "problem_progress_entry",
-      entity_id: entryId,
-      before_json: null,
-      after_json: {
-        date_time: entryDateTime,
-        note: parsed.note ?? null,
-        pending_task_ids: [],
-      },
-    });
-  }
-
-  ensureNoError(
-    await supabase
-      .from("problems")
-      .update({ updated_by_id: session.profile.id })
-      .eq("id", parsed.problemId),
-    "Failed to refresh problem timestamp",
-  );
-  ensureNoError(
-    await supabase.from("patients").update({ updated_by_id: session.profile.id }).eq("id", parsed.patientId),
-    "Failed to refresh patient timestamp",
-  );
-  revalidateWardflowPaths(parsed.patientId);
+  throw new Error("Progress history has been retired. Reload the patient page and edit the current Progress note.");
 }
 
 export async function saveProblem(formData: FormData, session: SessionContext) {

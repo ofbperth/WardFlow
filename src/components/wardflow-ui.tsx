@@ -1,6 +1,4 @@
 import { TaskStatusButton } from "@/components/task-status-button";
-import { ProgressNoteContent } from "@/components/progress-note-content";
-import { ProgressNoteHistoryField } from "@/components/progress-note-editor";
 import { progressNoteText } from "@/lib/progress-format";
 import { ProgressNoteAutosave } from "@/components/progress-note-autosave";
 import Link from "next/link";
@@ -40,7 +38,6 @@ import {
   PendingGhostButton,
   PendingSubmitButton,
   ProblemEditor,
-  ProgressEntryHistoryEditor,
   TaskCreator,
   TaskEditor,
 } from "@/components/form-feedback";
@@ -295,58 +292,6 @@ function compactProblemStatus(problem: Problem) {
   return progressNoteText(problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet");
 }
 
-function ProgressNoteCard({
-  problemId,
-  entry,
-  canEdit,
-  patientId,
-  saveProblemProgressEntryAction,
-  title,
-}: {
-  problemId: string;
-  entry: Problem["historyEntries"][number];
-  canEdit: boolean;
-  patientId: string;
-  saveProblemProgressEntryAction: (formData: FormData) => Promise<void>;
-  title: string;
-}) {
-  return (
-    <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{title}</p>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-            {formatDateTime(entry.dateTime)}
-          </p>
-          {entry.authorName ? (
-            <p className="mt-1 text-xs text-muted">By {entry.authorName}</p>
-          ) : null}
-          {entry.note ? (
-            <div className="mt-2"><ProgressNoteContent value={entry.note} /></div>
-          ) : (
-            <p className="mt-2 text-sm text-muted">No note text</p>
-          )}
-        </div>
-        {canEdit ? (
-          <ProgressEntryHistoryEditor iconOnly compactTrigger buttonTitle="Edit progress note">
-            <form action={saveProblemProgressEntryAction} className="space-y-3">
-              <input type="hidden" name="id" value={entry.id} />
-              <input type="hidden" name="patientId" value={patientId} />
-              <input type="hidden" name="problemId" value={problemId} />
-              <input type="hidden" name="dateTime" value={entry.dateTime} />
-              <input type="hidden" name="updatedAt" value={entry.updatedAt} />
-              <Field label="Progress note">
-                <ProgressNoteHistoryField initial={entry.note ?? ""} />
-              </Field>
-              <SubmitButton pendingLabel="Saving update...">Save progress note</SubmitButton>
-            </form>
-          </ProgressEntryHistoryEditor>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
   const facts = [
     ["Ward", ward ?? "—"], ["Bed", patient.bed],
@@ -371,7 +316,6 @@ export function ProblemCards({
   patientId,
   reorderAction,
   saveProblemMasterAction,
-  saveProblemProgressEntryAction,
   saveTaskAction,
   updateStatusAction,
   profiles,
@@ -386,7 +330,6 @@ export function ProblemCards({
   patientId: string;
   reorderAction: (formData: FormData) => Promise<void>;
   saveProblemMasterAction: (formData: FormData) => Promise<void>;
-  saveProblemProgressEntryAction: (formData: FormData) => Promise<void>;
   saveTaskAction: (formData: FormData) => Promise<void>;
   updateStatusAction: (formData: FormData) => Promise<void>;
   profiles: UserProfile[];
@@ -411,7 +354,6 @@ export function ProblemCards({
         const linkedTasks = problem.linkedTasks;
         const incompleteTasks = linkedTasks.filter((task) => task.status !== "done");
         const latestEntry = problem.latestEntry;
-        const olderHistory = problem.historyEntries.slice(1);
         const incompleteCount = incompleteTasks.length;
         return (
           <details
@@ -606,41 +548,7 @@ export function ProblemCards({
                 </div>
               </details>
 
-              <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[color:var(--color-ink)]">
-                  <span>Progress history ({problem.historyEntries.length})</span>
-                  <ChevronDown className="h-4 w-4 transition-transform details-open:rotate-180" />
-                </summary>
-                <div className="mt-2.5 space-y-1.5">
-                  {latestEntry ? (
-                    <ProgressNoteCard
-                      problemId={problem.id}
-                      entry={latestEntry}
-                      canEdit={canEditProgress}
-                      patientId={patientId}
-                      saveProblemProgressEntryAction={saveProblemProgressEntryAction}
-                      title="Latest"
-                    />
-                  ) : null}
-                  {olderHistory.length ? (
-                    olderHistory.map((entry) => (
-                      <ProgressNoteCard
-                        key={entry.id}
-                        problemId={problem.id}
-                        entry={entry}
-                        canEdit={canEditProgress}
-                        patientId={patientId}
-                        saveProblemProgressEntryAction={saveProblemProgressEntryAction}
-                        title="Previous"
-                      />
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted">
-                      {latestEntry ? "No older history yet" : "No progress note yet"}
-                    </p>
-                  )}
-                </div>
-              </details>
+
             </div>
           </details>
         );

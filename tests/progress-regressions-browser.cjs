@@ -84,10 +84,10 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     assert(summary.includes('REGRESSION final snapshot text'));
     await page.goto(patientUrl);
     await wait(() => note.isEditable());
-    await page.getByText(/^Progress history \(/).click();
-    assert((await page.locator('body').innerText()).includes('REGRESSION obsolete snapshot text'));
+    assert.equal(await page.getByText(/^Progress history \(/).count(), 0);
+    assert(!(await page.locator('body').innerText()).includes('REGRESSION obsolete snapshot text'));
     await note.fill(original); await saved();
     assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith('wardflow:progress-draft:')).length), 0);
-    console.log('PASS summary uses latest note, history retains old snapshots, saved draft removed');
+    console.log('PASS summary uses latest note, history removed, saved draft removed');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
