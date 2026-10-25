@@ -7,7 +7,6 @@ import {
   saveHandoverAction,
   savePatientDetailAction,
   saveProblemMasterAction,
-  saveProblemProgressEntryAction,
   saveTaskAction,
   saveTaskUpdateAction,
   updateTaskStatusAction,
@@ -179,7 +178,6 @@ export default async function PatientPage({
             patientId={bundle.patient.id}
             reorderAction={reorderProblemAction}
             saveProblemMasterAction={saveProblemMasterAction}
-            saveProblemProgressEntryAction={saveProblemProgressEntryAction}
             saveTaskAction={saveTaskAction}
             updateStatusAction={updateTaskStatusAction}
             profiles={taskProfiles}

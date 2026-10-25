@@ -60,12 +60,11 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.unroute('**/*'); await saved();
     console.log('PASS formatted draft survives reload while saves are unavailable');
 
-    await page.getByText(/^Progress history \(/).first().click();
-    assert(await page.locator('h3').filter({ hasText: 'FORMAT หัวข้อทดสอบ' }).count() >= 2);
+    assert.equal(await page.getByText(/^Progress history \(/).count(), 0);
     await page.goto(`${patientUrl}/summary-note`);
     await page.getByText('FORMAT เนื้อหาปกติ', { exact: true }).first().waitFor();
     assert(!(await page.locator('body').innerText()).includes('wardflow-note:v1:'));
-    console.log('PASS formatted history and clean Summary Note');
+    console.log('PASS no history UI and clean Summary Note');
 
     await page.goto(patientUrl); await wait(() => note.isEditable());
     await page.setViewportSize({ width: 390, height: 844 });
