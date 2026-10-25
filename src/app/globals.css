@@ -6,11 +6,11 @@
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
   --color-surface: var(--color-paper-2);
-  --color-surface-strong: oklch(0.996 0.002 185);
+  --color-surface-strong: var(--color-surface-strong-token);
   --color-surface-muted: var(--color-paper-3);
   --color-surface-border: var(--color-rule);
   --color-muted: var(--color-ink-2);
-  --color-muted-soft: oklch(0.62 0.012 224);
+  --color-muted-soft: var(--color-muted-soft-token);
   --color-ring: var(--color-focus);
   --color-accent: var(--color-accent);
   --color-accent-soft: var(--color-accent-soft);
@@ -21,6 +21,8 @@
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
 }
+
+
 
 * {
   box-sizing: border-box;
@@ -85,7 +87,7 @@ summary {
 }
 
 ::selection {
-  background: oklch(0.9 0.028 203);
+  background: var(--color-selection);
 }
 
 .page-shell {
@@ -286,4 +288,36 @@ summary {
     transition-duration: 0.15s !important;
     scroll-behavior: auto !important;
   }
+}
+
+
+/* Hallmark · Workbench · design-system: design.md · clean interaction pass
+ * pre-emit critique: P4 H4 E4 S5 R5 V4 */
+html { --mobile-bottom-nav-height: 4rem; background: var(--color-paper-2); }
+.page-shell::before { content: none; }
+.app-panel, .panel-surface, .glass-card { background: var(--color-paper); box-shadow: none; }
+.panel-accent, .focus-card { background: var(--color-accent-soft); }
+.soft-grid { background-image: none; }
+.work-list-panel { border: 0; background: transparent; padding: 0; }
+.mobile-bottom-dock { background: var(--color-paper); }
+.icon-control { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: var(--radius-pill); }
+button, select, summary, .button-accent, .button-secondary, .button-danger { min-height: 44px; }
+.button-accent, .button-secondary, .button-danger, .nav-chip { white-space: nowrap; }
+[hidden] { display: none !important; }
+h1, h2, h3, h4 { min-width: 0; overflow-wrap: anywhere; font-style: normal; }
+input, select, textarea { min-width: 0; max-width: 100%; }
+.patient-operational-header { position: sticky; top: 0; z-index: 20; }
+.editor-dialog {
+  position: fixed; inset: 0; margin: auto; padding: var(--space-sm);
+  width: calc(100% - 2rem); max-width: 42rem; max-height: calc(100dvh - 2rem);
+  overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--color-rule); border-radius: var(--radius-sm);
+  background: var(--color-paper); color: var(--color-ink); box-shadow: var(--shadow-floating);
+}
+.editor-dialog::backdrop { background: var(--color-overlay); }
+.editor-dialog :where(input, select, textarea) { width: 100%; min-width: 0; max-width: 100%; }
+.editor-dialog :where(form, label, div) { min-width: 0; }
+@media (max-width: 767px) {
+  .app-canvas { padding: var(--space-2xs); }
+  .editor-dialog { width: 100%; margin: auto 0 0; max-height: 90dvh; border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
 }

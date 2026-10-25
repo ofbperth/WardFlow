@@ -46,14 +46,14 @@ export default async function PendingTaskHandoverPage({
 
       <GlassPanel
         headingLevel={1}
-        title="Pending ward work handover"
-        subtitle="A work-only brief for unfinished, blocked, and owner-dependent ward work."
+        title="Pending work"
+
       >
         {data.blockedByMissingWard ? (
           <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before pending ward work can be shown." />
         ) : (
           <>
-            <ExpandableFilters title="Filter pending ward work">
+            <ExpandableFilters title="Filters">
               <form className="grid gap-3 lg:grid-cols-3">
                 <Field label="Ward">
                   <SelectBox name="wardId" defaultValue={params.wardId ?? ""}>
@@ -115,7 +115,7 @@ export default async function PendingTaskHandoverPage({
                                         </Pill>
                                         <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
                                       </div>
-                                      <p className="mt-2 text-sm text-muted">{task.note ?? "No note"}</p>
+                                      <p className="mt-2 text-sm text-muted">{task.note ?? ""}</p>
                                     </div>
                                     <div className="text-right text-sm text-muted">
                                       <p>{task.ownerName ?? "Unassigned"}</p>

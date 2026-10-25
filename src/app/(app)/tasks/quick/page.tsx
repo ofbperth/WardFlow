@@ -16,7 +16,7 @@ export default async function QuickTaskEntryLandingPage({
   return (
     <div className="space-y-4 md:space-y-6">
       <AppFeedbackToast toastKey={params.toast} />
-      <PageHeader compact title="Quick ward work entry" />
+      <PageHeader compact title="Add ward work" />
 
       {data.blockedByMissingWard ? (
         <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards first." />
@@ -39,9 +39,9 @@ export default async function QuickTaskEntryLandingPage({
               </div>
 
               <div className="mt-3 flex items-center justify-between gap-3 border-t clinical-divider pt-3">
-                <p className="text-sm text-muted">Open this ward and start adding quick ward work.</p>
+                <p className="text-sm text-muted"></p>
                 <span className="button-accent inline-flex items-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold">
-                  Enter workspace
+                  Open
                 </span>
               </div>
             </Link>

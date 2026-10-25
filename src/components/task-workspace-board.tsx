@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TaskStatusButton } from "@/components/task-status-button";
 import { startTransition, useEffect, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -21,7 +22,6 @@ import {
   labelForTaskType,
   nextTaskCycleStatus,
   priorityTone,
-  statusTone,
 } from "@/lib/utils";
 import type { TaskWorkspaceGroup, UserProfile } from "@/lib/types";
 
@@ -125,10 +125,11 @@ export function TaskWorkspaceBoard({
     <div className="space-y-6">
       {notice ? (
         <div
+          role="status" aria-live="polite"
           className={
             notice.tone === "working"
-              ? "sticky top-4 z-20 flex items-center gap-3 rounded-[24px] border border-[color:var(--color-rule)] bg-[color:var(--color-info-soft)] px-4 py-3 text-sm text-foreground shadow-lg backdrop-blur"
-              : "sticky top-4 z-20 flex items-center gap-3 rounded-[24px] border border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)] px-4 py-3 text-sm text-foreground shadow-lg backdrop-blur"
+              ? "fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md lg:bottom-4 flex items-center gap-3 rounded-[24px] border border-[color:var(--color-rule)] bg-[color:var(--color-info-soft)] px-4 py-3 text-sm text-foreground "
+              : "fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md lg:bottom-4 flex items-center gap-3 rounded-[24px] border border-[color:var(--color-accent)]/20 bg-[color:var(--color-accent-soft)] px-4 py-3 text-sm text-foreground "
           }
         >
           {notice.tone === "working" ? (
@@ -145,7 +146,7 @@ export function TaskWorkspaceBoard({
         <section key={group.ward.id} className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted">Ward</p>
+
               <h3 className="mt-1 text-lg font-semibold text-foreground">{group.ward.name}</h3>
             </div>
             <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
@@ -155,7 +156,7 @@ export function TaskWorkspaceBoard({
 
           <div className="space-y-4">
             {group.patients.map((patient) => (
-              <div key={patient.id} className="panel-surface rounded-[28px] p-5">
+              <div key={patient.id} className="panel-surface rounded-[18px] p-3 md:p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-muted">{group.ward.name} · Bed {patient.bed}</p>
@@ -166,7 +167,7 @@ export function TaskWorkspaceBoard({
                     href={`/patients/${patient.id}`}
                     className="button-secondary inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold"
                   >
-                    Open patient
+                    Patient
                     <ArrowUpRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -175,7 +176,7 @@ export function TaskWorkspaceBoard({
                   {patient.tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="rounded-[24px] border clinical-divider bg-white p-4 shadow-sm transition-opacity data-[busy=true]:opacity-80"
+                      className="border-b clinical-divider py-3 last:border-0 transition-opacity data-[busy=true]:opacity-80"
                       data-busy={notice?.tone === "working" ? "true" : "false"}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -211,15 +212,13 @@ export function TaskWorkspaceBoard({
                               <input type="hidden" name="taskId" value={task.id} />
                               <input type="hidden" name="status" value={nextTaskCycleStatus(task.status)} />
                               <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                              <button type="submit" className="rounded-full transition hover:opacity-85">
-                                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
-                              </button>
+                              <TaskStatusButton status={task.status} title={task.title} />
                             </form>
                             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
                             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
                           </div>
                           <div className="mt-2 space-y-1 text-sm text-muted">
-                            <p>Assigned student: {task.ownerName ?? "Unassigned"}</p>
+                            <p>Assigned to: {task.ownerName ?? "Unassigned"}</p>
                             {task.note ? <p className="line-clamp-2">Note: {task.note}</p> : null}
                           </div>
                         </div>
@@ -242,15 +241,16 @@ export function TaskWorkspaceBoard({
                         </div>
                       ) : null}
 
-                      <div className="mt-4 rounded-2xl border clinical-divider bg-[color:var(--color-paper-3)] p-3">
+                      <div className="mt-2">
                         <button
                           type="button"
                           onClick={() =>
                             setOpenTaskPanels((current) => ({ ...current, [task.id]: !current[task.id] }))
                           }
-                          className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold text-[color:var(--color-ink)]"
+                          aria-expanded={Boolean(openTaskPanels[task.id])}
+                          className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm font-semibold text-[color:var(--color-ink)]"
                         >
-                          <span>Expand details</span>
+                          <span>{openTaskPanels[task.id] ? "Hide details" : "Details"}</span>
                           <ChevronDown
                             className={cn(
                               "h-4 w-4 text-[color:var(--color-ink-2)] transition-transform",
@@ -310,7 +310,7 @@ export function TaskWorkspaceBoard({
                                   action: () => saveTaskAction(formData),
                                 });
                               }}
-                              className="rounded-2xl bg-white p-3"
+                              className="pt-2"
                             >
                               <input type="hidden" name="id" value={task.id} />
                               <input type="hidden" name="patientId" value={patient.id} />
@@ -322,7 +322,7 @@ export function TaskWorkspaceBoard({
                               <input type="hidden" name="blockedReason" value={task.blockedReason ?? ""} />
                               <input type="hidden" name="updatedAt" value={task.updatedAt} />
                               <div className="flex flex-wrap items-end gap-3">
-                                <Field label="Responsible doctor">
+                                <Field label="Assigned to">
                                   <SelectBox
                                     name="ownerId"
                                     defaultValue={task.ownerId ?? ""}
@@ -356,7 +356,7 @@ export function TaskWorkspaceBoard({
       {boardState.archivedGroups.length > 0 ? (
         <details className="rounded-[28px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
-            Archived done ward work
+            Completed
           </summary>
           <div className="mt-4 space-y-4">
             {boardState.archivedGroups.map((group) => (
@@ -401,9 +401,7 @@ export function TaskWorkspaceBoard({
                               <input type="hidden" name="taskId" value={task.id} />
                               <input type="hidden" name="status" value={nextTaskCycleStatus(task.status)} />
                               <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                              <button type="submit" className="rounded-full transition hover:opacity-85">
-                                <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
-                              </button>
+                              <TaskStatusButton status={task.status} title={task.title} />
                             </form>
                           </div>
                         </div>

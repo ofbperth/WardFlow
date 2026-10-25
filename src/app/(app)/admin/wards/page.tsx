@@ -37,8 +37,7 @@ export default async function AdminWardsPage({
       <AdminSectionTabs />
 
       <PageHeader
-        title="Admin | Ward management"
-        subtitle="Control ward setup, Resident multi-ward access, student assignment, and staff roles from one operations surface."
+        title="Wards"
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -59,7 +58,6 @@ export default async function AdminWardsPage({
 
       <GlassPanel
         title="Resident Ward Assignment"
-        subtitle="Assign one Resident to any number of Wards. Changes save per Ward."
       >
         <ResidentWardAssignmentBoard />
       </GlassPanel>
@@ -92,7 +90,7 @@ export default async function AdminWardsPage({
             ))}
           </div>
 
-          <GlassPanel title="Create ward" subtitle="Add a new clinical area without leaving this console.">
+          <GlassPanel title="Create ward">
             <AdminCreator buttonLabel="Create new ward" panelTitle="Create ward">
               <form action={saveWardAdminAction} className="space-y-3">
                 <Field label="Ward name">
@@ -105,7 +103,7 @@ export default async function AdminWardsPage({
 
           <DangerZone
             title="Danger zone"
-            description="Ward deletion stays hidden until you open this panel, but no extra typing is required."
+            description="Permanently delete a ward."
           >
             <div className="space-y-3">
               {summaries.map((summary) => (
@@ -144,7 +142,7 @@ export default async function AdminWardsPage({
         </div>
 
         <div className="space-y-4">
-          <GlassPanel title="User roles" subtitle="Adjust roles and ward assignment without leaving the admin shell.">
+          <GlassPanel title="User roles">
             <StaffRoleCards
               profiles={profiles}
               wards={summaries.map((summary) => summary.ward)}

@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { ArrowRightLeft, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert, X } from "lucide-react";
+import { ArrowRightLeft, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
+import { EditorDialog } from "@/components/editor-dialog";
 import { cn } from "@/lib/utils";
 
 const InlineEditorCloseContext = createContext<(() => void) | null>(null);
@@ -198,11 +199,14 @@ export function InlineEditor({
   contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const Icon = buttonIcon === "create" ? Plus : buttonIcon === "transfer" ? ArrowRightLeft : Pencil;
-
-  if (!open) {
-    return (
-      <button
+  function close() {
+    setOpen(false);
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+  return <>
+      <button ref={triggerRef} hidden={open}
         type="button"
         onClick={() => setOpen(true)}
         title={buttonTitle ?? buttonLabel}
@@ -211,7 +215,7 @@ export function InlineEditor({
           iconOnly
             ? cn(
                 "button-secondary inline-flex items-center justify-center rounded-full text-[color:var(--color-accent-strong)]",
-                compactTrigger ? "h-7 w-7" : "h-8 w-8",
+                "h-11 w-11",
               )
             : cn(
                 "button-secondary mt-4 inline-flex items-center gap-2 rounded-full text-sm font-semibold text-[color:var(--color-accent-strong)] md:px-4",
@@ -224,49 +228,10 @@ export function InlineEditor({
         <Icon className="h-4 w-4" />
         {iconOnly ? <span className="sr-only">{buttonLabel}</span> : buttonLabel}
       </button>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-end justify-center bg-[color:var(--color-ink)]/28 p-0 md:items-center md:px-4 md:py-6",
-        className,
-      )}
-      onClick={() => setOpen(false)}
-    >
-      <div
-        className={cn(
-          "panel-accent w-full max-h-[88vh] overflow-y-auto rounded-t-[24px] border-x clinical-divider p-4 shadow-2xl md:max-h-[calc(100vh-3rem)] md:max-w-2xl md:rounded-[24px] md:border md:p-5",
-          panelClassName,
-        )}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-3 flex justify-center md:hidden">
-          <span className="h-1 w-10 rounded-full bg-[color:var(--color-rule)]" />
-        </div>
-        <div
-          className={cn(
-            "mb-4 flex items-center justify-between gap-3 border-b clinical-divider pb-3",
-            headerClassName,
-          )}
-        >
-          <p className="text-sm font-semibold text-[color:var(--color-accent-strong)]">{panelTitle}</p>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close"
-            className="button-secondary inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--color-accent-strong)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <InlineEditorCloseContext.Provider value={() => setOpen(false)}>
-          <div className={contentClassName}>{children}</div>
-        </InlineEditorCloseContext.Provider>
-      </div>
-    </div>
-  );
+    {open ? <EditorDialog title={panelTitle} onClose={close} panelClassName={panelClassName} headerClassName={headerClassName} contentClassName={contentClassName}>
+      <InlineEditorCloseContext.Provider value={close}>{children}</InlineEditorCloseContext.Provider>
+    </EditorDialog> : null}
+  </>;
 }
 
 export function ProblemEditor({
@@ -558,7 +523,6 @@ export function AdmitPatientCreator({
 export function DischargeSummaryEditor({
   children,
   iconOnly = false,
-  compactTrigger = false,
   buttonTitle,
   className,
   buttonClassName,
@@ -595,7 +559,7 @@ export function DischargeSummaryEditor({
             iconOnly
               ? cn(
                   "inline-flex items-center justify-center rounded-full border border-[color:var(--color-warning)] bg-[color:var(--color-warning)]/15 text-[color:var(--color-ink)]",
-                  compactTrigger ? "h-7 w-7" : "h-8 w-8",
+                  "h-11 w-11",
                 )
               : "inline-flex w-full items-center justify-center gap-2 rounded-full border border-[color:var(--color-warning)] bg-[color:var(--color-warning)]/15 px-4 py-2.5 text-sm font-semibold text-[color:var(--color-ink)] md:w-auto md:px-5 md:py-3",
             buttonClassName,

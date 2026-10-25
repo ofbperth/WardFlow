@@ -55,7 +55,7 @@ export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBl
       {editor ? <EditorContent editor={editor} /> : <div className="min-h-36 p-3"><ProgressNoteContent value={value} /></div>}
     </div>
     {!readOnly ? <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-3">
-      <span className="text-xs text-muted">{autoSave ? "Auto save · ช่องขยายตามข้อความ" : "กด Save progress note เพื่อบันทึก"}</span>
+      <span className="text-xs text-muted">{autoSave ? "Auto save" : "กด Save progress note เพื่อบันทึก"}</span>
       <div role="group" aria-label="รูปแบบข้อความ" className="ml-auto flex rounded-full border clinical-divider p-0.5">
         <button type="button" title="Heading" aria-label="Heading" aria-pressed={heading ?? false} disabled={!editor}
           onMouseDown={event => event.preventDefault()}
@@ -64,7 +64,7 @@ export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBl
         <button type="button" title="Body" aria-label="Body" aria-pressed={!heading} disabled={!editor}
           onMouseDown={event => event.preventDefault()}
           onClick={() => editor?.chain().focus().setParagraph().run()}
-          className={`h-10 w-11 rounded-full ${!heading ? "bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]" : "text-foreground"}`}><span className="text-lg font-light">b</span></button>
+          className={`h-10 w-11 rounded-full ${!heading ? "bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]" : "text-foreground"}`}><span className="text-xs font-medium">Text</span></button>
       </div>
     </div> : null}
   </div>;

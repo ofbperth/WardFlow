@@ -1,3 +1,4 @@
+import { TaskStatusButton } from "@/components/task-status-button";
 import { ProgressNoteContent } from "@/components/progress-note-content";
 import { ProgressNoteHistoryField } from "@/components/progress-note-editor";
 import { progressNoteText } from "@/lib/progress-format";
@@ -219,7 +220,7 @@ export function PatientCensus({
 }) {
   return (
     <div className="space-y-3.5 md:space-y-4">
-      {summaries.map((summary) => (
+      {summaries.map((summary, wardIndex) => (
         <GlassPanel
           key={summary.ward.id}
           title={summary.ward.name}
@@ -229,11 +230,11 @@ export function PatientCensus({
               <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
                 {summary.patients.length} ราย
               </Pill>
-              <WardVisibilityToggle wardName={summary.ward.name} contentId={`ward-census-${summary.ward.id}`} />
+              <WardVisibilityToggle wardName={summary.ward.name} contentId={`ward-census-${summary.ward.id}`} defaultOpen={summaries.length === 1 || wardIndex === 0} />
             </div>
           }
         >
-          <div id={`ward-census-${summary.ward.id}`} hidden>
+          <div id={`ward-census-${summary.ward.id}`} hidden={summaries.length !== 1 && wardIndex !== 0}>
             <div className="grid gap-2.5 md:grid-cols-2 xl:gap-3 2xl:grid-cols-3">
               {summary.patients.map((patient) => (
                 <article
@@ -347,90 +348,21 @@ function ProgressNoteCard({
 }
 
 export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string | null }) {
-  const topMetrics = [
-    { label: "Ward", value: ward ?? "-" },
-    { label: "Bed", value: patient.bed },
-    { label: "Sex", value: formatPatientSex(patient.sex) },
-    { label: "Age", value: patient.age != null ? String(patient.age) : "-" },
+  const facts = [
+    ["Ward", ward ?? "—"], ["Bed", patient.bed],
+    ["Age / Sex", `${patient.age ?? "—"} / ${formatPatientSex(patient.sex)}`],
+    ["HN", patient.hospitalNumber ?? "—"], ["AN", patient.admissionNumber ?? "—"],
+    ["Diagnosis", patient.diagnosis], ["Underlying disease", patient.underlyingDisease ?? "—"],
+    ["Status", labelForPatientStatus(patient.status)],
+    ["Precaution", labelForPrecaution(patient.precaution)],
+    ["Lifecycle", labelForLifecycle(patient.lifecycle)],
+    ["Discharged", patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "—"],
   ];
-  const identityMetrics = [
-    { label: "HN", value: patient.hospitalNumber ?? "-" },
-    { label: "AN", value: patient.admissionNumber ?? "-" },
-  ];
-  const primaryItems = [
-    { label: "Diagnosis", value: patient.diagnosis, fullWidth: true },
-    { label: "Underlying disease", value: patient.underlyingDisease ?? "-" },
-    { label: "Status", value: labelForPatientStatus(patient.status) },
-  ];
-  const secondaryItems = [
-    { label: "Precaution", value: labelForPrecaution(patient.precaution) },
-    { label: "Lifecycle", value: labelForLifecycle(patient.lifecycle) },
-    { label: "Discharged at", value: patient.dischargedAt ? formatDateTime(patient.dischargedAt) : "-" },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 gap-2.5">
-      <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-2">
-        {topMetrics.map((item) => (
-          <div
-            key={item.label}
-            className="min-w-0 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-2)] px-2.5 py-2"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{item.label}</p>
-            <p className="mt-1 min-w-0 truncate text-sm font-semibold text-foreground">{item.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        {identityMetrics.map((item) => (
-          <div
-            key={item.label}
-            className="min-w-0 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-2)] px-2.5 py-2"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{item.label}</p>
-            <p className="mt-1 min-w-0 truncate text-sm font-semibold text-foreground">{item.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {primaryItems.map((item) => (
-        <div
-          key={item.label}
-          className={cn(
-            "min-w-0 max-w-full overflow-hidden rounded-[16px] border clinical-divider bg-white p-3",
-            item.fullWidth ? "[grid-column:1/-1]" : "",
-          )}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-          <p
-            className={cn(
-              "mt-1.5 min-w-0 max-w-full whitespace-normal break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]",
-              item.fullWidth ? "break-all [word-break:break-word]" : "",
-            )}
-          >
-            {item.value}
-          </p>
-        </div>
-      ))}
-
-      <details className="panel-muted rounded-[16px] p-3 [grid-column:1/-1]">
-        <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--color-ink)]">
-          Clinical details
-        </summary>
-        <div className="mt-2.5 grid gap-2 grid-cols-1">
-          {secondaryItems.map((item) => (
-            <div key={item.label} className="min-w-0 max-w-full overflow-hidden rounded-[14px] border clinical-divider bg-white p-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-              <p className="mt-1.5 min-w-0 max-w-full whitespace-normal break-words text-sm font-semibold leading-5 text-foreground [overflow-wrap:anywhere]">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </details>
-    </div>
-  );
+  return <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    {facts.map(([label, value]) => <div key={label} className="min-w-0 border-b clinical-divider py-2">
+      <dt className="text-xs text-muted">{label}</dt><dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+    </div>)}
+  </dl>;
 }
 
 export function ProblemCards({
@@ -880,7 +812,7 @@ function TaskCard({
   const detailItems = compactTaskDetailList(task);
 
   return (
-    <div className={cn("rounded-[16px] border clinical-divider bg-white", compact ? "p-2.5" : "p-3")}>
+    <div className={cn("border-b clinical-divider last:border-0", compact ? "py-2.5" : "py-3")}>
       <div className="flex items-start gap-2.5">
         <Circle
           className={cn(
@@ -895,7 +827,7 @@ function TaskCard({
           )}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2.5">
+          <div className="flex flex-wrap items-start justify-between gap-2.5">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <p className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">{task.title}</p>
@@ -904,16 +836,14 @@ function TaskCard({
               </div>
               {task.note ? <p className="mt-1.5 line-clamp-2 text-sm text-foreground/90">{task.note}</p> : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {canEdit ? (
                 <form action={updateStatusAction}>
                   <input type="hidden" name="patientId" value={patient.id} />
                   <input type="hidden" name="taskId" value={task.id} />
                   <input type="hidden" name="status" value={nextStatus} />
                   <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                  <PendingGhostButton pendingLabel="Updating..." className="rounded-full px-0 py-0">
-                    <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
-                  </PendingGhostButton>
+                  <TaskStatusButton status={task.status} title={task.title} />
                 </form>
               ) : (
                 <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
@@ -934,7 +864,7 @@ function TaskCard({
       </div>
 
       {hasExpandableContent ? (
-        <details className="mt-2 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
+        <details className="mt-2 border-t clinical-divider pt-2.5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[color:var(--color-ink)]">
             <span>Details</span>
             <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
@@ -1196,7 +1126,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
   return (
     <div className="space-y-4">
       {bundles.map((bundle) => (
-        <GlassPanel key={bundle.ward.id} title={bundle.ward.name} compact>
+        <section key={bundle.ward.id} className="space-y-3"><h3 className="font-semibold">{bundle.ward.name}</h3>
           <div className="space-y-3">
             {bundle.patients
               .filter(
@@ -1215,7 +1145,8 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.24em] text-muted">Bed {patient.bed}</p>
-                      <h3 className="mt-1 text-base font-semibold text-foreground">{patient.diagnosis}</h3>
+                      <h3 className="mt-1 text-base font-semibold text-foreground"><Link href={`/patients/${patient.id}`} className="underline decoration-[color:var(--color-rule)] underline-offset-4">{patient.displayName}</Link></h3>
+                      <p className="mt-1 text-sm text-muted">{patient.diagnosis}</p>
                     </div>
                     <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
                   </div>
@@ -1249,7 +1180,7 @@ export function HandoverCards({ bundles }: { bundles: HandoverBundle[] }) {
                 </div>
               ))}
           </div>
-        </GlassPanel>
+        </section>
       ))}
     </div>
   );
@@ -1339,7 +1270,7 @@ export function DischargedPatientList({
         >
           <Link
             href={`/discharged/${patient.id}`}
-            className="block transition hover:-translate-y-0.5"
+            className="block"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -1356,16 +1287,17 @@ export function DischargedPatientList({
             </div>
           </Link>
           {canHardDelete && hardDeleteAction ? (
-            <form action={hardDeleteAction} className="mt-4 flex justify-end">
+            <details className="mt-2 text-right"><summary className="inline-flex min-h-11 cursor-pointer items-center px-3 text-sm text-muted">More</summary>
+            <form action={hardDeleteAction} className="mt-2 flex justify-end">
               <input type="hidden" name="patientId" value={patient.id} />
               <ConfirmingSubmitButton
                 confirmMessage={`Hard delete ${patient.displayName}? This cannot be undone.`}
                 pendingLabel="Deleting patient..."
                 className="px-4 py-2 text-xs"
               >
-                Hard delete
+                Delete permanently
               </ConfirmingSubmitButton>
-            </form>
+            </form></details>
           ) : null}
         </div>
       ))}
@@ -1641,7 +1573,7 @@ export { DangerZone };
 
 function MiniList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-[24px] bg-[color:var(--color-accent-soft)]/75 p-4">
+    <div className="min-w-0 border-t clinical-divider pt-3">
       <p className="text-xs uppercase tracking-[0.18em] text-muted">{title}</p>
       <div className="mt-3 space-y-2">
         {items.length ? (

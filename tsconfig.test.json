@@ -10,6 +10,8 @@
     "skipLibCheck": true
   },
   "include": [
+    "src/lib/task-owner-filter.ts",
+    "tests/task-owner-filter.test.ts",
     "src/lib/resident-ward-assignment.ts",
     "tests/resident-ward-assignment.test.ts",
     "src/lib/progress-autosave.ts",

@@ -15,52 +15,19 @@ export default async function LoginPage({
 
   return (
     <main className="page-shell flex min-h-screen items-center px-4 py-8">
-      <div className="mx-auto grid w-full max-w-6xl gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="app-panel soft-grid overflow-hidden rounded-[34px] px-6 py-8 md:px-8 md:py-10">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[color:var(--color-ink-2)]">
-              Ward management workspace
-            </p>
-            <h1 className="mt-4 max-w-xl font-display text-4xl font-semibold text-foreground text-balance sm:text-5xl">
-              Minimal ward coordination for real clinical shifts.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[color:var(--color-ink-2)] md:text-base">
-              One quiet surface for patient flow, pending work, and handover. Designed to stay readable at speed.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <div className="metric-tile p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Patient board</p>
-              <p className="mt-2 text-2xl font-display font-semibold text-foreground">Live</p>
-            </div>
-            <div className="metric-tile p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Ward work flow</p>
-              <p className="mt-2 text-2xl font-display font-semibold text-foreground">Track</p>
-            </div>
-            <div className="metric-tile p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Handover</p>
-              <p className="mt-2 text-2xl font-display font-semibold text-foreground">Ready</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="app-panel w-full rounded-[34px] px-8 py-10">
+      <div className="mx-auto w-full max-w-sm">
+        <section className="app-panel w-full rounded-[34px] px-5 py-8">
           <div className="mx-auto flex max-w-sm flex-col items-center">
             <WardFlowLogo
-              className="h-32 w-32 sm:h-36 sm:w-36"
-              sizes="144px"
+              className="h-20 w-20"
+              sizes="80px"
               priority
-              imageClassName="object-contain drop-shadow-[0_18px_36px_rgba(43,102,120,0.16)]"
+              imageClassName="object-contain"
             />
 
-            <h2 className="mt-4 text-center font-display text-3xl font-semibold text-foreground">
-              Sign in to continue
-            </h2>
-
-            <p className="mt-3 text-center text-sm leading-6 text-[color:var(--color-ink-2)]">
-              Use the configured hospital login flow or open demo mode when enabled.
-            </p>
+            <h1 className="mt-4 text-center font-display text-3xl font-semibold text-foreground">
+              WardFlow
+            </h1>
 
             <div className="mt-8 w-full">
             {params.error ? (
@@ -71,8 +38,8 @@ export default async function LoginPage({
             ) : null}
             {state.hasIncompleteSupabaseSetup ? (
               <SetupNotice
-                title="Partial Supabase setup"
-                body="Add `SUPABASE_SERVICE_ROLE_KEY` to enable admin checks."
+                title="Sign-in setup incomplete"
+                body="Contact your administrator."
               />
             ) : null}
 

@@ -1,6 +1,14 @@
 [
   {
     "date": "2026-10-26",
+    "macrostructure": "Workbench",
+    "theme": "deep-teal-clinical-minimal",
+    "enrichment": "none",
+    "brief": "Clean app-wide UX audit fixes, explicit status actions, accessible dialogs, remove Quick entry navigation",
+    "scope": "app"
+  },
+  {
+    "date": "2026-10-26",
     "macrostructure": "Long Document",
     "theme": "deep-teal-clinical-minimal",
     "enrichment": "none",

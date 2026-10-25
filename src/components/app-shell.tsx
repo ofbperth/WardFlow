@@ -10,7 +10,6 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
-  Plus,
   Shield,
   X,
 } from "lucide-react";
@@ -23,10 +22,9 @@ import type { UserProfile } from "@/lib/types";
 
 const navItems = [
   { href: "/wards", label: "Wards", mobileLabel: "Wards", icon: LayoutGrid },
-  { href: "/discharged", label: "Discharged", mobileLabel: "Archive", icon: Archive },
+  { href: "/discharged", label: "Discharged", mobileLabel: "Discharged", icon: Archive },
   { href: "/handover", label: "Handover", mobileLabel: "Handover", icon: ClipboardList },
   { href: "/my-tasks", label: "Ward work", mobileLabel: "Ward work", icon: Activity },
-  { href: "/tasks/quick", label: "Quick entry", mobileLabel: "Quick", icon: Plus },
 ];
 
 export function AppShell({
@@ -54,14 +52,11 @@ export function AppShell({
             <div className="flex min-w-0 items-center gap-3">
               <WardFlowLogo className="h-12 w-12 shrink-0 rounded-[18px]" sizes="48px" />
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-ink-2)]">
-                  Clinical workspace
-                </p>
                 <p className="font-display text-[1.2rem] font-semibold text-foreground">WardFlow</p>
               </div>
             </div>
 
-            <div className="hidden items-center gap-3 md:flex">
+            <div className="hidden items-center gap-3 lg:flex">
               <div className="status-strip rounded-full px-3 py-1.5 text-sm">
                 <span className="font-semibold text-foreground">{profile.name}</span>
                 <span className="text-[color:var(--color-ink-2)]"> · {labelForRole(profile.role)}</span>
@@ -81,7 +76,7 @@ export function AppShell({
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              className="button-secondary inline-flex h-10 w-10 items-center justify-center rounded-full md:hidden"
+              className="button-secondary inline-flex h-10 w-10 items-center justify-center rounded-full lg:hidden"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -89,7 +84,7 @@ export function AppShell({
         </header>
 
         {mobileMenuOpen ? (
-          <div className="app-panel space-y-3 p-3 md:hidden">
+          <div className="app-panel space-y-3 p-3 lg:hidden">
             <div className="panel-accent rounded-[18px] px-3 py-2.5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-ink-2)]">
                 Account
@@ -106,6 +101,7 @@ export function AppShell({
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={active ? "page" : undefined}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "nav-chip flex items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 text-sm font-semibold",
@@ -115,9 +111,6 @@ export function AppShell({
                     <span className="flex items-center gap-3">
                       <Icon className="h-4 w-4" />
                       {item.label}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-[0.18em]">
-                      {active ? "Open" : ""}
                     </span>
                   </Link>
                 );
@@ -133,7 +126,7 @@ export function AppShell({
                   )}
                 >
                   <Shield className="h-4 w-4" />
-                  Admin control
+                  Admin
                 </Link>
               ) : null}
 
@@ -150,22 +143,10 @@ export function AppShell({
           </div>
         ) : null}
 
-        <div className="grid flex-1 gap-3 lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-4">
+        <div className="grid flex-1 gap-3 lg:grid-cols-[208px_minmax(0,1fr)] lg:gap-4">
           <aside className="hidden lg:block">
             <div className="app-panel sticky top-4 p-3">
-              <div className="panel-accent rounded-[18px] px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--color-ink-2)]">
-                  Workspace
-                </p>
-                <p className="mt-1 font-display text-base font-semibold text-foreground">
-                  Ward operations
-                </p>
-                <p className="mt-1.5 text-sm leading-5 text-[color:var(--color-ink-2)]">
-                  Patient flow, handover, and ward work coordination.
-                </p>
-              </div>
-
-              <nav className="mt-3 space-y-1.5">
+              <nav aria-label="Main navigation" className="space-y-1.5">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const active = pathname.startsWith(item.href);
@@ -173,6 +154,7 @@ export function AppShell({
                     <Link
                       key={item.href}
                       href={item.href}
+                    aria-current={active ? "page" : undefined}
                       className={cn(
                         "nav-chip flex items-center justify-between rounded-[16px] px-3 py-2.5 text-sm font-semibold",
                         active && "nav-chip-active",
@@ -181,9 +163,6 @@ export function AppShell({
                       <span className="flex items-center gap-3">
                         <Icon className="h-4 w-4" />
                         {item.label}
-                      </span>
-                      <span className="text-[10px] uppercase tracking-[0.18em]">
-                        {active ? "Live" : ""}
                       </span>
                     </Link>
                   );
@@ -198,7 +177,7 @@ export function AppShell({
                     )}
                   >
                     <Shield className="h-4 w-4" />
-                    Admin control
+                    Admin
                   </Link>
                 ) : null}
               </nav>
@@ -211,7 +190,7 @@ export function AppShell({
         </div>
 
         <div className="mobile-bottom-dock sticky bottom-0 z-30 mt-2 px-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
-          <nav className="app-panel mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-full max-w-[760px] items-center justify-between px-1 py-1 shadow-[0_-10px_30px_rgba(15,23,42,0.06)]">
+          <nav className="app-panel mx-auto flex min-h-[var(--mobile-bottom-nav-height)] w-full max-w-[760px] items-center justify-between px-1 py-1 ">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname.startsWith(item.href);
@@ -219,6 +198,7 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                    aria-current={active ? "page" : undefined}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
                     "nav-chip flex min-h-[2.55rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1 py-1 text-[10px] font-semibold",

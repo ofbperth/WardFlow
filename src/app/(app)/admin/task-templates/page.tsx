@@ -13,8 +13,7 @@ export default async function AdminTaskTemplatesPage() {
     <div className="space-y-4 md:space-y-6">
       <AdminSectionTabs />
       <PageHeader
-        title="Admin | Ward work templates"
-        subtitle="Keep quick-entry and ward workflows consistent with reusable ward work defaults."
+        title="Templates"
         action={
           <Link
             href="/admin/wards"
@@ -30,7 +29,7 @@ export default async function AdminTaskTemplatesPage() {
           <TemplateCards templates={templates} />
         </GlassPanel>
 
-        <GlassPanel title="Create template" subtitle="Add new default work items for recurring ward routines.">
+        <GlassPanel title="Create template">
           <form action={saveTemplateAction} className="space-y-3">
             <Field label="Title">
               <TextInput name="title" placeholder="Follow blood gas" required />

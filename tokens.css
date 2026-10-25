@@ -1,5 +1,10 @@
 /* Hallmark · macrostructure: Workbench · tone: minimal-clinical · anchor hue: deep-teal */
 :root {
+  --color-white: oklch(1 0 0);
+  --color-overlay: oklch(0.292 0.025 224 / 0.28);
+  --color-surface-strong-token: oklch(0.996 0.002 185);
+  --color-muted-soft-token: oklch(0.62 0.012 224);
+  --color-selection: oklch(0.9 0.028 203);
   --color-paper: oklch(0.988 0.004 185);
   --color-paper-2: oklch(0.972 0.005 185);
   --color-paper-3: oklch(0.955 0.007 195);
@@ -56,6 +61,6 @@
   --radius-xl: 1.75rem;
   --radius-pill: 999px;
 
-  --shadow-card: 0 18px 32px var(--color-shadow-soft);
+  --shadow-card: none;
   --shadow-floating: 0 20px 48px var(--color-shadow);
 }

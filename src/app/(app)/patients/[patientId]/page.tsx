@@ -38,7 +38,7 @@ import {
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { canEditProgressNote } from "@/lib/progress-autosave";
-import { formatDateTime, normalizePatientSexOption } from "@/lib/utils";
+import { formatDateTime, normalizePatientSexOption, labelForPrecaution, labelForPatientStatus } from "@/lib/utils";
 import {
   getAssignableProfilesForWard,
   getDischargeDraft,
@@ -101,7 +101,7 @@ export default async function PatientPage({
       />
 
       <PageHeader
-        className="md:sticky md:top-3 md:z-20"
+        className="patient-operational-header"
         compact
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
@@ -133,12 +133,18 @@ export default async function PatientPage({
         }
       />
 
+      <div className="flex flex-wrap gap-x-4 gap-y-2 border-b clinical-divider pb-3 text-sm" aria-label="Patient safety alerts">
+        <span>{bundle.ward?.name} · {labelForPatientStatus(bundle.patient.status)}</span>
+        <span>Allergy: {bundle.patient.allergy || "Not recorded"}</span>
+        <span>Precaution: {labelForPrecaution(bundle.patient.precaution)}</span>
+        <span>Code: {bundle.patient.codeStatus || "Not recorded"}</span>
+      </div>
       <div className="grid gap-4 md:gap-5 2xl:grid-cols-[1.45fr_0.95fr]">
         <GlassPanel
           title="Problems"
-          subtitle="Active problems first. Expand only when you need detail."
+
           compact
-          className="order-2 2xl:order-none 2xl:col-start-1 2xl:row-start-1"
+          className="order-1 2xl:order-none 2xl:col-start-1 2xl:row-start-1"
           action={
             canEditClinical ? (
               <ProblemCreator
@@ -194,9 +200,9 @@ export default async function PatientPage({
         <GlassPanel
           title="Patient summary"
           compact
-          className="order-1 2xl:order-none 2xl:col-start-2 2xl:row-start-1"
+          className="order-3 2xl:order-none 2xl:col-start-2 2xl:row-start-1"
         >
-            <SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} />
+            <details><summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">Patient details <span aria-hidden="true">⌄</span></summary><SummaryGrid patient={bundle.patient} ward={bundle.ward?.name ?? null} /></details>
 
             {canManagePatient ? (
               <div className="mt-4 flex items-center gap-2">
@@ -367,9 +373,9 @@ export default async function PatientPage({
 
         <GlassPanel
           title="Ward work"
-          subtitle="Incomplete work first. Mark complete with one tap."
+
           compact
-          className="order-3 2xl:order-none 2xl:col-start-1 2xl:row-start-2"
+          className="order-2 2xl:order-none 2xl:col-start-1 2xl:row-start-2"
           action={
             canEditTaskWorkflow ? (
               <TaskCreator

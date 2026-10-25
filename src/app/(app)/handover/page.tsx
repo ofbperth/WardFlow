@@ -51,26 +51,26 @@ export default async function HandoverPage({
 
       <GlassPanel
         headingLevel={1}
-        title="Handover mode"
-        subtitle="Brief by exception: watch items, pending work, and observe instructions."
+        title="Handover"
+
         compact
         action={
           <Link
             href="/handover/tasks"
             className="button-secondary inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold"
           >
-            Pending ward work handover
+            Pending work
           </Link>
         }
       >
-        <div className="grid gap-2.5 md:grid-cols-3">
-          <MetricTile label="Visible wards" value={String(selectedBundles.length)} />
-          <MetricTile label="Patients in brief" value={String(patientCount)} />
-          <MetricTile label="Pending ward work" value={String(taskCount)} />
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <MetricTile label="Wards" value={String(selectedBundles.length)} />
+          <MetricTile label="Patients" value={String(patientCount)} />
+          <MetricTile label="Pending" value={String(taskCount)} />
         </div>
 
         <div className="mt-4 grid gap-3 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <ExpandableFilters title="Filter handover" className="mb-0 h-fit">
+          <ExpandableFilters title="Ward" className="mb-0 h-fit">
             <form className="grid gap-3">
               <Field label="Ward">
                 <SelectBox name="wardId" defaultValue={wardId ?? ""}>
@@ -82,7 +82,7 @@ export default async function HandoverPage({
                   ))}
                 </SelectBox>
               </Field>
-              <SubmitButton>Apply ward filter</SubmitButton>
+              <SubmitButton>Apply</SubmitButton>
             </form>
           </ExpandableFilters>
 
@@ -94,7 +94,7 @@ export default async function HandoverPage({
 
       {selectedBundles.length ? (
         <div className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
-          <GlassPanel title="Live handover board" subtitle={selectedWardName} compact>
+          <GlassPanel title="Patients" subtitle={selectedWardName} compact>
             <HandoverCards bundles={selectedBundles} />
           </GlassPanel>
 
@@ -111,9 +111,9 @@ export default async function HandoverPage({
 
 function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="metric-tile rounded-[16px] px-3 py-3">
+    <div className="flex items-baseline gap-2">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
-      <p className="mt-1.5 text-base font-semibold text-foreground">{value}</p>
+      <p className="text-base font-semibold text-foreground">{value}</p>
     </div>
   );
 }

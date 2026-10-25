@@ -34,7 +34,7 @@ export default async function DischargedPage({
   return (
     <div className="space-y-6">
       <GlassPanel headingLevel={1} title="Discharged patients">
-        <ExpandableFilters title="Filter discharged patients">
+        <ExpandableFilters title="Filters">
           <form className="grid gap-3 rounded-[24px] bg-[color:var(--color-paper-3)] p-4 md:grid-cols-[1fr_1fr_auto]">
             <Field label="Ward">
               <SelectBox name="wardId" defaultValue={wardId ?? ""}>
@@ -63,11 +63,11 @@ export default async function DischargedPage({
                 canHardDelete={canHardDelete}
                 hardDeleteAction={hardDeletePatientAction}
               />
-              <div className="flex items-center justify-between text-sm text-muted">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
                 <span>
                   Showing {directory.items.length} of {directory.total} patients
                 </span>
-                <div className="flex gap-2">
+                {directory.totalPages > 1 ? <div className="flex flex-wrap gap-2">
                   <Link
                     href={buildDischargedUrl({
                       wardId,
@@ -91,7 +91,7 @@ export default async function DischargedPage({
                   >
                     Next
                   </Link>
-                </div>
+                </div> : null}
               </div>
             </>
           ) : (

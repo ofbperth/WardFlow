@@ -1,3 +1,4 @@
+import { matchesTaskOwner } from "@/lib/task-owner-filter";
 import { progressNoteText } from "@/lib/progress-format";
 import fs from "node:fs";
 import path from "node:path";
@@ -2454,7 +2455,7 @@ export async function getMyTasks(session: SessionContext, filters?: Partial<Task
   const input = await getStoreForSession(session);
   const items = buildTaskWorkspaceItems(input, session).filter(({ task, patient }) => {
     if (filters?.wardId && patient.wardId !== filters.wardId) return false;
-    if (filters?.ownerId && task.ownerId !== filters.ownerId) return false;
+    if (!matchesTaskOwner(task.ownerId, filters?.ownerId)) return false;
     if (filters?.type && task.type !== filters.type) return false;
     return true;
   });
