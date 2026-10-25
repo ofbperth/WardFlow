@@ -24,7 +24,7 @@ const navItems = [
   { href: "/wards", label: "Wards", mobileLabel: "Wards", icon: LayoutGrid },
   { href: "/discharged", label: "Discharged", mobileLabel: "Archive", icon: Archive },
   { href: "/handover", label: "Handover", mobileLabel: "Handover", icon: ClipboardList },
-  { href: "/my-tasks", label: "Tasks", mobileLabel: "Tasks", icon: Activity },
+  { href: "/my-tasks", label: "Ward work", mobileLabel: "Ward work", icon: Activity },
   { href: "/tasks/quick", label: "Quick entry", mobileLabel: "Quick", icon: Plus },
 ];
 
@@ -153,7 +153,7 @@ export function AppShell({
                   Ward operations
                 </p>
                 <p className="mt-1.5 text-sm leading-5 text-[color:var(--color-ink-2)]">
-                  Patient flow, handover, and task coordination.
+                  Patient flow, handover, and ward work coordination.
                 </p>
               </div>
 

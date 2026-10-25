@@ -227,9 +227,9 @@ export function labelForActivityAction(action: string) {
       "problem.reordered": "จัดลำดับ problem list",
       "problem_progress.created": "เพิ่ม progress update",
       "problem_progress.updated": "แก้ไข progress update",
-      "task.created": "สร้าง task",
-      "task.updated": "อัปเดต task",
-      "task.status_changed": "เปลี่ยนสถานะ task",
+      "task.created": "สร้าง ward work",
+      "task.updated": "อัปเดต ward work",
+      "task.status_changed": "เปลี่ยนสถานะ ward work",
       "handover.updated": "บันทึก handover",
     }[action] ?? action
   );

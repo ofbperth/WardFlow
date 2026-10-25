@@ -13,8 +13,8 @@ export default async function AdminTaskTemplatesPage() {
     <div className="space-y-4 md:space-y-6">
       <AdminSectionTabs />
       <PageHeader
-        title="Admin | Task templates"
-        subtitle="Keep quick-entry and ward workflows consistent with reusable task defaults."
+        title="Admin | Ward work templates"
+        subtitle="Keep quick-entry and ward workflows consistent with reusable ward work defaults."
         action={
           <Link
             href="/admin/wards"

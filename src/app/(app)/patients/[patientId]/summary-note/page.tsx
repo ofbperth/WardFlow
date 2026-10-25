@@ -86,7 +86,7 @@ export default async function SummaryNotePage({
                     <NoteMini title="Current Summary" items={problem.currentSummary} />
                     <NoteMini title="Latest Note" items={problem.latestNote} />
                     <NoteMini title="History" items={problem.history} />
-                    <NoteMini title="Pending Tasks" items={problem.pendingTasks} />
+                    <NoteMini title="Pending Ward work" items={problem.pendingTasks} />
                   </div>
                 </div>
               ))
@@ -100,7 +100,7 @@ export default async function SummaryNotePage({
           <NoteSection title="Pending Issues" items={payload.pendingIssues} />
           <NoteSection title="Suggested Plan" items={payload.suggestedPlan} />
           <NoteSection title="Safety Alerts" items={payload.safetyAlerts} />
-          <NoteSection title="Tasks" items={payload.tasks} />
+          <NoteSection title="Ward work" items={payload.tasks} />
         </div>
       </GlassPanel>
 

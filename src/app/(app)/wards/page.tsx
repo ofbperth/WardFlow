@@ -4,6 +4,8 @@ import { savePatientWardAction } from "@/app/actions";
 import { AppFeedbackToast } from "@/components/app-feedback-toast";
 import { AdmitPatientCreator } from "@/components/form-feedback";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
+import { WardWorkShortcut } from "@/components/ward-work-shortcut";
+import { isProfileAssignableToWard } from "@/lib/resident-ward-assignment";
 import {
   EmptyState,
   Field,
@@ -80,7 +82,7 @@ export default async function WardsPage({
       />
 
       {session.profile.role === "resident" && session.profile.residentWardIds.length === 0 ? (
-        <SetupNotice title="Resident ward assignment required" body="Ask an admin to assign one or more Wards before patient and task lists can be shown." />
+        <SetupNotice title="Resident ward assignment required" body="Ask an admin to assign one or more Wards before patient and ward work lists can be shown." />
       ) : null}
 
       {session.profile.role === "student" && !session.profile.wardAssignment ? (
@@ -94,6 +96,13 @@ export default async function WardsPage({
       {summaries.length ? (
         <PatientCensus
           summaries={summaries}
+          renderPatientAction={(patient, ward) => {
+            if (!isProfileAssignableToWard(session.profile, ward.id)) return null;
+            const owners = profiles.filter((profile) => isProfileAssignableToWard(profile, ward.id));
+            return <WardWorkShortcut patientId={patient.id} patientName={patient.displayName} bed={patient.bed}
+              wardName={ward.name} profiles={owners}
+              defaultOwnerId={owners.some((profile) => profile.id === session.profile.id) ? session.profile.id : ""} />;
+          }}
           renderWardFooter={
             canManagePatient
               ? (summary) => (

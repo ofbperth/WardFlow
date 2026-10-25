@@ -149,7 +149,7 @@ export function TaskWorkspaceBoard({
               <h3 className="mt-1 text-lg font-semibold text-foreground">{group.ward.name}</h3>
             </div>
             <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
-              {group.patients.reduce((total, patient) => total + patient.tasks.length, 0)} tasks
+              {group.patients.reduce((total, patient) => total + patient.tasks.length, 0)} ward work
             </Pill>
           </div>
 
@@ -224,7 +224,7 @@ export function TaskWorkspaceBoard({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+                          <TaskEditor iconOnly compactTrigger buttonTitle="Edit ward work detail">
                             <TaskEditorForm
                               task={task}
                               patientId={patient.id}
@@ -356,7 +356,7 @@ export function TaskWorkspaceBoard({
       {boardState.archivedGroups.length > 0 ? (
         <details className="rounded-[28px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-4">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
-            Archived done tasks
+            Archived done ward work
           </summary>
           <div className="mt-4 space-y-4">
             {boardState.archivedGroups.map((group) => (

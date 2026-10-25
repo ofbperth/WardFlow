@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import { EmptyState, PageHeader, PatientCensus } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
-import { getWardDetail } from "@/lib/wardflow";
+import { getWardDetail, getAssignableProfilesForWard } from "@/lib/wardflow";
+import { WardWorkShortcut } from "@/components/ward-work-shortcut";
+import { isProfileAssignableToWard } from "@/lib/resident-ward-assignment";
 
 export default async function WardDetailPage({
   params,
@@ -16,6 +18,7 @@ export default async function WardDetailPage({
   if (!detail) {
     return <EmptyState title="Ward not found" body="Unavailable in your current scope." />;
   }
+  const profiles = await getAssignableProfilesForWard(session, wardId);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -33,7 +36,12 @@ export default async function WardDetailPage({
           </Link>
         }
       />
-      <PatientCensus summaries={[detail]} />
+      <PatientCensus summaries={[detail]} renderPatientAction={(patient, ward) =>
+        isProfileAssignableToWard(session.profile, ward.id) ?
+          <WardWorkShortcut patientId={patient.id} patientName={patient.displayName} bed={patient.bed}
+            wardName={ward.name} profiles={profiles}
+            defaultOwnerId={profiles.some((profile) => profile.id === session.profile.id) ? session.profile.id : ""} /> : null
+      } />
     </div>
   );
 }

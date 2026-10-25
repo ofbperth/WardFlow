@@ -1,4 +1,5 @@
-﻿import Link from "next/link";
+import { ProgressNoteAutosave } from "@/components/progress-note-autosave";
+import Link from "next/link";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -35,7 +36,6 @@ import {
   PendingGhostButton,
   PendingSubmitButton,
   ProblemEditor,
-  ProgressEntryEditor,
   ProgressEntryHistoryEditor,
   TaskCreator,
   TaskEditor,
@@ -208,8 +208,10 @@ export function Pill({ children, tone }: { children: React.ReactNode; tone?: str
 export function PatientCensus({
   summaries,
   renderWardFooter,
+  renderPatientAction,
 }: {
   summaries: WardSummary[];
+  renderPatientAction?: (patient: WardSummary["patients"][number], ward: Ward) => React.ReactNode;
   renderWardFooter?: (summary: WardSummary) => React.ReactNode;
 }) {
   return (
@@ -231,12 +233,11 @@ export function PatientCensus({
           <div id={`ward-census-${summary.ward.id}`} hidden>
             <div className="grid gap-2.5 md:grid-cols-2 xl:gap-3 2xl:grid-cols-3">
               {summary.patients.map((patient) => (
-                <Link
+                <article
                   key={patient.id}
-                  href={`/patients/${patient.id}`}
                   className="group rounded-[16px] border clinical-divider bg-white p-3 transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50"
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <Link href={`/patients/${patient.id}`} className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
@@ -258,19 +259,20 @@ export function PatientCensus({
                     <div className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-1.5 text-[color:var(--color-accent-strong)]">
                       <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </div>
-                  </div>
+                  </Link>
 
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t clinical-divider pt-3">
                     <Pill tone="border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-[color:var(--color-ink)]">
-                      {patient.pendingTaskCount} open task
+                      {patient.pendingTaskCount} open ward work
                     </Pill>
                     {patient.lifecycle === "discharged" ? (
                       <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-3)] text-[color:var(--color-ink-2)]">
                         Discharged
                       </Pill>
                     ) : null}
+                    {renderPatientAction?.(patient, summary.ward)}
                   </div>
-                </Link>
+                </article>
               ))}
             </div>
             {renderWardFooter ? (
@@ -287,29 +289,6 @@ export function PatientCensus({
 
 function compactProblemStatus(problem: Problem) {
   return problem.latestEntry?.note ?? problem.currentStatusSummary ?? "No note yet";
-}
-
-function ProgressNoteMeta({
-  entry,
-  noteCount,
-}: {
-  entry: Problem["historyEntries"][number];
-  noteCount: number;
-}) {
-  return (
-    <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Latest update</p>
-          <p className="mt-1 text-sm font-semibold text-foreground">{formatDateTime(entry.dateTime)}</p>
-          {entry.authorName ? <p className="mt-0.5 text-xs text-muted">By {entry.authorName}</p> : null}
-        </div>
-        <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-paper-2)] text-[color:var(--color-ink-2)]">
-          {noteCount} note{noteCount === 1 ? "" : "s"}
-        </Pill>
-      </div>
-    </div>
-  );
 }
 
 function ProgressNoteCard({
@@ -502,6 +481,7 @@ export function ProblemCards({
         return (
           <details
             key={problem.id}
+            open
             className="rounded-[16px] border clinical-divider bg-white"
           >
             <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2.5 marker:content-none">
@@ -528,7 +508,7 @@ export function ProblemCards({
                       <span>{labelForProblemDiagnosisStatus(problem.diagnosisStatus)}</span>
                       <span>·</span>
                       <span>
-                        {incompleteCount} task{incompleteCount === 1 ? "" : "s"}
+                        {incompleteCount} ward work
                       </span>
                     </p>
                   </div>
@@ -581,24 +561,10 @@ export function ProblemCards({
                     </form>
                   </ProblemEditor>
 
-                  <ProgressEntryEditor iconOnly compactTrigger buttonTitle="Add progress">
-                    <form action={saveProblemProgressEntryAction} className="space-y-3">
-                      <input type="hidden" name="patientId" value={patientId} />
-                      <input type="hidden" name="problemId" value={problem.id} />
-                      <Field label="Progress note">
-                        <TextArea
-                          name="note"
-                          placeholder={"08:00 reviewed on round\nPatient breathing easier\nPlan continue current support"}
-                        />
-                      </Field>
-                      <SubmitButton pendingLabel="Saving update...">Add progress note</SubmitButton>
-                    </form>
-                  </ProgressEntryEditor>
-
                   <TaskCreator
                     iconOnly
-                    buttonLabel="Add task"
-                    buttonTitle="Add task"
+                    buttonLabel="Add ward work"
+                    buttonTitle="Add ward work"
                     className="mt-0"
                     buttonClassName="mt-0"
                     panelClassName="mt-0 w-full"
@@ -609,11 +575,11 @@ export function ProblemCards({
                     <form action={saveTaskAction} className="space-y-3">
                       <input type="hidden" name="patientId" value={patientId} />
                       <input type="hidden" name="problemId" value={problem.id} />
-                      <Field label="Task title">
+                      <Field label="Ward work title">
                         <TextInput
                           name="title"
                           list={`task-template-suggestions-${problem.id}`}
-                          placeholder="Type task title"
+                          placeholder="Type ward work title"
                           required
                         />
                       </Field>
@@ -659,27 +625,24 @@ export function ProblemCards({
                         </Field>
                       </div>
                       <Field label="Note">
-                        <TextArea name="note" placeholder="Short task note" />
+                        <TextArea name="note" placeholder="Short ward work note" />
                       </Field>
-                      <SubmitButton>Create task</SubmitButton>
+                      <SubmitButton>Create ward work</SubmitButton>
                     </form>
                   </TaskCreator>
                 </div>
               ) : null}
 
-              <CompactProblemBulletList problem={problem} />
-
-              {latestEntry ? (
-                <ProgressNoteMeta entry={latestEntry} noteCount={problem.historyEntries.length} />
-              ) : (
-                <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5 text-sm text-muted">
-                  No progress note yet
-                </div>
-              )}
+              <ProgressNoteAutosave
+                patientId={patientId}
+                problemId={problem.id}
+                initial={{ id: latestEntry?.id ?? null, updatedAt: latestEntry?.updatedAt ?? null, note: latestEntry?.note ?? "" }}
+                readOnly={!canEdit}
+              />
 
               <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">Tasks</p>
+                  <p className="text-sm font-semibold text-[color:var(--color-ink)]">Ward work</p>
                   <div className="flex items-center gap-2">
                     <Pill tone="border-[color:var(--color-rule)] bg-white text-[color:var(--color-ink-2)]">
                       {incompleteCount} open
@@ -701,7 +664,7 @@ export function ProblemCards({
                       />
                     ))
                   ) : (
-                    <p className="text-sm text-muted">No linked tasks yet</p>
+                    <p className="text-sm text-muted">No linked ward work yet</p>
                   )}
                 </div>
               </details>
@@ -856,14 +819,14 @@ export function TaskCards({
         </div>
       ) : (
         <div className="rounded-[14px] border clinical-divider bg-white px-3 py-2.5 text-sm text-muted">
-          No incomplete task
+          No incomplete ward work
         </div>
       )}
 
       {archived.length > 0 ? (
         <details className="rounded-[16px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] p-3">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink-2)]">
-            Archived done task ({archived.length})
+            Archived done ward work ({archived.length})
           </summary>
           <div className="mt-2.5 space-y-2">
             {archived.map((task) => (
@@ -951,7 +914,7 @@ function TaskCard({
                 <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
               )}
               {canEdit ? (
-                <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+                <TaskEditor iconOnly compactTrigger buttonTitle="Edit ward work detail">
                   <TaskEditorForm
                     task={task}
                     patientId={patient.id}
@@ -1021,25 +984,6 @@ function TaskCard({
   );
 }
 
-function CompactProblemBulletList({ problem }: { problem: Problem }) {
-  const entries = [{ label: "Summary", value: problem.currentStatusSummary ?? "" }].filter((entry) =>
-    isMeaningfulValue(entry.value),
-  );
-
-  return (
-    <ul className="space-y-1.5 rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-2.5">
-      {entries.map((entry) => (
-        <li key={entry.label} className="grid gap-0.5 text-sm text-foreground md:grid-cols-[5.5rem_minmax(0,1fr)]">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-            {entry.label}
-          </span>
-          <span className="whitespace-pre-wrap">{entry.value}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function CompactLinkedTaskRow({
   task,
   patientId,
@@ -1078,7 +1022,7 @@ function CompactLinkedTaskRow({
             {task.title}
           </p>
           {canEdit ? (
-            <TaskEditor iconOnly compactTrigger buttonTitle="Edit task detail">
+            <TaskEditor iconOnly compactTrigger buttonTitle="Edit ward work detail">
               <TaskEditorForm
                 task={task}
                 patientId={patientId}
@@ -1179,7 +1123,7 @@ export function TaskEditorForm({
       <Field label="Blocked reason">
         <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
       </Field>
-      <SubmitButton pendingLabel="Updating task...">Update task</SubmitButton>
+      <SubmitButton pendingLabel="Updating ward work...">Update ward work</SubmitButton>
     </form>
   );
 }
@@ -1199,10 +1143,6 @@ function compactTaskMeta(
   ]
     .filter(Boolean)
     .join(" · ");
-}
-
-function isMeaningfulValue(value: string) {
-  return value.trim().length > 0 && !value.startsWith("No ");
 }
 
 export function Timeline({ items }: { items: ActivityLog[] }) {
@@ -1677,7 +1617,7 @@ export function StaffRoleCards({
               <form action={deleteUserAction} className="flex justify-end">
                 <input type="hidden" name="userId" value={profile.id} />
                 <ConfirmingSubmitButton
-                  confirmMessage={`Hard delete ${profile.name}? Patients and tasks assigned to this user will become unassigned.`}
+                  confirmMessage={`Hard delete ${profile.name}? Patients and ward work assigned to this user will become unassigned.`}
                   pendingLabel="Deleting user..."
                   className="px-4 py-2 text-xs"
                 >

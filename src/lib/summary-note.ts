@@ -132,7 +132,7 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
     history: withFallback(buildProblemHistory(problem), "No history"),
     pendingTasks: withFallback(
       problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
-      "No linked pending task",
+      "No linked pending ward work",
     ),
   };
 }
@@ -169,7 +169,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
       lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
       lines.push(`   Latest Note: ${problem.latestNote.join(" | ")}`);
       lines.push(`   History: ${problem.history.join(" || ")}`);
-      lines.push(`   Pending Tasks: ${problem.pendingTasks.join(" | ")}`);
+      lines.push(`   Pending Ward work: ${problem.pendingTasks.join(" | ")}`);
     });
   }
   lines.push("");
@@ -204,7 +204,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
   }
   lines.push("");
 
-  lines.push("Tasks:");
+  lines.push("Ward work:");
   for (const bullet of withFallback(payload.tasks)) {
     lines.push(`- ${bullet}`);
   }
@@ -246,7 +246,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
       .map((problem) => `Deterioration warning: ${problem.problemName}`),
     ...tasks
       .filter((task) => task.type === "medication" && task.priority !== "normal")
-      .map((task) => `High-risk medication task: ${task.title}`),
+      .map((task) => `High-risk medication ward work: ${task.title}`),
     ...tasks
       .filter((task) => task.type === "procedure" && task.status !== "done")
       .map((task) => `Procedure risk: ${task.title}`),
@@ -293,7 +293,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     resolvedProblems,
     consultations: consultTasks.length
       ? consultTasks.map((task) => task.title)
-      : ["No active consultation task recorded"],
+      : ["No active consultation ward work recorded"],
     pendingIssues,
     suggestedPlan,
     safetyAlerts,

@@ -46,14 +46,14 @@ export default async function PendingTaskHandoverPage({
 
       <GlassPanel
         headingLevel={1}
-        title="Pending task handover"
-        subtitle="A work-only brief for unfinished, blocked, and owner-dependent tasks."
+        title="Pending ward work handover"
+        subtitle="A work-only brief for unfinished, blocked, and owner-dependent ward work."
       >
         {data.blockedByMissingWard ? (
-          <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before pending tasks can be shown." />
+          <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before pending ward work can be shown." />
         ) : (
           <>
-            <ExpandableFilters title="Filter pending tasks">
+            <ExpandableFilters title="Filter pending ward work">
               <form className="grid gap-3 lg:grid-cols-3">
                 <Field label="Ward">
                   <SelectBox name="wardId" defaultValue={params.wardId ?? ""}>
@@ -67,8 +67,8 @@ export default async function PendingTaskHandoverPage({
                 </Field>
                 <Field label="Mode">
                   <SelectBox name="mode" defaultValue={mode}>
-                    <option value="all">All pending tasks</option>
-                    <option value="mine">My pending tasks</option>
+                    <option value="all">All pending ward work</option>
+                    <option value="mine">My pending ward work</option>
                     <option value="blocked">Blocked only</option>
                   </SelectBox>
                 </Field>
@@ -89,7 +89,7 @@ export default async function PendingTaskHandoverPage({
                           <h3 className="mt-1 text-lg font-semibold text-foreground">{group.ward.name}</h3>
                         </div>
                         <Pill tone="border-[color:var(--color-rule)] bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent-strong)]">
-                          {group.patients.reduce((total, patient) => total + patient.tasks.length, 0)} tasks
+                          {group.patients.reduce((total, patient) => total + patient.tasks.length, 0)} ward work
                         </Pill>
                       </div>
 
@@ -149,7 +149,7 @@ export default async function PendingTaskHandoverPage({
                 {text ? <HandoverTextPanel text={text} wardName={selectedWardName} /> : null}
               </div>
             ) : (
-              <EmptyState title="No pending tasks" body="ไม่มีงานค้างใน scope นี้" />
+              <EmptyState title="No pending ward work" body="ไม่มีงานค้างใน scope นี้" />
             )}
           </>
         )}

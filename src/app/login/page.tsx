@@ -35,7 +35,7 @@ export default async function LoginPage({
               <p className="mt-2 text-2xl font-display font-semibold text-foreground">Live</p>
             </div>
             <div className="metric-tile p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Task flow</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--color-ink-2)]">Ward work flow</p>
               <p className="mt-2 text-2xl font-display font-semibold text-foreground">Track</p>
             </div>
             <div className="metric-tile p-4">

@@ -11,7 +11,7 @@ const adminTabs = [
     label: "Student Ward Assignment",
     thaiLabel: "จัดนักศึกษาเข้าวอร์ด",
   },
-  { href: "/admin/task-templates", label: "Task templates", thaiLabel: "Template งาน" },
+  { href: "/admin/task-templates", label: "Ward work templates", thaiLabel: "Template งาน" },
 ];
 
 export function AdminSectionTabs() {

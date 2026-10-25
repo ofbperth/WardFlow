@@ -33,12 +33,12 @@ export default async function MyTasksPage({
     <div className="space-y-6">
       <AppFeedbackToast toastKey={params.toast} />
 
-      <GlassPanel headingLevel={1} title="Task">
+      <GlassPanel headingLevel={1} title="Ward work">
         {data.blockedByMissingWard ? (
-          <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before tasks can be shown." />
+          <SetupNotice title="Ward assignment required" body="Ask an admin to assign one or more Wards before ward work can be shown." />
         ) : (
           <>
-            <ExpandableFilters title="Filter tasks">
+            <ExpandableFilters title="Filter ward work">
               <form className="grid grid-cols-2 gap-2.5 md:gap-3 lg:grid-cols-4">
                 <Field
                   label="Ward"
@@ -104,7 +104,7 @@ export default async function MyTasksPage({
                 updateTaskStatusAction={updateTaskStatusAction}
               />
             ) : (
-              <EmptyState title="No tasks in view" body="ลองปรับ filter" />
+              <EmptyState title="No ward work in view" body="ลองปรับ filter" />
             )}
           </>
         )}

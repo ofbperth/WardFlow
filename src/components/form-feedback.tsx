@@ -356,8 +356,8 @@ export function TaskEditor({
 }) {
   return (
     <InlineEditor
-      buttonLabel="Edit task detail"
-      panelTitle="Edit task detail"
+      buttonLabel="Edit ward work detail"
+      panelTitle="Edit ward work detail"
       iconOnly={iconOnly}
       compactTrigger={compactTrigger}
       buttonTitle={buttonTitle}
@@ -484,7 +484,7 @@ export function ProblemCreator({
 
 export function TaskCreator({
   children,
-  buttonLabel = "Create task",
+  buttonLabel = "Create ward work",
   iconOnly = false,
   compactTrigger = false,
   buttonTitle,
@@ -508,7 +508,7 @@ export function TaskCreator({
   return (
     <InlineEditor
       buttonLabel={buttonLabel}
-      panelTitle="Create task"
+      panelTitle="Create ward work"
       buttonIcon="create"
       iconOnly={iconOnly}
       compactTrigger={compactTrigger}

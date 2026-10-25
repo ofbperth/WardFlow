@@ -10,7 +10,7 @@ const toastCopy: Record<string, string> = {
   "role-saved": "User updated",
   "user-deleted": "User deleted",
   "patient-saved": "Patient saved",
-  "quick-task-saved": "Quick tasks created",
+  "quick-task-saved": "Quick ward work created",
 };
 
 export function AppFeedbackToast({ toastKey }: { toastKey?: string }) {

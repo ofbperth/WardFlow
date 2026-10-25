@@ -7,6 +7,7 @@ import { getRequestOrigin, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env"
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   bulkCreateTasks,
+  autosaveProblemNote,
   deleteUser,
   deleteWard,
   dischargePatient,
@@ -27,6 +28,16 @@ import {
   saveWard,
   updateTaskStatus,
 } from "@/lib/wardflow";
+import type { ProgressSaveInput, ProgressSaveResult } from "@/lib/progress-autosave";
+
+export async function autosaveProblemNoteAction(input: ProgressSaveInput): Promise<ProgressSaveResult> {
+  const session = await requireAppSession();
+  try {
+    return await autosaveProblemNote(input, session);
+  } catch {
+    return { ok: false, message: "ยังบันทึกไม่สำเร็จ ข้อความยังอยู่ในช่องนี้ ระบบจะลองใหม่อัตโนมัติ" };
+  }
+}
 
 export async function signInWithGoogle() {
   if (!hasLiveSupabase()) {

@@ -235,7 +235,7 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
         `Current Summary: ${problem.currentSummary.join(" | ")}`,
         `Latest Note: ${problem.latestNote.join(" | ")}`,
         `History: ${problem.history.join(" || ")}`,
-        `Pending Tasks: ${problem.pendingTasks.join(" | ")}`,
+        `Pending Ward work: ${problem.pendingTasks.join(" | ")}`,
       ]);
     }
   }
@@ -246,7 +246,7 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
   insertSection("Pending Issues", payload.pendingIssues);
   insertSection("Suggested Plan", payload.suggestedPlan);
   insertSection("Safety Alerts", payload.safetyAlerts);
-  insertSection("Tasks", payload.tasks);
+  insertSection("Ward work", payload.tasks);
 
   return requests;
 }

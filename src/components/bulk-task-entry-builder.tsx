@@ -232,7 +232,7 @@ export function BulkTaskEntryBuilder({
                   {patientRows.map((row) => (
                     <div key={row.id} className="panel-muted rounded-[22px] p-3.5 md:p-4">
                       <div className="mb-3 flex items-center justify-between gap-3 border-b clinical-divider pb-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Task row</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Ward work row</p>
                         <button
                           type="button"
                           onClick={() =>
@@ -251,7 +251,7 @@ export function BulkTaskEntryBuilder({
                       </div>
 
                       <div className="grid gap-3 lg:grid-cols-[1.3fr_0.8fr_0.8fr]">
-                        <Field label="Task title">
+                        <Field label="Ward work title">
                           <TextInput
                             value={row.title}
                             onChange={(event) =>
@@ -262,7 +262,7 @@ export function BulkTaskEntryBuilder({
                                 ),
                               }))
                             }
-                            placeholder="Type task title"
+                            placeholder="Type ward work title"
                           />
                         </Field>
                         <Field label="Template">
@@ -394,7 +394,7 @@ export function BulkTaskEntryBuilder({
                         >
                           <span className="inline-flex items-center gap-1.5">
                             <Check className="h-3.5 w-3.5" />
-                            Confirm quick task
+                            Confirm quick ward work
                           </span>
                         </PendingSubmitButton>
                       </div>
@@ -403,7 +403,7 @@ export function BulkTaskEntryBuilder({
 
                   {!patientRows.length ? (
                     <div className="rounded-[20px] border border-dashed clinical-divider bg-[color:var(--color-paper-3)] px-4 py-3 text-sm font-medium text-foreground">
-                      No task rows yet
+                      No ward work rows yet
                     </div>
                   ) : null}
                 </div>

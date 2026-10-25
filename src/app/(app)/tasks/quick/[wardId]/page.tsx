@@ -28,7 +28,7 @@ export default async function QuickTaskEntryWardPage({
     <div className="space-y-4 md:space-y-6">
       <AppFeedbackToast toastKey={query.toast} />
       <PageHeader
-        title="Quick task entry"
+        title="Quick ward work entry"
         action={
           <Link href="/tasks/quick" className="button-secondary rounded-full px-4 py-2 text-sm font-semibold">
             Change ward

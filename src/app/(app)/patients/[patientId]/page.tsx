@@ -363,7 +363,7 @@ export default async function PatientPage({
         </GlassPanel>
 
         <GlassPanel
-          title="Tasks"
+          title="Ward work"
           subtitle="Incomplete work first. Mark complete with one tap."
           compact
           className="order-3 2xl:order-none 2xl:col-start-1 2xl:row-start-2"
@@ -372,8 +372,8 @@ export default async function PatientPage({
               <TaskCreator
                 iconOnly
                 compactTrigger
-                buttonLabel="Add task"
-                buttonTitle="Add task"
+                buttonLabel="Add ward work"
+                buttonTitle="Add ward work"
                 className="mt-0"
                 buttonClassName="mt-0"
                 panelClassName="mt-0 w-full"
@@ -382,11 +382,11 @@ export default async function PatientPage({
               >
                 <form action={saveTaskAction} className="space-y-3">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
-                  <Field label="Task title">
+                  <Field label="Ward work title">
                     <TextInput
                       name="title"
                       list="task-template-suggestions"
-                      placeholder="Type task title"
+                      placeholder="Type ward work title"
                       required
                     />
                   </Field>
@@ -441,7 +441,7 @@ export default async function PatientPage({
                     <TextArea name="blockedReason" placeholder="Only when blocked" />
                   </Field>
                   <div className="flex justify-end">
-                    <SubmitButton>Create task</SubmitButton>
+                    <SubmitButton>Create ward work</SubmitButton>
                   </div>
                 </form>
               </TaskCreator>

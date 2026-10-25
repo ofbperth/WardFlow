@@ -59,14 +59,14 @@ export default async function HandoverPage({
             href="/handover/tasks"
             className="button-secondary inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold"
           >
-            Pending task handover
+            Pending ward work handover
           </Link>
         }
       >
         <div className="grid gap-2.5 md:grid-cols-3">
           <MetricTile label="Visible wards" value={String(selectedBundles.length)} />
           <MetricTile label="Patients in brief" value={String(patientCount)} />
-          <MetricTile label="Pending tasks" value={String(taskCount)} />
+          <MetricTile label="Pending ward work" value={String(taskCount)} />
         </div>
 
         <div className="mt-4 grid gap-3 xl:grid-cols-[300px_minmax(0,1fr)]">

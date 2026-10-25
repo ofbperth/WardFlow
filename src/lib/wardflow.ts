@@ -66,6 +66,7 @@ import type {
 import { exportSummaryNoteToGoogleDocs } from "@/lib/google-docs";
 import { buildSummaryNotePayload } from "@/lib/summary-note";
 import { isProfileAssignableToWard, visibleWardIdsForRole } from "@/lib/resident-ward-assignment";
+import type { ProgressSaveInput, ProgressSaveResult } from "@/lib/progress-autosave";
 
 type DemoStore = {
   wards: Ward[];
@@ -632,7 +633,7 @@ function normalizeTaskRecord(task: Partial<WardTask>): WardTask {
     id: task.id ?? nextId("task"),
     patientId: task.patientId ?? "",
     problemId: task.problemId ?? null,
-    title: task.title ?? "Untitled task",
+    title: task.title ?? "Untitled ward work",
     note: task.note ?? null,
     ownerId: task.ownerId ?? null,
     ownerName: task.ownerName ?? null,
@@ -679,7 +680,7 @@ function buildProblemProgressNoteFromLegacy(input: {
   reasoningUpdate?: string | null;
   todayPlan?: string | null;
 }) {
-  if (typeof input.note === "string" && input.note.trim()) {
+  if (typeof input.note === "string") {
     return input.note;
   }
 
@@ -2595,7 +2596,7 @@ export async function getPendingTaskHandoverText(
   const wardName =
     selectedGroups.length === 1 ? selectedGroups[0].ward.name : "All visible wards";
 
-  const lines = [`Pending Task Handover | ${wardName} | ${now()}`];
+  const lines = [`Pending Ward work Handover | ${wardName} | ${now()}`];
 
   for (const group of selectedGroups) {
     lines.push("");
@@ -3956,6 +3957,55 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
     "Failed to refresh patient timestamp",
   );
   revalidateWardflowPaths(parsed.patientId);
+}
+
+export async function autosaveProblemNote(input: ProgressSaveInput, session: SessionContext): Promise<ProgressSaveResult> {
+  requireClinicalEditor(session);
+  const parsed = z.object({
+    patientId: z.string().min(1), problemId: z.string().min(1), requestId: z.string().uuid(),
+    expectedId: z.string().nullable(), expectedUpdatedAt: z.string().nullable(), note: z.string(),
+  }).parse(input);
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient || patient.lifecycle !== "active") throw new Error("Active patient not found");
+    requireWardWriteAccess(session, patient.wardId);
+    const problem = store.problemMasters.find((entry) => entry.id === parsed.problemId && entry.patientId === parsed.patientId);
+    if (!problem) throw new Error("Problem not found");
+    const existing = store.problemProgressEntries.find((entry) => entry.id === parsed.requestId);
+    if (existing) {
+      if (existing.problemId !== parsed.problemId || existing.authorId !== session.profile.id || existing.note !== parsed.note) throw new Error("Invalid retry");
+      return { ok: true, snapshot: { id: existing.id, updatedAt: existing.updatedAt, note: existing.note ?? "" } };
+    }
+    const latest = getProblemProgressEntries(store, parsed.problemId)[0];
+    if ((latest?.id ?? null) !== parsed.expectedId || (latest?.updatedAt ?? null) !== parsed.expectedUpdatedAt) {
+      return { ok: false, conflict: true, message: "มีการแก้ไขจากอีกหน้าต่าง กรุณาคัดลอกข้อความของคุณก่อนโหลดหน้าใหม่" };
+    }
+    const timestamp = new Date(Math.max(Date.now(), latest ? Date.parse(latest.dateTime) + 1 : 0)).toISOString();
+    const entry: ProblemProgressEntry = {
+      id: parsed.requestId, problemId: parsed.problemId, dateTime: timestamp,
+      authorId: session.profile.id, authorName: session.profile.name, note: parsed.note,
+      pendingTaskIds: [], createdAt: timestamp, updatedAt: timestamp,
+    };
+    store.problemProgressEntries.unshift(entry);
+    problem.updatedAt = timestamp;
+    refreshDemoPatient(parsed.patientId);
+    await persistDemoStore();
+    revalidateWardflowPaths(parsed.patientId);
+    return { ok: true, snapshot: { id: entry.id, updatedAt: entry.updatedAt, note: parsed.note } };
+  }
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
+  if (!patient) throw new Error("Patient not found");
+  requireWardWriteAccess(session, patient.ward_id);
+  const result = await supabase.rpc("autosave_problem_note", {
+    p_patient_id: parsed.patientId, p_problem_id: parsed.problemId, p_request_id: parsed.requestId,
+    p_expected_id: parsed.expectedId, p_expected_updated_at: parsed.expectedUpdatedAt, p_note: parsed.note,
+  });
+  ensureNoError(result, "Failed to autosave progress note");
+  const saved = result.data as ProgressSaveResult;
+  if (saved.ok) revalidateWardflowPaths(parsed.patientId);
+  return saved;
 }
 
 export async function saveProblemProgressEntry(formData: FormData, session: SessionContext) {
