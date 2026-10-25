@@ -29,8 +29,8 @@ function splitBullets(value: string | null | undefined): string[] {
   if (!value) return [];
   return value
     .split(/\r?\n|[|]/)
-    .map((item) => item.trim().replace(/^[*-]\s*/, ""))
-    .filter(Boolean);
+    .map((item) => item.trim().replace(/^[*-]\s+/, ""))
+    .filter((item) => item && item !== "-");
 }
 
 function presentItems(items: (string | null | undefined)[]): string[] {
@@ -50,7 +50,6 @@ function makeSection(heading: string, bullets: (string | null | undefined)[]): S
 }
 
 function noteDateParts(now = new Date()) {
-  const fileLabel = now.toISOString().slice(0, 10);
   const dateLabel = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
     month: "2-digit",
@@ -58,14 +57,14 @@ function noteDateParts(now = new Date()) {
     timeZone: "Asia/Bangkok",
   }).format(now);
 
-  return { fileLabel, dateLabel };
+  return { fileLabel: dateLabel, dateLabel };
 }
 
 function getAdmitDate(activity: ActivityLog[]) {
   const created = [...activity]
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .find((item) => item.action === "patient.created");
-  return created?.createdAt ?? activity[activity.length - 1]?.createdAt ?? null;
+  return created?.createdAt ?? null;
 }
 
 function taskMetadataParts(task: TaskWithUpdates) {
@@ -73,7 +72,7 @@ function taskMetadataParts(task: TaskWithUpdates) {
     labelForTaskPriority(task.priority),
     labeledValue("Owner:", task.ownerName),
     task.dueAt ? `Due: ${task.dueAt.slice(0, 10)}` : null,
-    task.blockedReason ? `Blocked: ${task.blockedReason}` : null,
+    labeledValue("Blocked:", task.blockedReason),
   ];
 }
 
@@ -82,7 +81,7 @@ function formatTaskLine(task: TaskWithUpdates) {
 }
 
 function formatTaskLineWithProblem(task: TaskWithUpdates, problemName: string) {
-  return [task.title, `Problem: ${problemName}`, ...taskMetadataParts(task)]
+  return [task.title, labeledValue("Problem:", problemName), ...taskMetadataParts(task)]
     .filter(Boolean)
     .join(" | ");
 }
@@ -185,10 +184,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     .map(buildProblemEntry);
   const resolvedProblems = problems
     .filter((problem) => problem.priority === "RESOLVED_CHRONIC" || Boolean(problem.resolvedAt))
-    .map(
-      (problem) =>
-        `${problem.problemName}${problem.currentStatusSummary ? ` | ${problem.currentStatusSummary}` : ""}`,
-    );
+    .map((problem) => presentItems([problem.problemName, problem.currentStatusSummary]).join(" | "));
   const consultTasks = tasks.filter((task) => task.type === "consult");
   const incompleteTasks = tasks.filter((task) => task.status !== "done");
   const orderedTasks = buildOrderedTaskLines(tasks, problems);
@@ -200,7 +196,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
   ];
   const safetyAlerts = [
     labeledValue("Allergy:", patient.allergy),
-    patient.precaution !== "none" ? `Infection risk: ${patient.precaution}` : null,
+    patient.precaution !== "none" ? labeledValue("Infection risk:", patient.precaution) : null,
     ...problems
       .filter((problem) => problem.priority === "ACTIVE_UNSTABLE")
       .map((problem) => `Deterioration warning: ${problem.problemName}`),
@@ -236,13 +232,11 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     hospitalCourse: makeSection(
       "Hospital Course",
       problems.map((problem) =>
-        [
+        presentItems([
           problem.problemName,
           problem.currentStatusSummary,
           progressNoteText(problem.latestEntry?.note),
-        ]
-          .filter(Boolean)
-          .join(" | "),
+        ]).join(" | "),
       ),
     ),
     activeProblems,

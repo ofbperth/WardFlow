@@ -160,7 +160,7 @@ type GoogleDocsRequest =
       };
     };
 
-function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest[] {
+export function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest[] {
   const requests: GoogleDocsRequest[] = [];
   let cursor = 1;
 

@@ -1,0 +1,123 @@
+/* Hallmark · macrostructure: Long Document · genre: modern-minimal · tone: minimal-clinical
+ * design-system: design.md · designed-as-app · anchor hue: deep-teal
+ * audience: ward clinicians · use: review, copy, export · enrichment: none · motion: none
+ * pre-emit critique: P4 H5 E4 S5 R5 V4 */
+.page {
+  width: 100%;
+  max-width: 75ch;
+  min-width: 0;
+  margin-inline: auto;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+.header { margin-bottom: var(--space-sm); }
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: var(--space-2xs);
+  color: var(--color-accent-strong);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.titleRow { display: flex; flex-direction: column; gap: var(--space-sm); }
+.titleBlock { min-width: 0; }
+.titleBlock h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.titleBlock p, .metadata {
+  margin-top: var(--space-3xs);
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.actions, .textActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+.control { min-height: 44px; white-space: nowrap; box-shadow: none; }
+.control:active:not(:disabled) { transform: translateY(1px); }
+.document {
+  padding: var(--space-sm);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  font-size: var(--text-sm);
+  line-height: 1.75;
+}
+.section + .section {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-rule);
+}
+.section h2 {
+  margin: 0 0 var(--space-2xs);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.lines { list-style: none; margin: 0; padding: 0; }
+.lines li { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lines li + li { margin-top: var(--space-3xs); }
+.problems { margin: 0; padding-left: var(--space-md); list-style: decimal; }
+.problem + .problem { margin-top: var(--space-md); }
+.problem::marker { color: var(--color-ink-2); font-weight: 500; }
+.problem h3 { font-size: var(--text-md); font-weight: 600; }
+.detail { margin-top: var(--space-xs); }
+.detail h4 { margin-bottom: var(--space-3xs); font-weight: 500; }
+.plainText {
+  margin-top: var(--space-sm);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-2);
+  font-size: var(--text-sm);
+}
+.plainText summary {
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.plainTextBody { padding: 0 var(--space-sm) var(--space-sm); }
+.textActions { justify-content: space-between; margin-bottom: var(--space-xs); }
+.plainText textarea {
+  display: block;
+  width: 100%;
+  min-height: 24rem;
+  resize: vertical;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  padding: var(--space-xs);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.page :is(a, button, summary, textarea):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.back:active, .plainText summary:active { background: var(--color-paper-3); }
+@media (hover: hover) {
+  .back:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .plainText summary:hover { background: var(--color-paper-3); }
+}
+@media (min-width: 48rem) {
+  .document { padding: var(--space-md); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .control:active:not(:disabled) { transform: none; }
+}

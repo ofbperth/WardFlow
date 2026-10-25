@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-10-26",
+    "macrostructure": "Long Document",
+    "theme": "deep-teal-clinical-minimal",
+    "enrichment": "none",
+    "brief": "Summary note: continuous document, compact actions, collapsed plain text and empty-section suppression",
+    "scope": "summary-note"
+  },
+  {
     "date": "2026-06-23",
     "macrostructure": "Workbench",
     "theme": "deep-teal-clinical-minimal",

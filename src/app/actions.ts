@@ -260,12 +260,11 @@ export async function hardDeletePatientAction(formData: FormData) {
 export async function exportSummaryNoteGoogleDocsAction(formData: FormData) {
   const session = await requireAppSession();
   const patientId = String(formData.get("patientId"));
+  let documentUrl: string;
 
   try {
     const result = await exportSummaryNoteDocument(session, patientId);
-    redirect(
-      `/patients/${patientId}/summary-note?export=success&docUrl=${encodeURIComponent(result.documentUrl)}`,
-    );
+    documentUrl = result.documentUrl;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to export summary note to Google Docs";
@@ -273,4 +272,6 @@ export async function exportSummaryNoteGoogleDocsAction(formData: FormData) {
       `/patients/${patientId}/summary-note?export=error&message=${encodeURIComponent(message)}`,
     );
   }
+
+  redirect(documentUrl);
 }

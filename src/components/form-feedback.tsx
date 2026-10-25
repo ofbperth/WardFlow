@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ArrowRightLeft, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -707,22 +707,42 @@ export function CopyTextButton({
   text: string;
   className?: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const statusId = useId();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   return (
-    <button
-      type="button"
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }}
-      className={cn(
-        "button-secondary rounded-full px-4 py-2 text-sm font-semibold text-[color:var(--color-accent-strong)]",
-        className,
-      )}
-    >
-      {copied ? "Copied" : "Copy text"}
-    </button>
+    <span className="inline-flex max-w-full flex-col items-start gap-1">
+      <button
+        type="button"
+        disabled={!text || status === "copying"}
+        aria-busy={status === "copying"}
+        aria-describedby={statusId}
+        onClick={async () => {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setStatus("copying");
+          try {
+            await navigator.clipboard.writeText(text);
+            setStatus("copied");
+            timerRef.current = setTimeout(() => setStatus("idle"), 1500);
+          } catch {
+            setStatus("error");
+          }
+        }}
+        className={cn(
+          "button-secondary min-h-11 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-[color:var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-55",
+          className,
+        )}
+      >
+        {status === "copied" ? "Copied" : status === "copying" ? "Copying…" : "Copy text"}
+      </button>
+      <span id={statusId} role="status" className={status === "error" ? "max-w-64 text-xs text-[color:var(--color-ink)]" : "sr-only"}>
+        {status === "error" ? "Copy failed. Select and copy the text manually, or try again." : status === "copied" ? "Text copied." : ""}
+      </span>
+    </span>
   );
 }
