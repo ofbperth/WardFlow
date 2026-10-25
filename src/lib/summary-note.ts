@@ -33,14 +33,19 @@ function splitBullets(value: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
-function withFallback(items: string[], fallback = "-") {
-  return items.length ? items : [fallback];
+function presentItems(items: (string | null | undefined)[]): string[] {
+  return items.filter((item): item is string => Boolean(item?.trim()) && item?.trim() !== "-");
 }
 
-function makeSection(heading: string, bullets: string[]): SummaryNoteSection {
+function labeledValue(label: string, value: string | number | null | undefined) {
+  const text = value == null ? "" : String(value).trim();
+  return text && text !== "-" ? `${label} ${text}` : null;
+}
+
+function makeSection(heading: string, bullets: (string | null | undefined)[]): SummaryNoteSection {
   return {
     heading,
-    bullets: withFallback(bullets),
+    bullets: presentItems(bullets),
   };
 }
 
@@ -66,7 +71,7 @@ function getAdmitDate(activity: ActivityLog[]) {
 function taskMetadataParts(task: TaskWithUpdates) {
   return [
     labelForTaskPriority(task.priority),
-    task.ownerName ? `Owner: ${task.ownerName}` : "Owner: Unassigned",
+    labeledValue("Owner:", task.ownerName),
     task.dueAt ? `Due: ${task.dueAt.slice(0, 10)}` : null,
     task.blockedReason ? `Blocked: ${task.blockedReason}` : null,
   ];
@@ -98,7 +103,7 @@ function buildOrderedTaskLines(tasks: TaskWithUpdates[], problems: Problem[]) {
 
   for (const task of incompleteTasks) {
     if (!task.problemId || !linkedProblemIds.has(task.problemId)) {
-      lines.push(formatTaskLineWithProblem(task, "No linked problem"));
+      lines.push(formatTaskLine(task));
     }
   }
 
@@ -112,18 +117,9 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
     problemName: problem.problemName,
     priority: problem.priority,
     diagnosisStatus: problem.diagnosisStatus,
-    currentSummary: withFallback(
-      [
-        `${labelForProblemDiagnosisStatus(problem.diagnosisStatus)} diagnosis`,
-        ...splitBullets(problem.currentStatusSummary),
-      ],
-      "No current summary",
-    ),
-    latestNote: withFallback(splitBullets(progressNoteText(latestEntry?.note)), "No latest note"),
-    pendingTasks: withFallback(
-      problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
-      "No linked pending ward work",
-    ),
+    currentSummary: splitBullets(problem.currentStatusSummary),
+    latestNote: splitBullets(progressNoteText(latestEntry?.note)),
+    pendingTasks: problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
   };
 }
 
@@ -131,6 +127,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">, patient:
   const lines: string[] = [];
 
   const pushSection = (section: SummaryNoteSection) => {
+    if (!section.bullets.length) return;
     lines.push(`${section.heading}:`);
     for (const bullet of section.bullets) {
       lines.push(`- ${bullet}`);
@@ -142,58 +139,39 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">, patient:
   lines.push("(Off Service Note / Summary Note)");
   lines.push("");
 
-  lines.push(`ชื่อ ${patient.displayName} อายุ ${patient.age ?? "-"} ปี`);
-  lines.push(patient.hospitalNumber ?? "-");
-  lines.push(`U/D ${patient.underlyingDisease ?? "-"}`);
+  const identification = presentItems([
+    labeledValue("ชื่อ", patient.displayName),
+    patient.age == null ? null : `อายุ ${patient.age} ปี`,
+  ]).join(" ");
+  lines.push(...presentItems([
+    identification,
+    patient.hospitalNumber,
+    labeledValue("U/D", patient.underlyingDisease),
+  ]));
   lines.push("");
   pushSection(payload.summaryDate);
   pushSection(payload.briefBackground);
   pushSection(payload.reasonForAdmission);
   pushSection(payload.hospitalCourse);
 
-  lines.push("Active Problem List:");
-  if (payload.activeProblems.length === 0) {
-    lines.push("- None");
-  } else {
+  if (payload.activeProblems.length) {
+    lines.push("Active Problem List:");
     payload.activeProblems.forEach((problem, index) => {
       lines.push(
         `${index + 1}. ${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
       );
-      lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
-      lines.push(`   Latest Note: ${problem.latestNote.join(" | ")}`);
-      lines.push(`   Pending Ward work: ${problem.pendingTasks.join(" | ")}`);
+      if (problem.currentSummary.length) lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
+      if (problem.latestNote.length) lines.push(`   Latest Note: ${problem.latestNote.join(" | ")}`);
+      if (problem.pendingTasks.length) lines.push(`   Pending Ward work: ${problem.pendingTasks.join(" | ")}`);
     });
   }
   lines.push("");
 
-  lines.push("Resolved / Chronic Problems:");
-  for (const bullet of withFallback(payload.resolvedProblems)) {
-    lines.push(`- ${bullet}`);
-  }
-  lines.push("");
-
-  lines.push("Consultations:");
-  for (const bullet of withFallback(payload.consultations)) {
-    lines.push(`- ${bullet}`);
-  }
-  lines.push("");
-
-  lines.push("Pending Issues:");
-  for (const bullet of withFallback(payload.pendingIssues)) {
-    lines.push(`- ${bullet}`);
-  }
-  lines.push("");
-
-  lines.push("Safety Alerts:");
-  for (const bullet of withFallback(payload.safetyAlerts)) {
-    lines.push(`- ${bullet}`);
-  }
-  lines.push("");
-
-  lines.push("Ward work:");
-  for (const bullet of withFallback(payload.tasks)) {
-    lines.push(`- ${bullet}`);
-  }
+  pushSection(makeSection("Resolved / Chronic Problems", payload.resolvedProblems));
+  pushSection(makeSection("Consultations", payload.consultations));
+  pushSection(makeSection("Pending Issues", payload.pendingIssues));
+  pushSection(makeSection("Safety Alerts", payload.safetyAlerts));
+  pushSection(makeSection("Ward work", payload.tasks));
 
   return lines.join("\n").trim();
 }
@@ -221,7 +199,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     ...(handover?.note ? [handover.note] : []),
   ];
   const safetyAlerts = [
-    patient.allergy ? `Allergy: ${patient.allergy}` : null,
+    labeledValue("Allergy:", patient.allergy),
     patient.precaution !== "none" ? `Infection risk: ${patient.precaution}` : null,
     ...problems
       .filter((problem) => problem.priority === "ACTIVE_UNSTABLE")
@@ -241,19 +219,19 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     dateLabel,
     heading: "Progress Note",
     patientFacts: makeSection("Patient", [
-      `Name: ${patient.displayName}`,
-      `HN: ${patient.hospitalNumber ?? "-"}`,
-      `Age/Sex: ${patient.age ?? "-"} / ${patient.sex ?? "-"}`,
-      `Admission date: ${admitDate ? admitDate.slice(0, 10) : "-"}`,
-      `Attending: ${patient.responsibleDoctorName ?? "-"}`,
+      labeledValue("Name:", patient.displayName),
+      labeledValue("HN:", patient.hospitalNumber),
+      labeledValue("Age/Sex:", presentItems([patient.age == null ? null : String(patient.age), patient.sex]).join(" / ")),
+      labeledValue("Admission date:", admitDate?.slice(0, 10)),
+      labeledValue("Attending:", patient.responsibleDoctorName),
     ]),
     summaryDate: makeSection("Summary Date", [`Date: ${dateLabel}`]),
     briefBackground: makeSection("Brief Background", [
-      `Relevant underlying diseases: ${patient.underlyingDisease ?? "-"}`,
+      labeledValue("Relevant underlying diseases:", patient.underlyingDisease),
     ]),
     reasonForAdmission: makeSection("Reason for Admission", [
       patient.diagnosis,
-      handover?.note ?? "Active inpatient ward-round follow-up.",
+      handover?.note,
     ]),
     hospitalCourse: makeSection(
       "Hospital Course",
@@ -269,10 +247,8 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     ),
     activeProblems,
     resolvedProblems,
-    consultations: consultTasks.length
-      ? consultTasks.map((task) => task.title)
-      : ["No active consultation ward work recorded"],
-    pendingIssues,
+    consultations: presentItems(consultTasks.map((task) => task.title)),
+    pendingIssues: presentItems(pendingIssues),
     safetyAlerts,
     tasks: orderedTasks.length ? orderedTasks : incompleteTasks.map(formatTaskLine),
   };

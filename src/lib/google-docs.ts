@@ -207,6 +207,7 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
   };
 
   const insertSection = (heading: string, items: string[]) => {
+    if (!items.length) return;
     insertParagraph(heading, "HEADING_2");
     insertBullets(items);
     insertParagraph("");
@@ -222,19 +223,17 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
   insertSection(payload.reasonForAdmission.heading, payload.reasonForAdmission.bullets);
   insertSection(payload.hospitalCourse.heading, payload.hospitalCourse.bullets);
 
-  insertParagraph("Active Problem List", "HEADING_2");
-  if (payload.activeProblems.length === 0) {
-    insertBullets(["None"]);
-  } else {
+  if (payload.activeProblems.length) {
+    insertParagraph("Active Problem List", "HEADING_2");
     for (const problem of payload.activeProblems) {
       insertParagraph(
         `${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
         "HEADING_3",
       );
       insertBullets([
-        `Current Summary: ${problem.currentSummary.join(" | ")}`,
-        `Latest Note: ${problem.latestNote.join(" | ")}`,
-        `Pending Ward work: ${problem.pendingTasks.join(" | ")}`,
+        ...(problem.currentSummary.length ? [`Current Summary: ${problem.currentSummary.join(" | ")}`] : []),
+        ...(problem.latestNote.length ? [`Latest Note: ${problem.latestNote.join(" | ")}`] : []),
+        ...(problem.pendingTasks.length ? [`Pending Ward work: ${problem.pendingTasks.join(" | ")}`] : []),
       ]);
     }
   }

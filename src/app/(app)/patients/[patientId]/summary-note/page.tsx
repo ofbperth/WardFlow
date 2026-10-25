@@ -68,10 +68,10 @@ export default async function SummaryNotePage({
           />
           <NoteSection title={payload.hospitalCourse.heading} items={payload.hospitalCourse.bullets} />
 
+          {payload.activeProblems.length > 0 ? (
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">Active Problem List</h2>
-            {payload.activeProblems.length > 0 ? (
-              payload.activeProblems.map((problem, index) => (
+            {payload.activeProblems.map((problem, index) => (
                 <div key={problem.id} className="rounded-[22px] border clinical-divider bg-white p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-base font-semibold text-foreground">
@@ -88,11 +88,9 @@ export default async function SummaryNotePage({
                     <NoteMini title="Pending Ward work" items={problem.pendingTasks} />
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted">No active problem available for note generation.</p>
-            )}
+              ))}
           </section>
+          ) : null}
 
           <NoteSection title="Resolved / Chronic Problems" items={payload.resolvedProblems} />
           <NoteSection title="Consultations" items={payload.consultations} />
@@ -114,6 +112,7 @@ export default async function SummaryNotePage({
 }
 
 function NoteSection({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
   return (
     <section className="space-y-2">
       <h2 className="text-lg font-semibold text-foreground">{title}</h2>
@@ -132,6 +131,7 @@ function NoteSection({ title, items }: { title: string; items: string[] }) {
 }
 
 function NoteMini({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
   return (
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{title}</p>
