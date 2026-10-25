@@ -97,7 +97,6 @@ export default async function SummaryNotePage({
           <NoteSection title="Resolved / Chronic Problems" items={payload.resolvedProblems} />
           <NoteSection title="Consultations" items={payload.consultations} />
           <NoteSection title="Pending Issues" items={payload.pendingIssues} />
-          <NoteSection title="Suggested Plan" items={payload.suggestedPlan} />
           <NoteSection title="Safety Alerts" items={payload.safetyAlerts} />
           <NoteSection title="Ward work" items={payload.tasks} />
         </div>

@@ -127,7 +127,7 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
   };
 }
 
-function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
+function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">, patient: Patient) {
   const lines: string[] = [];
 
   const pushSection = (section: SummaryNoteSection) => {
@@ -142,7 +142,10 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
   lines.push("(Off Service Note / Summary Note)");
   lines.push("");
 
-  pushSection(payload.patientFacts);
+  lines.push(`ชื่อ ${patient.displayName} อายุ ${patient.age ?? "-"} ปี`);
+  lines.push(patient.hospitalNumber ?? "-");
+  lines.push(`U/D ${patient.underlyingDisease ?? "-"}`);
+  lines.push("");
   pushSection(payload.summaryDate);
   pushSection(payload.briefBackground);
   pushSection(payload.reasonForAdmission);
@@ -181,12 +184,6 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
   }
   lines.push("");
 
-  lines.push("Suggested Plan:");
-  for (const bullet of withFallback(payload.suggestedPlan)) {
-    lines.push(`- ${bullet}`);
-  }
-  lines.push("");
-
   lines.push("Safety Alerts:");
   for (const bullet of withFallback(payload.safetyAlerts)) {
     lines.push(`- ${bullet}`);
@@ -202,7 +199,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
 }
 
 export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePayload {
-  const { patient, ward, problems, tasks, handover, activity } = input;
+  const { patient, problems, tasks, handover, activity } = input;
   const { fileLabel, dateLabel } = noteDateParts();
   const admitDate = getAdmitDate(activity);
   const activeProblems = problems
@@ -222,10 +219,6 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
       problem.linkedTasks.filter((task) => task.status !== "done").map((task) => task.title),
     ),
     ...(handover?.note ? [handover.note] : []),
-  ];
-  const suggestedPlan = [
-    ...activeProblems.flatMap((problem) => problem.latestNote.filter((item) => item !== "-")),
-    ...(handover?.escalationInstruction ? [handover.escalationInstruction] : []),
   ];
   const safetyAlerts = [
     patient.allergy ? `Allergy: ${patient.allergy}` : null,
@@ -250,17 +243,13 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     patientFacts: makeSection("Patient", [
       `Name: ${patient.displayName}`,
       `HN: ${patient.hospitalNumber ?? "-"}`,
-      `AN: ${patient.admissionNumber ?? "-"}`,
       `Age/Sex: ${patient.age ?? "-"} / ${patient.sex ?? "-"}`,
-      `Ward: ${ward?.name ?? "-"}`,
       `Admission date: ${admitDate ? admitDate.slice(0, 10) : "-"}`,
       `Attending: ${patient.responsibleDoctorName ?? "-"}`,
     ]),
     summaryDate: makeSection("Summary Date", [`Date: ${dateLabel}`]),
     briefBackground: makeSection("Brief Background", [
-      "Baseline function: -",
       `Relevant underlying diseases: ${patient.underlyingDisease ?? "-"}`,
-      `Important previous history: ${patient.codeStatus ?? "-"}`,
     ]),
     reasonForAdmission: makeSection("Reason for Admission", [
       patient.diagnosis,
@@ -284,13 +273,12 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
       ? consultTasks.map((task) => task.title)
       : ["No active consultation ward work recorded"],
     pendingIssues,
-    suggestedPlan,
     safetyAlerts,
     tasks: orderedTasks.length ? orderedTasks : incompleteTasks.map(formatTaskLine),
   };
 
   return {
     ...payloadWithoutText,
-    plainText: buildPlainText(payloadWithoutText),
+    plainText: buildPlainText(payloadWithoutText, patient),
   };
 }

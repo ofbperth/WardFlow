@@ -243,7 +243,6 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
   insertSection("Resolved / Chronic Problems", payload.resolvedProblems);
   insertSection("Consultations", payload.consultations);
   insertSection("Pending Issues", payload.pendingIssues);
-  insertSection("Suggested Plan", payload.suggestedPlan);
   insertSection("Safety Alerts", payload.safetyAlerts);
   insertSection("Ward work", payload.tasks);
 

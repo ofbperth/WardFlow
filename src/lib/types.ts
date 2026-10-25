@@ -377,7 +377,6 @@ export type SummaryNotePayload = {
   resolvedProblems: string[];
   consultations: string[];
   pendingIssues: string[];
-  suggestedPlan: string[];
   safetyAlerts: string[];
   tasks: string[];
   plainText: string;
