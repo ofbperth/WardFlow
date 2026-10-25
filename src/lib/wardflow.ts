@@ -66,7 +66,7 @@ import type {
 import { exportSummaryNoteToGoogleDocs } from "@/lib/google-docs";
 import { buildSummaryNotePayload } from "@/lib/summary-note";
 import { isProfileAssignableToWard, visibleWardIdsForRole } from "@/lib/resident-ward-assignment";
-import type { ProgressSaveInput, ProgressSaveResult } from "@/lib/progress-autosave";
+import { canEditProgressNote, type ProgressSaveInput, type ProgressSaveResult } from "@/lib/progress-autosave";
 
 type DemoStore = {
   wards: Ward[];
@@ -3961,17 +3961,21 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
 
 export async function autosaveProblemNote(input: ProgressSaveInput, session: SessionContext): Promise<ProgressSaveResult> {
   requireClinicalEditor(session);
-  const parsed = z.object({
+  if (session.profile.role === "student") return { ok: false, retryable: false, message: "Student อ่าน Progress note ได้อย่างเดียว" };
+  const validation = z.object({
     patientId: z.string().min(1), problemId: z.string().min(1), requestId: z.string().uuid(),
     expectedId: z.string().nullable(), expectedUpdatedAt: z.string().nullable(), note: z.string(),
-  }).parse(input);
+  }).safeParse(input);
+  if (!validation.success) return { ok: false, retryable: false, message: "รูปแบบข้อมูลไม่ถูกต้อง กรุณาคัดลอก draft ก่อนโหลดหน้าใหม่" };
+  const parsed = validation.data;
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
     const patient = patientById(store, parsed.patientId);
-    if (!patient || patient.lifecycle !== "active") throw new Error("Active patient not found");
-    requireWardWriteAccess(session, patient.wardId);
+    if (!patient || patient.lifecycle !== "active" || !canEditProgressNote(session.profile, patient.wardId)) {
+      return { ok: false, retryable: false, message: "ผู้ป่วยไม่อยู่ในสถานะที่แก้ไขได้ หรือคุณไม่มีสิทธิ์แก้ไข Ward นี้" };
+    }
     const problem = store.problemMasters.find((entry) => entry.id === parsed.problemId && entry.patientId === parsed.patientId);
-    if (!problem) throw new Error("Problem not found");
+    if (!problem) return { ok: false, retryable: false, message: "ไม่พบ Problem นี้ กรุณาคัดลอก draft ก่อนโหลดหน้าใหม่" };
     const existing = store.problemProgressEntries.find((entry) => entry.id === parsed.requestId);
     if (existing) {
       if (existing.problemId !== parsed.problemId || existing.authorId !== session.profile.id || existing.note !== parsed.note) throw new Error("Invalid retry");
@@ -3996,13 +4000,19 @@ export async function autosaveProblemNote(input: ProgressSaveInput, session: Ses
   }
   const supabase = await getLiveClient();
   const patient = await fetchLivePatient(supabase, parsed.patientId);
-  if (!patient) throw new Error("Patient not found");
-  requireWardWriteAccess(session, patient.ward_id);
+  if (!patient || patient.lifecycle !== "active" || !canEditProgressNote(session.profile, patient.ward_id)) {
+    return { ok: false, retryable: false, message: "ผู้ป่วยไม่อยู่ในสถานะที่แก้ไขได้ หรือคุณไม่มีสิทธิ์แก้ไข Ward นี้" };
+  }
   const result = await supabase.rpc("autosave_problem_note", {
     p_patient_id: parsed.patientId, p_problem_id: parsed.problemId, p_request_id: parsed.requestId,
     p_expected_id: parsed.expectedId, p_expected_updated_at: parsed.expectedUpdatedAt, p_note: parsed.note,
   });
-  ensureNoError(result, "Failed to autosave progress note");
+  if (result.error) {
+    const retryable = !["42501", "P0001", "23503", "22P02"].includes(result.error.code);
+    return { ok: false, retryable, message: retryable
+      ? "ยังบันทึกไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติ"
+      : "ไม่สามารถบันทึกได้ กรุณาตรวจสอบสิทธิ์หรือสถานะผู้ป่วย ข้อความ draft ยังอยู่ในแท็บนี้" };
+  }
   const saved = result.data as ProgressSaveResult;
   if (saved.ok) revalidateWardflowPaths(parsed.patientId);
   return saved;
@@ -4010,6 +4020,7 @@ export async function autosaveProblemNote(input: ProgressSaveInput, session: Ses
 
 export async function saveProblemProgressEntry(formData: FormData, session: SessionContext) {
   requireClinicalEditor(session);
+  if (session.profile.role === "student") throw new Error("Student can only read progress notes");
   const parsed = problemProgressEntrySchema.parse({
     id: textOrNull(formData.get("id")) ?? undefined,
     patientId: formData.get("patientId"),

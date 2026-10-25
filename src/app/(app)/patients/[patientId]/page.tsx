@@ -37,6 +37,7 @@ import {
   Timeline,
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
+import { canEditProgressNote } from "@/lib/progress-autosave";
 import { formatDateTime, normalizePatientSexOption } from "@/lib/utils";
 import {
   getAssignableProfilesForWard,
@@ -185,6 +186,8 @@ export default async function PatientPage({
             templates={templates}
             defaultTaskOwnerId={defaultTaskOwnerId}
             canEdit={canEditClinical}
+            canEditProgress={canEditProgressNote(session.profile, bundle.patient.wardId)}
+            draftOwnerId={session.profile.id}
           />
         </GlassPanel>
 

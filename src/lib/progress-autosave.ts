@@ -9,4 +9,9 @@ export type ProgressSaveInput = {
 };
 export type ProgressSaveResult =
   | { ok: true; snapshot: ProgressSnapshot }
-  | { ok: false; conflict?: boolean; message: string };
+  | { ok: false; conflict?: boolean; retryable?: boolean; message: string };
+
+export function canEditProgressNote(profile: { role: string; residentWardIds: string[] }, wardId: string | null) {
+  if (!wardId) return false;
+  return profile.role === "admin" || (profile.role === "resident" && profile.residentWardIds.includes(wardId));
+}

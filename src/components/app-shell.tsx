@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
+import { clearProgressDrafts, hasProgressDrafts } from "@/lib/progress-draft";
 import { PendingSubmitButton } from "@/components/form-feedback";
 import { WardFlowLogo } from "@/components/wardflow-logo";
 import { cn, labelForRole } from "@/lib/utils";
@@ -37,6 +38,13 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  function prepareLogout(event: React.FormEvent<HTMLFormElement>) {
+    if (hasProgressDrafts() && !window.confirm("มี Progress note ที่ยังไม่บันทึก การออกจากระบบจะลบ draft ในแท็บนี้ ต้องการออกจากระบบหรือไม่?")) {
+      event.preventDefault();
+      return;
+    }
+    clearProgressDrafts();
+  }
 
   return (
     <div className="page-shell app-canvas md:pb-8">
@@ -58,7 +66,7 @@ export function AppShell({
                 <span className="font-semibold text-foreground">{profile.name}</span>
                 <span className="text-[color:var(--color-ink-2)]"> · {labelForRole(profile.role)}</span>
               </div>
-              <form action={logoutAction}>
+              <form action={logoutAction} onSubmit={prepareLogout}>
                 <PendingSubmitButton
                   pendingLabel="Signing out..."
                   className="button-danger min-w-[124px] shadow-none"
@@ -129,7 +137,7 @@ export function AppShell({
                 </Link>
               ) : null}
 
-              <form action={logoutAction}>
+              <form action={logoutAction} onSubmit={prepareLogout}>
                 <PendingSubmitButton
                   pendingLabel="Signing out..."
                   className="button-danger flex w-full justify-center shadow-none"

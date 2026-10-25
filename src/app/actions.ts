@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { DEMO_COOKIE, requireAppSession } from "@/lib/auth";
+import { DEMO_COOKIE, getCurrentSessionContext, requireAppSession } from "@/lib/auth";
 import { getRequestOrigin, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
@@ -31,8 +31,10 @@ import {
 import type { ProgressSaveInput, ProgressSaveResult } from "@/lib/progress-autosave";
 
 export async function autosaveProblemNoteAction(input: ProgressSaveInput): Promise<ProgressSaveResult> {
-  const session = await requireAppSession();
   try {
+    const session = await getCurrentSessionContext();
+    if (!session) return { ok: false, retryable: false, message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่ ข้อความ draft ยังอยู่ในแท็บนี้" };
+    if (session.profile.role === "student") return { ok: false, retryable: false, message: "Student อ่าน Progress note ได้อย่างเดียว" };
     return await autosaveProblemNote(input, session);
   } catch {
     return { ok: false, message: "ยังบันทึกไม่สำเร็จ ข้อความยังอยู่ในช่องนี้ ระบบจะลองใหม่อัตโนมัติ" };

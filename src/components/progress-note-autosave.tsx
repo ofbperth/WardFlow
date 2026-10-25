@@ -3,18 +3,22 @@
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import { autosaveProblemNoteAction } from "@/app/actions";
 import type { ProgressSaveInput, ProgressSnapshot } from "@/lib/progress-autosave";
+import { acknowledgeProgressDraft, progressDraftKey, readProgressDraft, removeProgressDraft, writeProgressDraft } from "@/lib/progress-draft";
 
 const subscribeHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly = false }: {
-  patientId: string; problemId: string; initial: ProgressSnapshot; readOnly?: boolean;
+export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, readOnly = false }: {
+  ownerId: string; patientId: string; problemId: string; initial: ProgressSnapshot; readOnly?: boolean;
 }) {
+  const draftKey = progressDraftKey(ownerId, patientId, problemId);
   const hydrated = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
   const [value, setValue] = useState(initial.note);
   const [status, setStatus] = useState(initial.id ? "บันทึกแล้ว" : "พร้อมพิมพ์");
   const [failed, setFailed] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const [storageAvailable, setStorageAvailable] = useState(true);
   const field = useRef<HTMLTextAreaElement>(null);
   const current = useRef(initial.note);
   const saved = useRef(initial);
@@ -24,15 +28,34 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
   const request = useRef<ProgressSaveInput | null>(null);
   const schedule = useRef<(delay?: number) => void>(() => {});
 
+  const persistDraft = () => {
+    if (!request.current && current.current === saved.current.note) { removeProgressDraft(draftKey); return; }
+    setStorageAvailable(writeProgressDraft(draftKey, { note: current.current, base: saved.current, request: request.current }));
+  };
+  const restoreDraft = useEffectEvent(() => {
+    const draft = readProgressDraft(draftKey);
+    if (draft && !readOnly) {
+      current.current = draft.note;
+      saved.current = draft.base;
+      request.current = draft.request;
+      setValue(draft.note);
+      setStatus("กู้คืนข้อความที่ยังไม่บันทึกแล้ว");
+    }
+    setRestored(true);
+  });
+  // sessionStorage is browser-only external state. Restore once before enabling input.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { restoreDraft(); }, [draftKey]);
+
   const acceptRemote = useEffectEvent(() => {
     // Realtime refresh must never replace local typing or advance its base version.
-    if (!sending.current && !request.current && current.current === saved.current.note) {
+    if (restored && !sending.current && !request.current && current.current === saved.current.note) {
       saved.current = initial;
       current.current = initial.note;
       setValue(initial.note);
     }
   });
-  useEffect(() => { acceptRemote(); }, [initial.id, initial.updatedAt, initial.note]);
+  useEffect(() => { acceptRemote(); }, [initial.id, initial.updatedAt, initial.note, restored]);
 
   useEffect(() => {
     const textarea = field.current;
@@ -50,7 +73,7 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
   }, [value]);
 
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || !restored) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
     const dirty = () => sending.current || Boolean(request.current) || current.current !== saved.current.note;
@@ -64,10 +87,14 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
         patientId, problemId, requestId: crypto.randomUUID(),
         expectedId: saved.current.id, expectedUpdatedAt: saved.current.updatedAt, note: current.current,
       };
+      writeProgressDraft(draftKey, { note: current.current, base: saved.current, request: request.current });
+      const sentRequest = request.current;
       try {
-        const result = await autosaveProblemNoteAction(request.current);
+        const result = await autosaveProblemNoteAction(sentRequest);
+        if (result.ok) acknowledgeProgressDraft(draftKey, sentRequest.requestId, result.snapshot);
+        if (disposed) return;
         if (!result.ok) {
-          blocked.current = Boolean(result.conflict);
+          blocked.current = Boolean(result.conflict) || result.retryable === false;
           setStatus(result.message);
           setFailed(true);
         } else {
@@ -76,6 +103,7 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
           setStatus(current.current === saved.current.note ? "บันทึกแล้ว" : "รอบันทึก…");
         }
       } catch {
+        if (disposed) return;
         setStatus("ยังบันทึกไม่สำเร็จ ข้อความยังอยู่ในช่องนี้ กำลังรอลองใหม่");
         setFailed(true);
       } finally {
@@ -100,6 +128,7 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
       }
     };
     const online = () => schedule.current(0);
+    if (dirty()) schedule.current(0);
     window.addEventListener("beforeunload", beforeUnload);
     document.addEventListener("click", beforeNavigate, true);
     window.addEventListener("online", online);
@@ -110,7 +139,7 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
       document.removeEventListener("click", beforeNavigate, true);
       window.removeEventListener("online", online);
     };
-  }, [patientId, problemId, readOnly]);
+  }, [patientId, problemId, readOnly, draftKey, restored]);
 
   return (
     <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
@@ -121,12 +150,13 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
         </span>
       </div>
       <textarea
-        ref={field} id={`progress-${problemId}`} value={value} readOnly={readOnly || !hydrated} rows={5}
+        ref={field} id={`progress-${problemId}`} value={value} readOnly={readOnly || !hydrated || !restored} rows={5}
         placeholder="คลิกแล้วพิมพ์ข้อมูลต่อได้เลย…"
         className="block min-h-36 w-full resize-none overflow-hidden rounded-xl border clinical-divider bg-white px-3 py-3 text-sm leading-7 text-foreground focus:border-[color:var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-accent)]"
         onChange={(event) => {
           current.current = event.target.value;
           setValue(event.target.value);
+          persistDraft();
           if (!blocked.current) setStatus("รอบันทึก…");
           schedule.current();
         }}
@@ -135,6 +165,7 @@ export function ProgressNoteAutosave({ patientId, problemId, initial, readOnly =
         onBlur={() => schedule.current(0)}
       />
       {!readOnly ? <p className="mt-2 text-xs text-muted">บันทึกอัตโนมัติเมื่อหยุดพิมพ์ · ช่องขยายตามข้อความทั้งหมด</p> : null}
+      {!readOnly && !storageAvailable ? <p role="alert" className="mt-2 text-xs text-red-700">เบราว์เซอร์ไม่อนุญาตเก็บ draft กรุณารอให้บันทึกแล้วก่อนรีโหลดหรือปิดแท็บ</p> : null}
     </div>
   );
 }

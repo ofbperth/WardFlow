@@ -234,7 +234,6 @@ function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocsRequest
       insertBullets([
         `Current Summary: ${problem.currentSummary.join(" | ")}`,
         `Latest Note: ${problem.latestNote.join(" | ")}`,
-        `History: ${problem.history.join(" || ")}`,
         `Pending Ward work: ${problem.pendingTasks.join(" | ")}`,
       ]);
     }

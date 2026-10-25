@@ -85,7 +85,6 @@ export default async function SummaryNotePage({
                   <div className="mt-3 space-y-3">
                     <NoteMini title="Current Summary" items={problem.currentSummary} />
                     <NoteMini title="Latest Note" items={problem.latestNote} />
-                    <NoteMini title="History" items={problem.history} />
                     <NoteMini title="Pending Ward work" items={problem.pendingTasks} />
                   </div>
                 </div>

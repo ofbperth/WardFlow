@@ -354,7 +354,6 @@ export type SummaryNoteProblemEntry = {
   diagnosisStatus: ProblemDiagnosisStatus;
   currentSummary: string[];
   latestNote: string[];
-  history: string[];
   pendingTasks: string[];
 };
 

@@ -104,16 +104,6 @@ function buildOrderedTaskLines(tasks: TaskWithUpdates[], problems: Problem[]) {
   return lines;
 }
 
-function buildProblemHistory(problem: Problem) {
-  if (!problem.historyEntries.length) {
-    return ["No historical progress entry yet"];
-  }
-
-  return problem.historyEntries.map((entry) =>
-    [entry.dateTime.slice(0, 16).replace("T", " "), entry.note].filter(Boolean).join("\n"),
-  );
-}
-
 function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
   const latestEntry = problem.latestEntry;
   return {
@@ -124,12 +114,11 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
     currentSummary: withFallback(
       [
         `${labelForProblemDiagnosisStatus(problem.diagnosisStatus)} diagnosis`,
-        ...splitBullets(problem.currentStatusSummary ?? latestEntry?.note),
+        ...splitBullets(problem.currentStatusSummary),
       ],
       "No current summary",
     ),
     latestNote: withFallback(splitBullets(latestEntry?.note), "No latest note"),
-    history: withFallback(buildProblemHistory(problem), "No history"),
     pendingTasks: withFallback(
       problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
       "No linked pending ward work",
@@ -168,7 +157,6 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">) {
       );
       lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
       lines.push(`   Latest Note: ${problem.latestNote.join(" | ")}`);
-      lines.push(`   History: ${problem.history.join(" || ")}`);
       lines.push(`   Pending Ward work: ${problem.pendingTasks.join(" | ")}`);
     });
   }

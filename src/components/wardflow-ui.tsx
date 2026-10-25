@@ -447,6 +447,8 @@ export function ProblemCards({
   templates,
   defaultTaskOwnerId,
   canEdit,
+  canEditProgress,
+  draftOwnerId,
 }: {
   problems: Problem[];
   tasks: TaskWithUpdates[];
@@ -460,6 +462,8 @@ export function ProblemCards({
   templates: TaskTemplate[];
   defaultTaskOwnerId: string;
   canEdit: boolean;
+  canEditProgress: boolean;
+  draftOwnerId: string;
 }) {
   void reorderAction;
   void tasks;
@@ -634,10 +638,12 @@ export function ProblemCards({
               ) : null}
 
               <ProgressNoteAutosave
+                key={`${draftOwnerId}:${problem.id}`}
+                ownerId={draftOwnerId}
                 patientId={patientId}
                 problemId={problem.id}
                 initial={{ id: latestEntry?.id ?? null, updatedAt: latestEntry?.updatedAt ?? null, note: latestEntry?.note ?? "" }}
-                readOnly={!canEdit}
+                readOnly={!canEditProgress}
               />
 
               <details className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-2.5">
@@ -679,7 +685,7 @@ export function ProblemCards({
                     <ProgressNoteCard
                       problemId={problem.id}
                       entry={latestEntry}
-                      canEdit={canEdit}
+                      canEdit={canEditProgress}
                       patientId={patientId}
                       saveProblemProgressEntryAction={saveProblemProgressEntryAction}
                       title="Latest"
@@ -691,7 +697,7 @@ export function ProblemCards({
                         key={entry.id}
                         problemId={problem.id}
                         entry={entry}
-                        canEdit={canEdit}
+                        canEdit={canEditProgress}
                         patientId={patientId}
                         saveProblemProgressEntryAction={saveProblemProgressEntryAction}
                         title="Previous"
