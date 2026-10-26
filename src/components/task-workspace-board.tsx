@@ -56,7 +56,7 @@ function patchTaskInGroups(
 
 function nextWorkspaceTaskPatch(task: TaskWorkspaceGroup["patients"][number]["tasks"][number]) {
   return {
-    status: nextTaskCycleStatus(task.status),
+    status: nextTaskCycleStatus(task.status, task.type),
     blockedReason: null,
   };
 }
@@ -210,9 +210,9 @@ export function TaskWorkspaceBoard({
                             >
                               <input type="hidden" name="patientId" value={patient.id} />
                               <input type="hidden" name="taskId" value={task.id} />
-                              <input type="hidden" name="status" value={nextTaskCycleStatus(task.status)} />
+                              <input type="hidden" name="status" value={nextTaskCycleStatus(task.status, task.type)} />
                               <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                              <TaskStatusButton status={task.status} title={task.title} />
+                              <TaskStatusButton type={task.type} status={task.status} title={task.title} />
                             </form>
                             <Pill tone={priorityTone(task.priority)}>{labelForTaskPriority(task.priority)}</Pill>
                             <Pill tone="bg-sky-100 text-sky-700">{labelForTaskType(task.type)}</Pill>
@@ -399,9 +399,9 @@ export function TaskWorkspaceBoard({
                             >
                               <input type="hidden" name="patientId" value={patient.id} />
                               <input type="hidden" name="taskId" value={task.id} />
-                              <input type="hidden" name="status" value={nextTaskCycleStatus(task.status)} />
+                              <input type="hidden" name="status" value={nextTaskCycleStatus(task.status, task.type)} />
                               <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                              <TaskStatusButton status={task.status} title={task.title} />
+                              <TaskStatusButton type={task.type} status={task.status} title={task.title} />
                             </form>
                           </div>
                         </div>

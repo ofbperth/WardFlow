@@ -180,17 +180,21 @@ export function labelForProblemStatus(status: ProblemStatus) {
 
 export function labelForTaskStatus(status: TaskStatus) {
   return {
-    not_started: "Not started",
+    not_started: "Not start",
     in_progress: "In progress",
     done: "Done",
     blocked: "Blocked",
   }[status];
 }
 
-export function nextTaskCycleStatus(status: TaskStatus): Exclude<TaskStatus, "blocked"> {
+export function normalizeTaskStatus(status: TaskStatus, type: TaskType): Exclude<TaskStatus, "blocked"> {
+  return status === "blocked" || (status === "in_progress" && type !== "lab" && type !== "imaging") ? "not_started" : status;
+}
+
+export function nextTaskCycleStatus(status: TaskStatus, type: TaskType): Exclude<TaskStatus, "blocked"> {
   switch (status) {
     case "not_started":
-      return "in_progress";
+      return type === "lab" || type === "imaging" ? "in_progress" : "done";
     case "in_progress":
       return "done";
     case "done":

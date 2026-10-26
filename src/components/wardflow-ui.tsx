@@ -1,3 +1,4 @@
+import { TaskStatusFields } from "@/components/task-status-fields";
 import { TaskStatusButton } from "@/components/task-status-button";
 import { progressNoteText } from "@/lib/progress-format";
 import { ProgressNoteAutosave } from "@/components/progress-note-autosave";
@@ -480,26 +481,7 @@ export function ProblemCards({
                         </Field>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
-                        <Field label="Status">
-                          <SelectBox name="status" defaultValue="not_started">
-                            <option value="not_started">Not started</option>
-                            <option value="in_progress">In progress</option>
-                            <option value="done">Done</option>
-                            <option value="blocked">Blocked</option>
-                          </SelectBox>
-                        </Field>
-                        <Field label="Type">
-                          <SelectBox name="type" defaultValue="other">
-                            <option value="lab">lab</option>
-                            <option value="imaging">imaging</option>
-                            <option value="consult">consult</option>
-                            <option value="procedure">procedure</option>
-                            <option value="family_talk">Family talk</option>
-                            <option value="discharge">Discharge</option>
-                            <option value="medication">Medication</option>
-                            <option value="other">Other</option>
-                          </SelectBox>
-                        </Field>
+                        <TaskStatusFields />
                       </div>
                       <Field label="Note">
                         <TextArea name="note" placeholder="Short ward work note" />
@@ -619,11 +601,6 @@ export function TaskCards({
       tone: "border-sky-200 bg-sky-50 text-sky-700",
     },
     {
-      label: "Blocked",
-      value: active.filter((task) => task.status === "blocked").length,
-      tone: "border-rose-200 bg-rose-50 text-rose-700",
-    },
-    {
       label: "Done",
       value: archived.length,
       tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -632,7 +609,7 @@ export function TaskCards({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {statusSummary.map((item) => (
           <div
             key={item.label}
@@ -716,7 +693,7 @@ function TaskCard({
   const hasExpandableContent =
     !compact &&
     (Boolean(task.note) || Boolean(task.blockedReason) || task.updates.length > 0 || canEdit);
-  const nextStatus = nextTaskCycleStatus(task.status);
+  const nextStatus = nextTaskCycleStatus(task.status, task.type);
   const detailItems = compactTaskDetailList(task);
 
   return (
@@ -751,7 +728,7 @@ function TaskCard({
                   <input type="hidden" name="taskId" value={task.id} />
                   <input type="hidden" name="status" value={nextStatus} />
                   <input type="hidden" name="updatedAt" value={task.updatedAt} />
-                  <TaskStatusButton status={task.status} title={task.title} />
+                  <TaskStatusButton type={task.type} status={task.status} title={task.title} />
                 </form>
               ) : (
                 <Pill tone={statusTone(task.status)}>{labelForTaskStatus(task.status)}</Pill>
@@ -843,7 +820,7 @@ function CompactLinkedTaskRow({
   canEdit: boolean;
 }) {
   const metaLine = compactTaskMeta(task, { showProblem: false, showOwner: false });
-  const nextStatus = nextTaskCycleStatus(task.status);
+  const nextStatus = nextTaskCycleStatus(task.status, task.type);
 
   return (
     <div className="rounded-[12px] border clinical-divider bg-white px-3 py-2.5">
@@ -932,14 +909,7 @@ export function TaskEditorForm({
         </SelectBox>
       </Field>
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Status">
-          <SelectBox name="status" defaultValue={task.status}>
-            <option value="not_started">Not started</option>
-            <option value="in_progress">In progress</option>
-            <option value="done">Done</option>
-            <option value="blocked">Blocked</option>
-          </SelectBox>
-        </Field>
+        <TaskStatusFields defaultType={task.type} defaultStatus={task.status} />
         <Field label="Priority">
           <SelectBox name="priority" defaultValue={task.priority}>
             <option value="normal">Normal</option>
@@ -948,23 +918,8 @@ export function TaskEditorForm({
           </SelectBox>
         </Field>
       </div>
-      <Field label="Type">
-        <SelectBox name="type" defaultValue={task.type}>
-          <option value="lab">lab</option>
-          <option value="imaging">imaging</option>
-          <option value="consult">consult</option>
-          <option value="procedure">procedure</option>
-          <option value="family_talk">family_talk</option>
-          <option value="discharge">discharge</option>
-          <option value="medication">medication</option>
-          <option value="other">other</option>
-        </SelectBox>
-      </Field>
       <Field label="Note">
         <TextArea name="note" defaultValue={task.note ?? ""} />
-      </Field>
-      <Field label="Blocked reason">
-        <TextArea name="blockedReason" defaultValue={task.blockedReason ?? ""} />
       </Field>
       <SubmitButton pendingLabel="Updating ward work...">Update ward work</SubmitButton>
     </form>

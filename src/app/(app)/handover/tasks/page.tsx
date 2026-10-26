@@ -69,7 +69,6 @@ export default async function PendingTaskHandoverPage({
                   <SelectBox name="mode" defaultValue={mode}>
                     <option value="all">All pending ward work</option>
                     <option value="mine">My pending ward work</option>
-                    <option value="blocked">Blocked only</option>
                   </SelectBox>
                 </Field>
                 <div className="flex items-end">

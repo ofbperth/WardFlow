@@ -1,3 +1,4 @@
+import { TaskStatusFields } from "@/components/task-status-fields";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, ClipboardList } from "lucide-react";
@@ -411,14 +412,7 @@ export default async function PatientPage({
                     </Field>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Status">
-                      <SelectBox name="status" defaultValue="not_started">
-                        <option value="not_started">Not started</option>
-                        <option value="in_progress">In progress</option>
-                        <option value="done">Done</option>
-                        <option value="blocked">Blocked</option>
-                      </SelectBox>
-                    </Field>
+                    <TaskStatusFields />
                     <Field label="Priority">
                       <SelectBox name="priority" defaultValue="normal">
                         <option value="normal">Normal</option>
@@ -427,25 +421,8 @@ export default async function PatientPage({
                       </SelectBox>
                     </Field>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Type">
-                      <SelectBox name="type" defaultValue="other">
-                        <option value="lab">lab</option>
-                        <option value="imaging">imaging</option>
-                        <option value="consult">consult</option>
-                        <option value="procedure">procedure</option>
-                        <option value="family_talk">Family talk</option>
-                        <option value="discharge">Discharge</option>
-                        <option value="medication">Medication</option>
-                        <option value="other">Other</option>
-                      </SelectBox>
-                    </Field>
-                  </div>
                   <Field label="Note">
                     <TextArea name="note" placeholder="Escalate if resistant organism" />
-                  </Field>
-                  <Field label="Blocked reason">
-                    <TextArea name="blockedReason" placeholder="Only when blocked" />
                   </Field>
                   <div className="flex justify-end">
                     <SubmitButton>Create ward work</SubmitButton>

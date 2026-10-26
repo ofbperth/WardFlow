@@ -9,6 +9,7 @@ import { measureServerTiming } from "@/lib/dev-timing";
 import { hasLiveSupabase } from "@/lib/env";
 import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import {
+  normalizeTaskStatus,
   compareProblemPriority,
   labelForTaskPriority,
   labelForTaskStatus,
@@ -536,7 +537,7 @@ function createSeedStore(): DemoStore {
     patients: structuredClone(demoPatientsSeed),
     problemMasters: structuredClone(demoProblemMastersSeed),
     problemProgressEntries: structuredClone(demoProblemProgressEntriesSeed),
-    tasks: structuredClone(demoTasksSeed),
+    tasks: structuredClone(demoTasksSeed).map(normalizeTaskRecord),
     taskUpdates: structuredClone(demoTaskUpdatesSeed),
     handovers: structuredClone(demoHandoverSeed),
     dischargeSummaries: structuredClone(demoDischargeSummarySeed),
@@ -619,7 +620,7 @@ function normalizeTaskRecord(task: Partial<WardTask>): WardTask {
     note: task.note ?? null,
     ownerId: task.ownerId ?? null,
     ownerName: task.ownerName ?? null,
-    status: task.status ?? "not_started",
+    status: normalizeTaskStatus(task.status ?? "not_started", task.type ?? "other"),
     priority: task.priority ?? "normal",
     type: task.type ?? "other",
     dueAt: task.dueAt ?? null,
@@ -4120,7 +4121,10 @@ export async function saveTask(formData: FormData, session: SessionContext) {
     blockedReason: textOrNull(formData.get("blockedReason")),
     updatedAt: textOrNull(formData.get("updatedAt")),
   });
-  const normalizedBlockedReason = parsed.status === "blocked" ? parsed.blockedReason ?? null : null;
+  if (normalizeTaskStatus(parsed.status, parsed.type) !== parsed.status) {
+    throw new Error("This status is not allowed for this ward work type");
+  }
+  const normalizedBlockedReason = null;
 
   if (session.mode === "demo" || !hasLiveSupabase()) {
     await ensureDemoStoreLoaded();
@@ -4356,6 +4360,7 @@ export async function updateTaskStatus(
     requireTaskWorkflowWriteAccess(session, patient.wardId);
     const task = store.tasks.find((entry) => entry.id === taskId);
     if (!task) throw new Error("Task not found");
+    if (normalizeTaskStatus(status, task.type) !== status) throw new Error("This status is not allowed for this ward work type");
     assertNoConflict(expectedUpdatedAt, task.updatedAt, "task");
 
     const before = { status: task.status };
@@ -4380,6 +4385,7 @@ export async function updateTaskStatus(
 
   const task = await fetchLiveTask(supabase, taskId);
   if (!task) throw new Error("Task not found");
+  if (normalizeTaskStatus(status, task.type) !== status) throw new Error("This status is not allowed for this ward work type");
   assertNoConflict(expectedUpdatedAt, task.updated_at, "task");
 
   ensureNoError(
