@@ -23,6 +23,12 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.waitForURL('**/patients/**');
     const patientUrl = page.url();
     const note = page.locator('[role="textbox"][id^="progress-"]').first();
+    const openNote = async () => {
+      if (!(await note.isVisible())) await page.getByRole('button', { name: 'เรียกดู Progress note', exact: true }).first().click();
+      await wait(() => note.isEditable());
+    };
+    assert.equal(await page.locator('[role="textbox"][id^="progress-"]:visible').count(), 0);
+    await openNote();
     await wait(async () => await note.isEditable());
     await wait(async () => await note.isEditable());
     const original = await readNote(note);
@@ -33,11 +39,11 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.goBack();
     assert.equal(page.url(), `${base}/wards`);
     await context.setOffline(false);
-    await page.goto(patientUrl);
+    await page.goto(patientUrl); await openNote();
     await wait(async () => await note.isEditable());
     assert.equal(await readNote(note), 'REGRESSION draft survives browser Back');
     await saved();
-    await page.reload();
+    await page.reload(); await openNote();
     assert.equal(await readNote(note), 'REGRESSION draft survives browser Back');
     console.log('PASS offline Back, draft recovery, autosave and reload');
 
@@ -45,7 +51,7 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.route('**/*', route => route.request().method() === 'POST' ? route.abort() : route.continue());
     await note.fill('REGRESSION draft survives reload');
     await wait(async () => (await status.innerText()).includes('ไม่สำเร็จ'));
-    await page.reload();
+    await page.reload(); await openNote();
     await wait(async () => await note.isEditable());
     assert.equal(await readNote(note), 'REGRESSION draft survives reload');
     await page.unroute('**/*');
@@ -66,12 +72,12 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await wait(async () => delayed);
     await note.fill('REGRESSION latest typing before Back');
     await page.goBack();
-    await page.goto(patientUrl);
+    await page.goto(patientUrl); await openNote();
     await wait(async () => await note.isEditable());
     assert.equal(await readNote(note), 'REGRESSION latest typing before Back');
     await saved();
     await page.unroute('**/*');
-    await page.reload();
+    await page.reload(); await openNote();
     assert.equal(await readNote(note), 'REGRESSION latest typing before Back');
     console.log('PASS late response after unmount does not discard newer draft');
 
@@ -82,7 +88,7 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     const summary = await page.locator('body').innerText();
     assert(!summary.includes('REGRESSION obsolete snapshot text'));
     assert(summary.includes('REGRESSION final snapshot text'));
-    await page.goto(patientUrl);
+    await page.goto(patientUrl); await openNote();
     await wait(() => note.isEditable());
     assert.equal(await page.getByText(/^Progress history \(/).count(), 0);
     assert(!(await page.locator('body').innerText()).includes('REGRESSION obsolete snapshot text'));

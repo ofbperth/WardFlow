@@ -19,13 +19,19 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.waitForURL('**/patients/**');
     const patientUrl = page.url();
     const note = page.locator('[role="textbox"][id^="progress-"]').first();
+    const openNote = async () => {
+      if (!(await note.isVisible())) await page.getByRole('button', { name: 'เรียกดู Progress note', exact: true }).first().click();
+      await wait(() => note.isEditable());
+    };
+    assert.equal(await page.locator('[role="textbox"][id^="progress-"]:visible').count(), 0);
+    await openNote();
     await wait(() => note.isEditable());
     const panel = note.locator('xpath=ancestor::div[div/span[@role="status"]][1]');
     const saved = () => wait(async () => await panel.getByRole('status').innerText() === 'บันทึกแล้ว');
     const h = panel.getByRole('button', { name: 'Heading', exact: true });
     const b = panel.getByRole('button', { name: 'Body', exact: true });
     assert.equal(await h.locator('span').evaluate(el => getComputedStyle(el).fontWeight), '700');
-    assert.equal(await b.locator('span').evaluate(el => getComputedStyle(el).fontWeight), '300');
+    assert.equal(await b.locator('span').evaluate(el => getComputedStyle(el).fontWeight), '500');
     await note.fill('FORMAT หัวข้อทดสอบ');
     await h.click();
     assert.equal(await h.getAttribute('aria-pressed'), 'true');
@@ -34,7 +40,7 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await b.click(); await page.keyboard.insertText('FORMAT เนื้อหาปกติ');
     assert.equal(await b.getAttribute('aria-pressed'), 'true');
     assert.equal(await note.locator('p').last().innerText(), 'FORMAT เนื้อหาปกติ');
-    await saved(); await page.reload();
+    await saved(); await page.reload(); await openNote();
     await wait(() => note.isEditable());
     assert.equal(await note.locator('h3').innerText(), 'FORMAT หัวข้อทดสอบ');
     assert.equal(await note.locator('p').last().innerText(), 'FORMAT เนื้อหาปกติ');
@@ -42,6 +48,18 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     assert(parseFloat(styles.h) > parseFloat(styles.b)); assert(Number(styles.weight) >= 700);
     await panel.screenshot({ path: '.codex/progress-format-desktop.png' });
     console.log('PASS heading/body typing, caret retention, autosave/reload and typography');
+    await note.locator('p').last().click();
+    await page.keyboard.press('End'); await page.keyboard.insertText(' folded');
+    await panel.getByRole('button', { name: 'ซ่อน Progress note', exact: true }).click();
+    assert.equal(await note.isVisible(), false);
+    await saved();
+    assert.equal(await panel.getByRole('status').isVisible(), true);
+    await openNote();
+    assert((await note.innerText()).includes(' folded'));
+    await note.locator('p').last().click(); await page.keyboard.press('Control+z');
+    await saved();
+    assert(!(await note.innerText()).includes(' folded'));
+    console.log('PASS folding preserves text, undo and ongoing autosave');
 
     await note.locator('h3').click(); await b.click(); await saved();
     assert.equal(await note.locator('h3').count(), 0);
@@ -54,7 +72,7 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await note.locator('h3').click(); await page.keyboard.press('End'); await page.keyboard.insertText(' offline');
     assert((await note.locator('h3').innerText()).endsWith(' offline'), 'typed heading: ' + await note.locator('h3').innerText());
     const draftBefore = await page.evaluate(() => Object.entries(sessionStorage).filter(([k]) => k.startsWith('wardflow:progress-draft:')));
-    await page.reload();
+    await page.reload(); await openNote();
     await wait(() => note.isEditable());
     assert((await note.locator('h3').innerText()).endsWith(' offline'), JSON.stringify({ restored: await note.innerText(), draftBefore }));
     await page.unroute('**/*'); await saved();
@@ -66,11 +84,11 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     assert(!(await page.locator('body').innerText()).includes('wardflow-note:v1:'));
     console.log('PASS no history UI and clean Summary Note');
 
-    await page.goto(patientUrl); await wait(() => note.isEditable());
+    await page.goto(patientUrl); await openNote(); await wait(() => note.isEditable());
     await page.setViewportSize({ width: 390, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await panel.screenshot({ path: '.codex/progress-format-mobile.png' });
-    await note.fill(''); await saved(); await page.reload();
+    await note.fill(''); await saved(); await page.reload(); await openNote();
     await wait(() => note.isEditable());
     assert.equal((await note.textContent()).trim(), '');
     assert.equal(await note.locator('h3').count(), 0);
