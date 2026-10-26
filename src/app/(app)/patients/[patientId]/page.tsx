@@ -104,7 +104,16 @@ export default async function PatientPage({
         className="patient-operational-header"
         compact
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
-        subtitle={`${bundle.patient.diagnosis} | Updated ${formatDateTime(bundle.patient.lastUpdate)}`}
+        subtitle={
+          <>
+            <span className="block break-words text-lg font-semibold leading-7 text-foreground tabular-nums">
+              HN {bundle.patient.hospitalNumber?.trim() || "ยังไม่ระบุ"}
+            </span>
+            <span className="mt-1 block">
+              {bundle.patient.diagnosis} | Updated {formatDateTime(bundle.patient.lastUpdate)}
+            </span>
+          </>
+        }
         action={
           <div className="flex flex-wrap items-center gap-2 md:justify-end">
             <Link

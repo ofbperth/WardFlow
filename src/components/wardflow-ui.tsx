@@ -141,7 +141,7 @@ export function PageHeader({
   className,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   action?: React.ReactNode;
   compact?: boolean;
   className?: string;
