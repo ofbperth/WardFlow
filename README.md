@@ -61,6 +61,27 @@ If Supabase env is missing in local development, WardFlow falls back to demo mod
 
 ## Prepare for deploy
 
+### Discharged patient retention
+
+Supabase Cron runs `wardflow-purge-discharged-patients` daily at **01:00 Asia/Bangkok**
+(`0 18 * * *` in the database's UTC/GMT Cron timezone). It permanently deletes patients
+whose lifecycle is still `discharged` and whose `discharged_at` is at least 720 hours old.
+Active patients and missing discharge timestamps are excluded. The next daily run
+handles records that reach the cutoff between runs; failed runs are retried the next day.
+Existing foreign keys cascade deletion to problems, progress entries, tasks, task updates,
+handover notes, discharge summaries, and patient activity logs.
+
+The function is private and uses the scheduler's database privileges; API roles cannot
+call it. `wardflow_private.patient_cleanup_runs` stores successful timestamps, cutoffs,
+and counts without patient identifiers. Inspect failures in `cron.job_run_details` or
+Supabase Dashboard > Integrations > Cron. The job has a five-minute statement timeout.
+To pause, run `select cron.alter_job(jobid, active := false) from cron.job where
+jobname = 'wardflow-purge-discharged-patients';` as the database administrator.
+Database backups and already exported files have their own retention and are not erased by this job.
+
+Regression check (synthetic fixtures, all changes rolled back):
+`supabase db query --linked --file supabase/tests/patient_retention.sql`.
+
 1. Create a Supabase production project.
 2. Enable Google provider in Supabase Auth.
 3. Add Supabase Auth redirect URLs:
