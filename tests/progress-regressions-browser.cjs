@@ -23,8 +23,10 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.waitForURL('**/patients/**');
     const patientUrl = page.url();
     const note = page.locator('[role="textbox"][id^="progress-"]').first();
+    const problem = note.locator('xpath=ancestor::details[1]');
+    const problemToggle = problem.locator(':scope > summary');
     const openNote = async () => {
-      if (!(await note.isVisible())) await page.getByRole('button', { name: 'เรียกดู Progress note', exact: true }).first().click();
+      if (!(await note.isVisible())) await problemToggle.click();
       await wait(() => note.isEditable());
     };
     assert.equal(await page.locator('[role="textbox"][id^="progress-"]:visible').count(), 0);

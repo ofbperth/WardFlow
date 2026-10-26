@@ -19,15 +19,21 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     await page.waitForURL('**/patients/**');
     const patientUrl = page.url();
     const note = page.locator('[role="textbox"][id^="progress-"]').first();
+    const problem = note.locator('xpath=ancestor::details[1]');
+    const problemToggle = problem.locator(':scope > summary');
     const openNote = async () => {
-      if (!(await note.isVisible())) await page.getByRole('button', { name: 'เรียกดู Progress note', exact: true }).first().click();
+      if (!(await note.isVisible())) await problemToggle.click();
       await wait(() => note.isEditable());
     };
     assert.equal(await page.locator('[role="textbox"][id^="progress-"]:visible').count(), 0);
     await openNote();
+    assert.equal(await note.isVisible(), true);
+    assert.equal(await page.getByRole('button', { name: /^(เรียกดู|ซ่อน) Progress note$/ }).count(), 0);
+    assert.equal(await problemToggle.locator('p').count(), 2);
+    assert.equal(await page.locator('[role="textbox"][id^="progress-"]:visible').count(), 1);
     await wait(() => note.isEditable());
     const panel = note.locator('xpath=ancestor::div[div/span[@role="status"]][1]');
-    const saved = () => wait(async () => await panel.getByRole('status').innerText() === 'บันทึกแล้ว');
+    const saved = () => wait(async () => await panel.getByRole('status', { includeHidden: true }).textContent() === 'บันทึกแล้ว');
     const h = panel.getByRole('button', { name: 'Heading', exact: true });
     const b = panel.getByRole('button', { name: 'Body', exact: true });
     assert.equal(await h.locator('span').evaluate(el => getComputedStyle(el).fontWeight), '700');
@@ -50,10 +56,10 @@ const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retur
     console.log('PASS heading/body typing, caret retention, autosave/reload and typography');
     await note.locator('p').last().click();
     await page.keyboard.press('End'); await page.keyboard.insertText(' folded');
-    await panel.getByRole('button', { name: 'ซ่อน Progress note', exact: true }).click();
+    await problemToggle.click();
     assert.equal(await note.isVisible(), false);
     await saved();
-    assert.equal(await panel.getByRole('status').isVisible(), true);
+    assert.equal(await problemToggle.isVisible(), true);
     await openNote();
     assert((await note.innerText()).includes(' folded'));
     await note.locator('p').last().click(); await page.keyboard.press('Control+z');

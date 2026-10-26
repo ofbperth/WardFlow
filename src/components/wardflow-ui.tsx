@@ -359,8 +359,7 @@ export function ProblemCards({
         return (
           <details
             key={problem.id}
-            open
-            className="rounded-[16px] border clinical-divider bg-white"
+            className="group/problem rounded-[16px] border clinical-divider bg-white"
           >
             <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2.5 marker:content-none">
               <Circle
@@ -379,9 +378,6 @@ export function ProblemCards({
                     <p className="truncate text-sm font-semibold text-foreground md:text-[15px]">
                       {problem.problemName}
                     </p>
-                    <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-muted">
-                      {compactProblemStatus(problem)}
-                    </p>
                     <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
                       <span>{labelForProblemDiagnosisStatus(problem.diagnosisStatus)}</span>
                       <span>·</span>
@@ -391,7 +387,7 @@ export function ProblemCards({
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <ChevronDown className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform details-open:rotate-180" />
+                    <ChevronDown aria-hidden="true" className="h-4 w-4 text-[color:var(--color-ink-2)] transition-transform group-open/problem:rotate-180" />
                   </div>
                 </div>
               </div>

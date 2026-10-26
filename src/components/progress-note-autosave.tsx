@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
-import { ChevronDown } from "lucide-react";
 import { ProgressNoteEditor } from "@/components/progress-note-editor";
 import { autosaveProblemNoteAction } from "@/app/actions";
 import type { ProgressSaveInput, ProgressSnapshot } from "@/lib/progress-autosave";
@@ -17,7 +16,6 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
   const draftKey = progressDraftKey(ownerId, patientId, problemId);
   const hydrated = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
   const [value, setValue] = useState(initial.note);
-  const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState(initial.id ? "บันทึกแล้ว" : "พร้อมพิมพ์");
   const [failed, setFailed] = useState(false);
   const [restored, setRestored] = useState(false);
@@ -130,25 +128,12 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
 
   return (
     <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
-      <div className={`flex items-center gap-2 ${expanded ? "mb-2" : ""}`}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <span id={`progress-label-${problemId}`} className="text-sm font-semibold">Progress note</span>
         <span role="status" aria-live="polite" className={`min-w-0 flex-1 text-xs ${failed ? "text-red-700" : "text-[color:var(--color-accent-strong)]"}`}>
           {readOnly ? "อ่านอย่างเดียว" : status}
         </span>
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-controls={`progress-panel-${problemId}`}
-          aria-label={expanded ? "ซ่อน Progress note" : "เรียกดู Progress note"}
-          title={expanded ? "ซ่อน Progress note" : "เรียกดู Progress note"}
-          onClick={() => setExpanded((open) => !open)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[color:var(--color-accent-strong)] hover:bg-[color:var(--color-accent-soft)] active:translate-y-px"
-        >
-          <ChevronDown aria-hidden="true" className={`h-5 w-5 ${expanded ? "rotate-180" : ""}`} />
-        </button>
       </div>
-      {/* Keep the editor mounted so folding preserves its draft, undo history and autosave. */}
-      <div id={`progress-panel-${problemId}`} hidden={!expanded} aria-labelledby={`progress-label-${problemId}`}>
       <ProgressNoteEditor
         id={`progress-${problemId}`} value={value} readOnly={readOnly || !hydrated || !restored}
         onChange={(note) => {
@@ -162,7 +147,6 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
         onCompositionEnd={() => { composing.current = false; schedule.current(); }}
         onBlur={() => schedule.current(0)}
       />
-      </div>
       {!readOnly && !storageAvailable ? <p role="alert" className="mt-2 text-xs text-red-700">เบราว์เซอร์ไม่อนุญาตเก็บ draft กรุณารอให้บันทึกแล้วก่อนรีโหลดหรือปิดแท็บ</p> : null}
     </div>
   );
