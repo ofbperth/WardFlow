@@ -33,6 +33,25 @@ const { buildGoogleDocsRequests } = loadSource("src/lib/google-docs.ts");
 const { serializeProgressNote } = loadSource("src/lib/progress-format.ts");
 const { demoPatientsSeed } = loadSource("src/lib/demo-data.ts");
 
+test("nested bullets retain indentation in summary payload and both exports", () => {
+  const data = input();
+  data.problems = [{ id: "p1", problemName: "Example", priority: "ACTIVE_STABLE", diagnosisStatus: "confirmed",
+    resolvedAt: null, currentStatusSummary: null, linkedTasks: [], latestEntry: { note: serializeProgressNote([
+      { type: "paragraph", text: "Indented", indent: 1 },
+      { type: "bulletList", children: [{ type: "listItem", children: [
+        { type: "paragraph", text: "Parent" },
+        { type: "bulletList", children: [{ type: "listItem", children: [{ type: "paragraph", text: "Child" }] }] },
+      ] }] },
+    ]) } }];
+  const payload = buildSummaryNotePayload(data);
+  assert.deepEqual(payload.activeProblems[0].latestNote, ["  Indented", "• Parent", "  • Child"]);
+  for (const text of [payload.plainText, docText(payload)]) {
+    assert(text.includes("  • Child"));
+    assert(text.includes("  Indented"));
+    assert(!text.includes("wardflow-note:v2:"));
+  }
+});
+
 function input() {
   return {
     patient: { ...demoPatientsSeed[0], displayName: "ทดสอบ", age: null, sex: null,

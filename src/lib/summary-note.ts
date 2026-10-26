@@ -117,7 +117,7 @@ function buildProblemEntry(problem: Problem): SummaryNoteProblemEntry {
     priority: problem.priority,
     diagnosisStatus: problem.diagnosisStatus,
     currentSummary: splitBullets(problem.currentStatusSummary),
-    latestNote: splitBullets(progressNoteText(latestEntry?.note)),
+    latestNote: progressNoteText(latestEntry?.note).split(/\r?\n/).filter(line => line.trim() && line.trim() !== "-"),
     pendingTasks: problem.linkedTasks.filter((task) => task.status !== "done").map(formatTaskLine),
   };
 }
@@ -160,7 +160,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">, patient:
         `${index + 1}. ${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
       );
       if (problem.currentSummary.length) lines.push(`   Current Summary: ${problem.currentSummary.join(" | ")}`);
-      if (problem.latestNote.length) lines.push(`   Latest Note: ${problem.latestNote.join(" | ")}`);
+      if (problem.latestNote.length) lines.push("   Latest Note:", ...problem.latestNote.map(line => `   ${line}`));
       if (problem.pendingTasks.length) lines.push(`   Pending Ward work: ${problem.pendingTasks.join(" | ")}`);
     });
   }

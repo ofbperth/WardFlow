@@ -1,0 +1,74 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert = require('node:assert/strict');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const base = process.env.TEST_BASE_URL || 'http://localhost:3100';
+if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Local demo only');
+const wait = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) return; await new Promise(r => setTimeout(r, 200)); } throw Error('Timed out'); };
+(async () => {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  try {
+    const context = await browser.newContext();
+    await context.addCookies([{ name: 'wardflow-demo', value: '1', domain: 'localhost', path: '/' }]);
+    const page = await context.newPage();
+    page.on('dialog', dialog => dialog.accept());
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`${base}/wards`);
+    await page.getByRole('button', { name: /^Show ward:/ }).first().click();
+    await page.locator('article:visible a').first().click();
+    await page.waitForURL('**/patients/**');
+    const url = page.url();
+    const note = page.locator('[role="textbox"][id^="progress-"]').first();
+    const problem = note.locator('xpath=ancestor::details[1]');
+    const panel = note.locator('xpath=ancestor::div[div/span[@role="status"]][1]');
+    const open = async () => { if (!await note.isVisible()) await problem.locator(':scope > summary').click(); await wait(() => note.isEditable()); };
+    const saved = () => wait(async () => await panel.getByRole('status', { includeHidden: true }).textContent() === 'บันทึกแล้ว');
+    const increase = panel.getByRole('button', { name: 'เพิ่มระยะเยื้อง' });
+    const decrease = panel.getByRole('button', { name: 'ลดระยะเยื้อง' });
+    await open();
+    await note.click(); await page.keyboard.press('Control+a'); await page.keyboard.press('Backspace');
+    assert.equal(await note.locator('ul').count(), 0);
+    await note.fill('Indented paragraph');
+    await increase.click(); await increase.click(); await saved();
+    assert.equal(await note.locator('p').first().getAttribute('data-indent'), '2');
+    await page.reload(); await open();
+    assert.equal(await note.locator('p').first().getAttribute('data-indent'), '2');
+    await note.locator('p').click(); await decrease.click(); await decrease.click();
+    assert(await decrease.isDisabled());
+    await note.fill('Parent');
+    await panel.getByRole('button', { name: 'Bullet list', exact: true }).click();
+    await page.keyboard.press('End'); await page.keyboard.press('Enter'); await page.keyboard.insertText('Child');
+    await increase.click();
+    assert.equal(await note.locator('ul ul li').innerText(), 'Child');
+    await decrease.click(); assert.equal(await note.locator('ul ul').count(), 0);
+    await increase.click(); await saved();
+    await page.reload(); await open();
+    assert.equal(await note.locator('ul ul li').innerText(), 'Child');
+    await note.locator('ul ul li p').click(); await page.keyboard.press('End'); await page.keyboard.insertText(' changed');
+    await page.keyboard.press('Control+z'); await saved();
+    assert.equal(await note.locator('ul ul li').innerText(), 'Child');
+    await page.route('**/*', route => route.request().method() === 'POST' ? route.abort() : route.continue());
+    await note.locator('ul ul li p').click();
+    await page.keyboard.press('End'); await page.keyboard.insertText(' offline');
+    assert.equal(await note.locator('ul ul li').innerText(), 'Child offline');
+    await page.reload(); await open();
+    assert.equal(await note.locator('ul ul li').innerText(), 'Child offline');
+    await page.unroute('**/*'); await saved();
+    for (const width of [320, 375, 414, 768]) {
+      await page.setViewportSize({ width, height: 1000 });
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert(await increase.isVisible());
+    }
+    await page.setViewportSize({ width: 375, height: 1000 });
+    await panel.screenshot({ path: '.codex/previews/progress-bullets-375.png' });
+    await page.goto(`${url}/summary-note`);
+    assert((await page.getByLabel('Summary note preview').innerText()).includes('  • Child offline'));
+    await page.goto(url); await open();
+    await note.locator('ul ul li p').click();
+    await panel.getByRole('button', { name: 'Body', exact: true }).click();
+    assert.equal(await note.locator(':scope > p').filter({ hasText: 'Child offline' }).count(), 1);
+    assert.equal(await note.locator('li').filter({ hasText: /^Parent$/ }).count(), 1);
+    await note.fill(''); await saved();
+    assert.deepEqual(errors, []);
+    console.log('PASS paragraph indent, nested bullets, outdent, autosave/reload, undo, offline recovery, mobile, summary and Text conversion');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

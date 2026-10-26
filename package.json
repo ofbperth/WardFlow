@@ -15,9 +15,11 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
+    "@tiptap/core": "^3.32.0",
     "@tiptap/extension-document": "^3.32.0",
     "@tiptap/extension-hard-break": "^3.32.0",
     "@tiptap/extension-heading": "^3.32.0",
+    "@tiptap/extension-list": "^3.32.0",
     "@tiptap/extension-paragraph": "^3.32.0",
     "@tiptap/extension-text": "^3.32.0",
     "@tiptap/extensions": "^3.32.0",

@@ -63,7 +63,12 @@ export default async function SummaryNotePage({ params, searchParams }: {
                     {labelForProblemPriority(problem.priority)} · {labelForProblemDiagnosisStatus(problem.diagnosisStatus)}
                   </p>
                   <NoteMini title="Current Summary" items={problem.currentSummary} />
-                  <NoteMini title="Latest Note" items={problem.latestNote} />
+                  {problem.latestNote.length ? <div className={styles.detail}>
+                    <h4>Latest Note</h4>
+                    <div className="whitespace-pre-wrap break-words">
+                      {problem.latestNote.map((line, index) => <div key={index}>{line}</div>)}
+                    </div>
+                  </div> : null}
                   <NoteMini title="Pending Ward work" items={problem.pendingTasks} />
                 </li>
               ))}

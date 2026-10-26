@@ -232,9 +232,12 @@ export function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocs
       );
       insertBullets([
         ...(problem.currentSummary.length ? [`Current Summary: ${problem.currentSummary.join(" | ")}`] : []),
-        ...(problem.latestNote.length ? [`Latest Note: ${problem.latestNote.join(" | ")}`] : []),
-        ...(problem.pendingTasks.length ? [`Pending Ward work: ${problem.pendingTasks.join(" | ")}`] : []),
       ]);
+      if (problem.latestNote.length) {
+        insertParagraph("Latest Note:");
+        for (const line of problem.latestNote) insertParagraph(line);
+      }
+      if (problem.pendingTasks.length) insertBullets([`Pending Ward work: ${problem.pendingTasks.join(" | ")}`]);
     }
   }
   insertParagraph("");
