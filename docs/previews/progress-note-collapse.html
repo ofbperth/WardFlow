@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WardFlow · Progress note preview</title>
+<link rel="stylesheet" href="../../tokens.css">
+<style>
+/* Hallmark · component-scope: skipping macrostructure · existing minimal-clinical tokens
+ * pre-emit critique: P4 H4 E4 S5 R5 V3 */
+*{box-sizing:border-box}html,body{overflow-x:clip}body{margin:0;background:var(--color-paper-2);color:var(--color-ink);font:14px/1.6 var(--font-body)}main{max-width:850px;margin:40px auto;padding:0 20px}h1{font-size:26px;margin:0 0 8px}h2{font-size:16px;margin:0}p{margin:4px 0}.intro{margin-bottom:26px}.muted,small{color:var(--color-ink-2)}.tag{color:var(--color-accent-strong);font-size:12px;font-weight:600}.problem{background:var(--color-white);border:1px solid var(--color-rule);border-radius:16px;margin-bottom:12px}.problem-head{padding:14px 16px;border-bottom:1px solid var(--color-rule)}.inside{padding:12px}.note{border:1px solid var(--color-rule);border-radius:14px;background:var(--color-paper-3)}button,textarea{font:inherit}button{cursor:pointer;color:inherit}button:focus-visible,textarea:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}button:active{transform:translateY(1px)}button:disabled{opacity:.55;cursor:not-allowed}.toggle{border:0;background:transparent;width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;text-align:left;border-radius:14px}.left{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}.status{font-size:12px;color:var(--color-accent-strong)}.action{white-space:nowrap;color:var(--color-accent-strong);font-size:13px}.editor{margin:0 12px 12px;border:1px solid var(--color-rule);border-radius:12px;background:var(--color-white)}textarea{display:block;width:100%;min-height:150px;resize:vertical;padding:14px;border:0;border-radius:12px;background:var(--color-white);color:var(--color-ink);line-height:1.8}.toolbar{display:flex;align-items:center;justify-content:space-between;padding:4px 12px 10px}.format{border:1px solid var(--color-rule);border-radius:24px;padding:7px 12px;word-spacing:10px}.work{border-top:1px solid var(--color-rule);margin-top:12px;padding:12px 2px 0}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.controls button{min-height:44px;padding:8px 14px;background:var(--color-white);border:1px solid var(--color-rule);border-radius:10px;white-space:nowrap}.error{color:var(--color-danger)}.foot{border-top:1px solid var(--color-rule);padding-top:16px;margin-top:26px}label{display:block;padding:10px 14px 0;font-size:12px;color:var(--color-ink-2)}@media(hover:hover){button:hover{background:var(--color-accent-soft)}}@media(max-width:480px){main{margin:24px auto;padding:0 12px}h1{font-size:23px}.left{align-items:flex-start;flex-direction:column;gap:0}}
+</style>
+<main>
+ <div class="intro"><span class="tag">WARDFlow / UI DRAFT</span><h1>Progress note แบบพับเก็บ</h1><p class="muted">ตัวอย่างเฉพาะส่วน Problems · ข้อมูลสมมติสำหรับดู layout</p></div>
+ <div id="problems"></div>
+ <div class="controls"><button id="reset">กลับสู่ตอนเปิดหน้า</button><button id="error">ลองสถานะ save ไม่สำเร็จ</button></div>
+ <div class="foot"><strong>ลองกด “เรียกดู” ใต้แต่ละ Problem</strong><p class="muted">เปิดและพับแยกกันได้ · พับแล้วข้อความที่ลองพิมพ์ยังอยู่ · เปิดหน้าใหม่เริ่มพับทุกช่อง</p><p class="muted">นี่คือ preview เท่านั้น ข้อความที่พิมพ์ไม่ถูกบันทึกลงระบบจริง</p></div>
+</main>
+<script>
+const root = document.querySelector('#problems');
+['Problem ตัวอย่าง A','Problem ตัวอย่าง B'].forEach((name,index)=>{
+ const article=document.createElement('article');article.className='problem';
+ article.innerHTML=`<header class="problem-head"><h2>${name}</h2><p class="muted">Current summary ของ Problem ยังคงแสดงตามเดิม</p></header><div class="inside"><section class="note"><button class="toggle" aria-expanded="false" aria-controls="panel-${index}"><span class="left"><strong>Progress note</strong><span class="status" role="status">${index?'ยังไม่มีบันทึก':'มีบันทึก'}</span></span><span class="action">เรียกดู ⌄</span></button><div class="editor" id="panel-${index}" hidden><label for="text-${index}">Progress note · ตัวอย่าง</label><textarea id="text-${index}" spellcheck="false">${index?'':'ข้อความตัวอย่างของ Progress note\nลองพิมพ์ แล้วพับและเปิดใหม่ได้'}</textarea><div class="toolbar"><small>Preview · ไม่บันทึกจริง</small><span class="format" aria-label="ตัวอย่างตำแหน่ง toolbar รูปแบบข้อความ">H Text</span></div></div></section><div class="work"><small>Ward work ยังคงอยู่ด้านล่างตามเดิม</small></div></div>`;
+ root.append(article);
+ const button=article.querySelector('.toggle'),panel=article.querySelector('.editor');
+ button.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));panel.hidden=!open;button.querySelector('.action').textContent=open?'ซ่อน ⌃':'เรียกดู ⌄';});
+ article.querySelector('textarea').addEventListener('input',()=>{const status=article.querySelector('.status');status.textContent='แก้ไขใน preview';status.classList.remove('error');});
+});
+document.querySelector('#reset').onclick=()=>document.querySelectorAll('.toggle[aria-expanded="true"]').forEach(b=>b.click());
+document.querySelector('#error').onclick=()=>{const status=document.querySelector('.status');status.textContent='บันทึกไม่สำเร็จ';status.classList.add('error');};
+</script>
+</html>
