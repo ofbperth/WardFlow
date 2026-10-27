@@ -8,6 +8,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   bulkCreateTasks,
   autosaveProblemNote,
+  autosaveUnderlyingDisease,
   deleteUser,
   deleteWard,
   dischargePatient,
@@ -29,6 +30,17 @@ import {
   updateTaskStatus,
 } from "@/lib/wardflow";
 import type { ProgressSaveInput, ProgressSaveResult } from "@/lib/progress-autosave";
+import type { UnderlyingSaveInput, UnderlyingSaveResult } from "@/lib/underlying-draft";
+
+export async function autosaveUnderlyingDiseaseAction(input: UnderlyingSaveInput): Promise<UnderlyingSaveResult> {
+  try {
+    const session = await getCurrentSessionContext();
+    if (!session) return { ok: false, retryable: false, message: "Session หมดอายุ กรุณาคัดลอก U/D ก่อนเข้าสู่ระบบใหม่" };
+    return await autosaveUnderlyingDisease(input, session);
+  } catch {
+    return { ok: false, message: "ยังบันทึก U/D ไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติ" };
+  }
+}
 
 export async function autosaveProblemNoteAction(input: ProgressSaveInput): Promise<ProgressSaveResult> {
   try {

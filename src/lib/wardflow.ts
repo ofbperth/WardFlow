@@ -70,6 +70,7 @@ import { exportSummaryNoteToGoogleDocs } from "@/lib/google-docs";
 import { buildSummaryNotePayload } from "@/lib/summary-note";
 import { isProfileAssignableToWard, visibleWardIdsForRole } from "@/lib/resident-ward-assignment";
 import { canEditProgressNote, type ProgressSaveInput, type ProgressSaveResult } from "@/lib/progress-autosave";
+import type { UnderlyingSaveInput, UnderlyingSaveResult } from "@/lib/underlying-draft";
 
 type DemoStore = {
   wards: Ward[];
@@ -3083,6 +3084,54 @@ export async function deleteUser(formData: FormData, session: SessionContext) {
   }
 
   revalidateWardflowPaths();
+}
+
+export async function autosaveUnderlyingDisease(input: UnderlyingSaveInput, session: SessionContext): Promise<UnderlyingSaveResult> {
+  if (!canManagePatients(session)) return { ok: false, retryable: false, message: "คุณไม่มีสิทธิ์แก้ไข U/D" };
+  const validation = z.object({ patientId: z.string().min(1), expectedValue: z.string().nullable(), note: z.string() }).safeParse(input);
+  if (!validation.success) return { ok: false, retryable: false, message: "รูปแบบ U/D ไม่ถูกต้อง กรุณาคัดลอกข้อความก่อนโหลดหน้าใหม่" };
+  const parsed = validation.data;
+  const value = parsed.note === "" ? null : parsed.note;
+  const denied: UnderlyingSaveResult = { ok: false, retryable: false, message: "ผู้ป่วยไม่อยู่ในสถานะที่แก้ไขได้ หรือคุณไม่มีสิทธิ์แก้ไข Ward นี้" };
+  const conflict: UnderlyingSaveResult = { ok: false, conflict: true, message: "U/D ถูกแก้ไขจากอีกหน้าต่าง กรุณาคัดลอกข้อความของคุณก่อนโหลดหน้าใหม่" };
+  if (session.mode === "demo" || !hasLiveSupabase()) {
+    await ensureDemoStoreLoaded();
+    const patient = patientById(store, parsed.patientId);
+    if (!patient || patient.lifecycle !== "active" || !canEditProgressNote(session.profile, patient.wardId)) return denied;
+    // Matching text acknowledges a retry whose first response was lost.
+    if (patient.underlyingDisease === value) return { ok: true, value };
+    if (patient.underlyingDisease !== parsed.expectedValue) return conflict;
+    const before = { underlyingDisease: patient.underlyingDisease };
+    patient.underlyingDisease = value;
+    refreshDemoPatient(patient.id);
+    addActivityToDemoStore(session, patient.id, "patient.underlying_updated", "patient", patient.id, before, { underlyingDisease: value });
+    await persistDemoStore();
+    revalidateWardflowPaths(patient.id);
+    return { ok: true, value };
+  }
+  const supabase = await getLiveClient();
+  const patient = await fetchLivePatient(supabase, parsed.patientId);
+  if (!patient || patient.lifecycle !== "active" || !canEditProgressNote(session.profile, patient.ward_id)) return denied;
+  if (patient.underlying_disease === value) return { ok: true, value };
+  if ((patient.underlying_disease ?? null) !== parsed.expectedValue) return conflict;
+  // Compare the persisted field in the UPDATE itself: parallel editors cannot overwrite each other.
+  let query = supabase.from("patients").update({ underlying_disease: value, updated_by_id: session.profile.id })
+    .eq("id", parsed.patientId).eq("ward_id", patient.ward_id).eq("lifecycle", "active");
+  query = parsed.expectedValue === null ? query.is("underlying_disease", null) : query.eq("underlying_disease", parsed.expectedValue);
+  const result = await query.select("underlying_disease").maybeSingle();
+  if (result.error) return { ok: false, retryable: !["42501", "22P02", "42703", "PGRST204"].includes(result.error.code), message: "ยังบันทึก U/D ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์หรือการเชื่อมต่อ" };
+  if (!result.data) {
+    const latest = await fetchLivePatient(supabase, parsed.patientId);
+    if (!latest || latest.lifecycle !== "active" || !canEditProgressNote(session.profile, latest.ward_id)) return denied;
+    return latest.underlying_disease === value ? { ok: true, value } : conflict;
+  }
+  await insertActivityLog(supabase, {
+    patient_id: patient.id, actor_id: session.profile.id, actor_name: session.profile.name,
+    action: "patient.underlying_updated", entity_type: "patient", entity_id: patient.id,
+    before_json: { underlying_disease: patient.underlying_disease ?? null }, after_json: { underlying_disease: value },
+  });
+  revalidateWardflowPaths(parsed.patientId);
+  return { ok: true, value };
 }
 
 export async function savePatient(formData: FormData, session: SessionContext): Promise<string> {

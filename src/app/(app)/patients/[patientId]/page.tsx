@@ -22,6 +22,7 @@ import {
   TaskCreateForm,
 } from "@/components/form-feedback";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
+import { PatientUnderlyingNote } from "@/components/patient-underlying-note";
 import {
   EmptyState,
   Field,
@@ -143,6 +144,14 @@ export default async function PatientPage({
         }
       />
 
+      <PatientUnderlyingNote
+        key={`${session.profile.id}:${bundle.patient.id}`}
+        ownerId={session.profile.id}
+        patientId={bundle.patient.id}
+        initial={bundle.patient.underlyingDisease}
+        readOnly={!canEditProgressNote(session.profile, bundle.patient.wardId)}
+      />
+
       <div className="flex flex-wrap gap-x-4 gap-y-2 border-b clinical-divider pb-3 text-sm" aria-label="Patient safety alerts">
         <span>{bundle.ward?.name} · {labelForPatientStatus(bundle.patient.status)}</span>
         <span>Allergy: {bundle.patient.allergy || "Not recorded"}</span>
@@ -261,14 +270,6 @@ export default async function PatientPage({
                         </SelectBox>
                       </Field>
                     </div>
-                    <Field label="Underlying disease">
-                      <TextArea
-                        name="underlyingDisease"
-                        rows={3}
-                        defaultValue={bundle.patient.underlyingDisease ?? ""}
-                        placeholder="DM, HT, CKD"
-                      />
-                    </Field>
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label="Status">
                         <SelectBox name="status" defaultValue={bundle.patient.status}>

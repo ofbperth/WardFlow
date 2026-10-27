@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { clearProgressDrafts, hasProgressDrafts } from "@/lib/progress-draft";
+import { clearUnderlyingDrafts, hasUnderlyingDrafts } from "@/lib/underlying-draft";
 import { PendingSubmitButton } from "@/components/form-feedback";
 import { WardFlowLogo } from "@/components/wardflow-logo";
 import { cn, labelForRole } from "@/lib/utils";
@@ -37,11 +38,12 @@ export function AppShell({
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   function prepareLogout(event: React.FormEvent<HTMLFormElement>) {
-    if (hasProgressDrafts() && !window.confirm("มี Progress note ที่ยังไม่บันทึก การออกจากระบบจะลบ draft ในแท็บนี้ ต้องการออกจากระบบหรือไม่?")) {
+    if ((hasProgressDrafts() || hasUnderlyingDrafts()) && !window.confirm("มีข้อความที่ยังไม่บันทึก การออกจากระบบจะลบ draft ในแท็บนี้ ต้องการออกจากระบบหรือไม่?")) {
       event.preventDefault();
       return;
     }
     clearProgressDrafts();
+    clearUnderlyingDrafts();
   }
 
   return (

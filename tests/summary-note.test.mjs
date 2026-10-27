@@ -120,6 +120,14 @@ test("problem text preserves negative numbers and formatted notes without empty 
   }
 });
 
+test("multiline U/D stays plain text in summary and Google Docs export", () => {
+  const data = input();
+  data.patient.underlyingDisease = "DM\nHT\nCKD stage 3";
+  const payload = buildSummaryNotePayload(data);
+  assert(payload.plainText.includes("U/D DM\nHT\nCKD stage 3"));
+  assert(docText(payload).includes("Relevant underlying diseases: DM\nHT\nCKD stage 3"));
+});
+
 test("Google Docs request indices remain contiguous with Thai and emoji", () => {
   const data = input();
   data.patient.diagnosis = "ภาษาไทย 🧪\nSecond line";
