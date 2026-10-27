@@ -2,6 +2,7 @@ import { TaskStatusFields } from "@/components/task-status-fields";
 import { TaskStatusButton } from "@/components/task-status-button";
 import { progressNoteText } from "@/lib/progress-format";
 import { ProgressNoteAutosave } from "@/components/progress-note-autosave";
+import { ProgressNoteContent } from "@/components/progress-note-content";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -306,7 +307,7 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
   ];
   return <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
     {facts.map(([label, value]) => <div key={label} className="min-w-0 border-b clinical-divider py-2">
-      <dt className="text-xs text-muted">{label}</dt><dd className="mt-1 break-words text-sm font-medium">{value}</dd>
+      <dt className="text-xs text-muted">{label}</dt><dd className="mt-1 break-words text-sm font-medium">{label === "Underlying disease" && patient.underlyingDisease ? <ProgressNoteContent value={patient.underlyingDisease} /> : value}</dd>
     </div>)}
   </dl>;
 }

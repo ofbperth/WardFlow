@@ -128,6 +128,27 @@ test("multiline U/D stays plain text in summary and Google Docs export", () => {
   assert(docText(payload).includes("Relevant underlying diseases: DM\nHT\nCKD stage 3"));
 });
 
+test("formatted U/D preserves headings, bullets and indentation without exposing storage envelopes", () => {
+  const data = input();
+  data.patient.underlyingDisease = serializeProgressNote([
+    { type: "heading", text: "Underlying conditions" },
+    { type: "paragraph", text: "On regular follow-up", indent: 2 },
+    { type: "bulletList", children: [{ type: "listItem", children: [
+      { type: "paragraph", text: "CKD" },
+      { type: "bulletList", children: [{ type: "listItem", children: [{ type: "paragraph", text: "Stage 3" }] }] },
+    ] }] },
+  ]);
+  const payload = buildSummaryNotePayload(data);
+  for (const text of [payload.plainText, payload.briefBackground.bullets.join("\n"), docText(payload)]) {
+    assert(text.includes("Underlying conditions\n    On regular follow-up\n• CKD\n  • Stage 3"));
+    assert(!text.includes("wardflow-note:"));
+  }
+  data.patient.underlyingDisease = serializeProgressNote([{ type: "heading", text: "" }]);
+  const cleared = buildSummaryNotePayload(data);
+  assert(!cleared.plainText.includes("U/D"));
+  assert.deepEqual(cleared.briefBackground.bullets, []);
+});
+
 test("Google Docs request indices remain contiguous with Thai and emoji", () => {
   const data = input();
   data.patient.diagnosis = "ภาษาไทย 🧪\nSecond line";

@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ChevronDown, NotebookPen } from "lucide-react";
 import { autosaveUnderlyingDiseaseAction } from "@/app/actions";
+import { ProgressNoteEditor } from "@/components/progress-note-editor";
 import {
   acknowledgeUnderlyingDraft, readUnderlyingDraft, removeUnderlyingDraft,
   underlyingDraftKey, writeUnderlyingDraft, type UnderlyingDraft,
@@ -127,17 +128,16 @@ export function PatientUnderlyingNote({ ownerId, patientId, initial, readOnly }:
       {/* Keep the editor and autosave mounted when collapsed. */}
       <div id={panelId} hidden={!open} className="px-4 pb-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <label htmlFor={inputId} className="font-medium">Underlying diseases</label>
+          <span className="font-medium">Underlying diseases</span>
           <span id={`${inputId}-status`} role="status" aria-live="polite" className={`text-xs ${failed ? "text-red-700" : "text-[color:var(--color-ink-2)]"}`}>
             {readOnly ? "อ่านอย่างเดียว" : status}
           </span>
         </div>
-        <textarea id={inputId} rows={6} value={value} readOnly={readOnly || !ready} aria-describedby={`${inputId}-status`}
-          className="min-h-36 w-full resize-y rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] px-3 py-3 text-base leading-7 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-focus)] md:text-sm"
-          placeholder={readOnly ? undefined : "พิมพ์ U/D…"}
-          onChange={event => {
-            current.current = event.target.value; setValue(event.target.value); persist();
-            if (!blocked.current) setStatus(event.target.value === (saved.current ?? "") && !request.current ? "บันทึกแล้ว" : "รอบันทึก…");
+        <ProgressNoteEditor id={inputId} value={value} readOnly={readOnly || !ready}
+          ariaLabel="Underlying diseases" ariaDescribedBy={`${inputId}-status`}
+          onChange={note => {
+            current.current = note; setValue(note); persist();
+            if (!blocked.current) setStatus(note === (saved.current ?? "") && !request.current ? "บันทึกแล้ว" : "รอบันทึก…");
             schedule.current();
           }}
           onCompositionStart={() => { composing.current = true; }}

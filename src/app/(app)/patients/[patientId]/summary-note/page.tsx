@@ -103,7 +103,7 @@ function NoteSection({ title, items }: { title: string; items: string[] }) {
     <section className={styles.section}>
       <h2>{title}</h2>
       <ul className={styles.lines}>
-        {items.map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}
+        {items.map((item, index) => <li key={`${title}-${index}`} className="whitespace-pre-wrap break-words">{item}</li>)}
       </ul>
     </section>
   );

@@ -84,14 +84,16 @@ function setTextBlock(editor: Editor, heading: boolean) {
 }
 const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, BulletList, IndentedListItem, Indent];
 
-export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBlur, onCompositionStart, onCompositionEnd, autoSave = true }: {
+export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBlur, onCompositionStart, onCompositionEnd, autoSave = true, ariaLabel = "Progress note", ariaDescribedBy }: {
   autoSave?: boolean; id?: string; value: string; onChange: (value: string) => void; readOnly?: boolean;
   onBlur?: () => void; onCompositionStart?: () => void; onCompositionEnd?: () => void;
+  ariaLabel?: string; ariaDescribedBy?: string;
 }) {
   const editor = useEditor({
     extensions, enableInputRules: false, immediatelyRender: false, content: documentFor(value), editable: !readOnly,
     editorProps: { attributes: {
-      id: id ?? "", role: "textbox", "aria-label": "Progress note", "aria-multiline": "true",
+      id: id ?? "", role: "textbox", "aria-label": ariaLabel, "aria-multiline": "true",
+      ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
       class: "progress-note-input min-h-36 whitespace-pre-wrap break-words px-3 py-3 text-sm leading-7 outline-none [&_h3]:text-lg [&_h3]:font-bold [&_h3]:leading-8 [&_ul]:list-disc [&_ul]:pl-5 [&_ul_ul]:list-[circle]",
     } },
     onUpdate: ({ editor }) => onChange(serializeDocument(editor.getJSON())),

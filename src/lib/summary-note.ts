@@ -145,7 +145,7 @@ function buildPlainText(payload: Omit<SummaryNotePayload, "plainText">, patient:
   lines.push(...presentItems([
     identification,
     patient.hospitalNumber,
-    labeledValue("U/D", patient.underlyingDisease),
+    labeledValue("U/D", progressNoteText(patient.underlyingDisease)),
   ]));
   lines.push("");
   pushSection(payload.summaryDate);
@@ -223,7 +223,7 @@ export function buildSummaryNotePayload(input: SummaryNoteInput): SummaryNotePay
     ]),
     summaryDate: makeSection("Summary Date", [`Date: ${dateLabel}`]),
     briefBackground: makeSection("Brief Background", [
-      labeledValue("Relevant underlying diseases:", patient.underlyingDisease),
+      labeledValue("Relevant underlying diseases:", progressNoteText(patient.underlyingDisease)),
     ]),
     reasonForAdmission: makeSection("Reason for Admission", [
       patient.diagnosis,
