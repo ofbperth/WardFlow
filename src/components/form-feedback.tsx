@@ -2,11 +2,54 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { ArrowRightLeft, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
 import { EditorDialog } from "@/components/editor-dialog";
 import { cn } from "@/lib/utils";
 
 const InlineEditorCloseContext = createContext<(() => void) | null>(null);
+
+export function TaskCreateForm({ children }: { children: React.ReactNode }) {
+  const close = useContext(InlineEditorCloseContext);
+  const router = useRouter();
+  const inFlight = useRef(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  return <form className="space-y-3" onSubmit={async (event) => {
+    event.preventDefault();
+    if (inFlight.current) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    inFlight.current = true;
+    setPending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/ward-work", { method: "POST", body: data });
+      const result = await response.json();
+      if (!response.ok || result.ok !== true) throw new Error("Creation not confirmed");
+      form.reset();
+      close?.();
+      router.refresh();
+    } catch {
+      setError("ยังยืนยันการสร้างไม่ได้ ข้อมูลในฟอร์มยังอยู่ กรุณาตรวจรายการ Ward work ก่อนลองใหม่เพื่อป้องกันงานซ้ำ");
+    } finally {
+      inFlight.current = false;
+      setPending(false);
+    }
+  }}>
+    <fieldset disabled={pending} className="space-y-3">
+      {children}
+      {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+      <div className="flex justify-end">
+        <button type="submit" disabled={pending} aria-busy={pending}
+          className="button-accent inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-70">
+          {pending ? <><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />กำลังบันทึก...</> : "Create ward work"}
+        </button>
+      </div>
+    </fieldset>
+  </form>;
+}
 
 function useAutoCloseInlineEditorOnSubmit(pending: boolean) {
   const closeInlineEditor = useContext(InlineEditorCloseContext);

@@ -19,6 +19,7 @@ import {
   PatientTransferEditor,
   ProblemCreator,
   TaskCreator,
+  TaskCreateForm,
 } from "@/components/form-feedback";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import {
@@ -397,7 +398,7 @@ export default async function PatientPage({
                 headerClassName="items-start"
                 contentClassName="space-y-3"
               >
-                <form action={saveTaskAction} className="space-y-3">
+                <TaskCreateForm>
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
                   <Field label="Ward work title">
                     <TextInput
@@ -433,10 +434,7 @@ export default async function PatientPage({
                   <Field label="Note">
                     <TextArea name="note" placeholder="Escalate if resistant organism" />
                   </Field>
-                  <div className="flex justify-end">
-                    <SubmitButton>Create ward work</SubmitButton>
-                  </div>
-                </form>
+                </TaskCreateForm>
               </TaskCreator>
             ) : null
           }
