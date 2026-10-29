@@ -44,7 +44,7 @@ test("nested bullets retain indentation in summary payload and both exports", ()
       ] }] },
     ]) } }];
   const payload = buildSummaryNotePayload(data);
-  assert.deepEqual(payload.activeProblems[0].latestNote, ["  Indented", "• Parent", "  • Child"]);
+  assert.equal(payload.hospitalCourse[0].latestNote, "  Indented\n• Parent\n  • Child");
   for (const text of [payload.plainText, docText(payload)]) {
     assert(text.includes("  • Child"));
     assert(text.includes("  Indented"));
@@ -84,19 +84,37 @@ test("identification preserves Thai, age zero and explicitly recorded negative h
   const data = input();
   Object.assign(data.patient, { age: 0, hospitalNumber: "0123", underlyingDisease: "ไม่มีโรคประจำตัว" });
   const payload = buildSummaryNotePayload(data);
-  assert(payload.plainText.includes("ชื่อ ทดสอบ อายุ 0 ปี\n0123\nU/D ไม่มีโรคประจำตัว"));
+  assert(payload.plainText.includes("ทดสอบ อายุ 0 ปี 0123\nU/D ไม่มีโรคประจำตัว"));
   assert(docText(payload).includes("ไม่มีโรคประจำตัว"));
 });
 
-test("missing creation activity does not invent admission date from another event", () => {
+test("compact template excludes unrelated metadata, duplicate summaries and task content", () => {
   const data = input();
-  data.activity = [{ action: "patient.updated", createdAt: "2026-10-25T10:00:00Z" }];
-  assert(!docText(buildSummaryNotePayload(data)).includes("Admission date"));
-  data.activity.push({ action: "patient.created", createdAt: "2026-10-20T10:00:00Z" });
-  assert(docText(buildSummaryNotePayload(data)).includes("Admission date: 2026-10-20"));
+  Object.assign(data.patient, { age: 22, hospitalNumber: "0123", underlyingDisease: "#HT\n• Follow-up",
+    diagnosis: "OMIT diagnosis", allergy: "OMIT allergy", precaution: "contact" });
+  data.handover = { note: "OMIT handover" };
+  data.tasks = [{ title: "OMIT task", status: "pending", type: "consult" }];
+  data.activity = [{ action: "patient.created", createdAt: "2026-10-20T10:00:00Z" }];
+  data.problems = [
+    { id: "p1", problemName: "Heart failure", latestEntry: { note: "Presented with edema\n• Diuresis" },
+      currentStatusSummary: "OMIT summary", linkedTasks: data.tasks,
+      historyEntries: [{ note: "OMIT older note" }] },
+    { id: "p2", problemName: "Resolved problem", priority: "RESOLVED_CHRONIC", resolvedAt: "2026-10-28",
+      latestEntry: { note: "Resolved course" }, linkedTasks: [] },
+  ];
+  const payload = buildSummaryNotePayload(data);
+  const expected = "ทดสอบ อายุ 22 ปี 0123\nU/D #HT\n• Follow-up\n\nHospital Course:\n\n#Heart failure\nPresented with edema\n• Diuresis\n\n#Resolved problem\nResolved course";
+  assert.equal(payload.plainText, expected);
+  assert.equal(docText(payload).trim(), expected);
+  for (const text of [payload.plainText, docText(payload)]) {
+    assert(!text.includes("OMIT"));
+    for (const label of ["Summary Date", "Current Summary", "Latest Note", "Active Problem", "Ward work", "Safety Alerts"]) {
+      assert(!text.includes(label));
+    }
+  }
 });
 
-test("problem text preserves negative numbers and formatted notes without empty labels", () => {
+test("latest note preserves negative numbers and cleared notes never fall back to old content", () => {
   const data = input();
   data.problems = [{ id: "p1", problemName: "Test problem", priority: "ACTIVE_STABLE",
     diagnosisStatus: "confirmed", resolvedAt: null, currentStatusSummary: "-5 mmol/L\n- recorded detail",
@@ -104,16 +122,17 @@ test("problem text preserves negative numbers and formatted notes without empty 
     linkedTasks: [] }];
   const payload = buildSummaryNotePayload(data);
   for (const text of [payload.plainText, docText(payload)]) {
-    assert(text.includes("-5 mmol/L"));
+    assert(!text.includes("-5 mmol/L"));
     assert(text.includes("-2.5"));
     assert(text.includes("ผลตรวจ"));
     assert(!text.includes("wardflow-note:v1:"));
     assert(!text.includes("Pending Ward work:"));
   }
-  data.problems[0].currentStatusSummary = "-";
+  data.problems[0].historyEntries = [{ note: "OLD NOTE MUST NOT RETURN" }];
   data.problems[0].latestEntry = null;
   const emptyDetails = buildSummaryNotePayload(data);
   for (const text of [emptyDetails.plainText, docText(emptyDetails)]) {
+    assert(!text.includes("OLD NOTE MUST NOT RETURN"));
     assert(!text.includes("Current Summary:"));
     assert(!text.includes("Latest Note:"));
     assert(!text.includes("Test problem | -"));
@@ -125,7 +144,7 @@ test("multiline U/D stays plain text in summary and Google Docs export", () => {
   data.patient.underlyingDisease = "DM\nHT\nCKD stage 3";
   const payload = buildSummaryNotePayload(data);
   assert(payload.plainText.includes("U/D DM\nHT\nCKD stage 3"));
-  assert(docText(payload).includes("Relevant underlying diseases: DM\nHT\nCKD stage 3"));
+  assert(docText(payload).includes("U/D DM\nHT\nCKD stage 3"));
 });
 
 test("formatted U/D preserves headings, bullets and indentation without exposing storage envelopes", () => {
@@ -139,19 +158,19 @@ test("formatted U/D preserves headings, bullets and indentation without exposing
     ] }] },
   ]);
   const payload = buildSummaryNotePayload(data);
-  for (const text of [payload.plainText, payload.briefBackground.bullets.join("\n"), docText(payload)]) {
+  for (const text of [payload.plainText, payload.underlyingDisease, docText(payload)]) {
     assert(text.includes("Underlying conditions\n    On regular follow-up\n• CKD\n  • Stage 3"));
     assert(!text.includes("wardflow-note:"));
   }
   data.patient.underlyingDisease = serializeProgressNote([{ type: "heading", text: "" }]);
   const cleared = buildSummaryNotePayload(data);
   assert(!cleared.plainText.includes("U/D"));
-  assert.deepEqual(cleared.briefBackground.bullets, []);
+  assert.equal(cleared.underlyingDisease, "");
 });
 
 test("Google Docs request indices remain contiguous with Thai and emoji", () => {
   const data = input();
-  data.patient.diagnosis = "ภาษาไทย 🧪\nSecond line";
+  data.patient.underlyingDisease = "ภาษาไทย 🧪\nSecond line";
   const requests = buildGoogleDocsRequests(buildSummaryNotePayload(data));
   let cursor = 1;
   for (const request of requests) {

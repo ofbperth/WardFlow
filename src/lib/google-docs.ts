@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import type { SummaryNoteExportResult, SummaryNotePayload } from "@/lib/types";
-import { labelForProblemDiagnosisStatus, labelForProblemPriority } from "@/lib/utils";
 
 type GoogleDocsAdapter = {
   exportSummaryNote(payload: SummaryNotePayload): Promise<SummaryNoteExportResult>;
@@ -186,67 +185,18 @@ export function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocs
     cursor = endIndex;
   };
 
-  const insertBullets = (items: string[]) => {
-    if (!items.length) return;
-    const text = `${items.map((item) => item.trim()).join("\n")}\n`;
-    const startIndex = cursor;
-    const endIndex = startIndex + text.length;
-    requests.push({
-      insertText: {
-        location: { index: startIndex },
-        text,
-      },
-    });
-    requests.push({
-      createParagraphBullets: {
-        range: { startIndex, endIndex: endIndex - 1 },
-        bulletPreset: "BULLET_DISC_CIRCLE_SQUARE",
-      },
-    });
-    cursor = endIndex;
-  };
-
-  const insertSection = (heading: string, items: string[]) => {
-    if (!items.length) return;
-    insertParagraph(heading, "HEADING_2");
-    insertBullets(items);
+  if (payload.identification) insertParagraph(payload.identification);
+  if (payload.underlyingDisease) insertParagraph(`U/D ${payload.underlyingDisease}`);
+  if (payload.hospitalCourse.length) {
     insertParagraph("");
-  };
-
-  insertParagraph(payload.heading, "TITLE");
-  insertParagraph("(Off Service Note / Summary Note)", "SUBTITLE");
-  insertParagraph("");
-
-  insertSection(payload.patientFacts.heading, payload.patientFacts.bullets);
-  insertSection(payload.summaryDate.heading, payload.summaryDate.bullets);
-  insertSection(payload.briefBackground.heading, payload.briefBackground.bullets);
-  insertSection(payload.reasonForAdmission.heading, payload.reasonForAdmission.bullets);
-  insertSection(payload.hospitalCourse.heading, payload.hospitalCourse.bullets);
-
-  if (payload.activeProblems.length) {
-    insertParagraph("Active Problem List", "HEADING_2");
-    for (const problem of payload.activeProblems) {
-      insertParagraph(
-        `${problem.problemName} [${labelForProblemPriority(problem.priority)} | ${labelForProblemDiagnosisStatus(problem.diagnosisStatus)}]`,
-        "HEADING_3",
-      );
-      insertBullets([
-        ...(problem.currentSummary.length ? [`Current Summary: ${problem.currentSummary.join(" | ")}`] : []),
-      ]);
-      if (problem.latestNote.length) {
-        insertParagraph("Latest Note:");
-        for (const line of problem.latestNote) insertParagraph(line);
-      }
-      if (problem.pendingTasks.length) insertBullets([`Pending Ward work: ${problem.pendingTasks.join(" | ")}`]);
+    insertParagraph("Hospital Course:", "HEADING_2");
+    insertParagraph("");
+    for (const [index, problem] of payload.hospitalCourse.entries()) {
+      if (index) insertParagraph("");
+      insertParagraph(`#${problem.problemName}`, "HEADING_3");
+      if (problem.latestNote) insertParagraph(problem.latestNote);
     }
   }
-  insertParagraph("");
-
-  insertSection("Resolved / Chronic Problems", payload.resolvedProblems);
-  insertSection("Consultations", payload.consultations);
-  insertSection("Pending Issues", payload.pendingIssues);
-  insertSection("Safety Alerts", payload.safetyAlerts);
-  insertSection("Ward work", payload.tasks);
 
   return requests;
 }

@@ -350,16 +350,7 @@ export type SessionContext = {
 export type SummaryNoteProblemEntry = {
   id: string;
   problemName: string;
-  priority: ProblemPriority;
-  diagnosisStatus: ProblemDiagnosisStatus;
-  currentSummary: string[];
-  latestNote: string[];
-  pendingTasks: string[];
-};
-
-export type SummaryNoteSection = {
-  heading: string;
-  bullets: string[];
+  latestNote: string;
 };
 
 export type SummaryNotePayload = {
@@ -367,18 +358,9 @@ export type SummaryNotePayload = {
   patientLabel: string;
   fileLabel: string;
   dateLabel: string;
-  heading: string;
-  patientFacts: SummaryNoteSection;
-  summaryDate: SummaryNoteSection;
-  briefBackground: SummaryNoteSection;
-  reasonForAdmission: SummaryNoteSection;
-  hospitalCourse: SummaryNoteSection;
-  activeProblems: SummaryNoteProblemEntry[];
-  resolvedProblems: string[];
-  consultations: string[];
-  pendingIssues: string[];
-  safetyAlerts: string[];
-  tasks: string[];
+  identification: string;
+  underlyingDisease: string;
+  hospitalCourse: SummaryNoteProblemEntry[];
   plainText: string;
 };
 
