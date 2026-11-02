@@ -44,10 +44,46 @@ const wait = async fn => {
       };
       const saved = () => wait(async () => await panel.getByRole('status', { includeHidden: true }).textContent() === 'บันทึกแล้ว');
       const reset = async () => {
-        await note.fill('');
-        await panel.getByRole('button', { name: 'Body', exact: true }).click();
+        await note.evaluate(el => {
+          el.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph' }] });
+          el.editor.commands.setTextSelection(1);
+          el.focus();
+        });
       };
-      await open(); await reset();
+      await open();
+      for (let iteration = 0; iteration < 12; iteration++) {
+        await reset();
+        await page.keyboard.type('- Parent', { delay: 0 });
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('Child', { delay: 0 });
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Home');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.type(' tail', { delay: 0 });
+        assert.deepEqual(await note.locator('li').allTextContents(), ['Parent', ' tailChild'], `rapid input ${kind} #${iteration}`);
+        assert.equal(await note.locator('ul ul').count(), 0);
+      }
+      await saved(); await page.reload(); await open();
+      assert.deepEqual(await note.locator('li').allTextContents(), ['Parent', ' tailChild']);
+      console.log(`PASS ${kind}: 12 zero-delay typing/Enter/Tab/Home/Backspace sequences, exact text and reload`);
+      await reset();
+      await page.keyboard.insertText('Indented body');
+      await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
+      assert.equal(await note.locator('p').getAttribute('data-indent'), '2');
+      assert(await note.evaluate(el => el === document.activeElement));
+      await page.keyboard.press('Home');
+      await page.keyboard.press('Backspace');
+      assert.equal(await note.locator('p').getAttribute('data-indent'), '1');
+      await saved(); await page.reload(); await open();
+      assert.equal(await note.locator('p').getAttribute('data-indent'), '1');
+      await panel.getByRole('button', { name: 'Heading', exact: true }).click();
+      await note.locator('h3').click();
+      await page.keyboard.press('Tab');
+      assert.equal(await note.locator('h3').getAttribute('data-indent'), '2');
+      await page.keyboard.press('Home');
+      await page.keyboard.press('Backspace');
+      assert.equal(await note.locator('h3').getAttribute('data-indent'), '1');
+      await reset();
       await page.keyboard.insertText('•'); await page.keyboard.type(' ');
       await page.keyboard.insertText('on Letermovir 20/9/69-now');
       assert.equal(await note.locator('li').innerText(), 'on Letermovir 20/9/69-now');
@@ -69,19 +105,30 @@ const wait = async fn => {
       assert.equal(await note.locator('li').count(), 0);
       await page.keyboard.press('End'); await paste('• also inline');
       assert.equal(await note.locator('li').count(), 0);
+      await reset(); await page.keyboard.type('-5');
+      assert.equal(await note.locator('li').count(), 0, 'negative numbers remain plain text');
       await reset(); await page.keyboard.type('- ');
-      assert.equal(await note.locator('li').count(), 0, 'unrequested shortcuts remain disabled');
-      await reset(); await paste('• on Letermovir 20/9/69-now\n• ติดตามอาการ');
+      await page.keyboard.insertText('Typed dash bullet');
+      assert.equal(await note.locator('li').innerText(), 'Typed dash bullet');
+      await reset(); await paste('- on Letermovir 20/9/69-now\n• ติดตามอาการ');
       await wait(async () => await note.locator('li').count() === 2);
       await saved(); await page.reload(); await open();
       assert.equal(await note.locator('li').count(), 2);
+      await note.locator('li > p').last().click();
+      await page.keyboard.press('Tab');
+      assert.equal(await note.locator('ul ul li').innerText(), 'ติดตามอาการ');
+      await page.keyboard.press('Home');
+      await page.keyboard.press('Backspace');
+      assert.equal(await note.locator('ul ul').count(), 0);
+      await page.keyboard.press('Tab'); await saved(); await page.reload(); await open();
+      assert.equal(await note.locator('ul ul li').innerText(), 'ติดตามอาการ');
       await page.goto(`${patientUrl}/summary-note`);
       const summary = await page.getByLabel('Summary note preview').innerText();
       assert(summary.includes('• on Letermovir 20/9/69-now'));
       assert(!summary.includes('• •'));
       assert(!summary.includes('wardflow-note:'));
       await page.goto(patientUrl); await open(); await reset(); await saved();
-      console.log(`PASS ${kind}: typing, Enter, paste, adjacent items, inline text, undo, autosave/reload and Summary Note`);
+      console.log(`PASS ${kind}: dash/bullet typing and paste, Tab/Backspace body/heading/nested bullets, undo, autosave/reload and Summary Note`);
     }
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

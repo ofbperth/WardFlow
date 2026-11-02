@@ -9,6 +9,7 @@ import Heading from "@tiptap/extension-heading";
 import HardBreak from "@tiptap/extension-hard-break";
 import { Extension, PasteRule, wrappingInputRule, type Editor } from "@tiptap/core";
 import { BulletList, ListItem } from "@tiptap/extension-list";
+import { TextSelection } from "@tiptap/pm/state";
 import { List, IndentDecrease, IndentIncrease } from "lucide-react";
 import { UndoRedo } from "@tiptap/extensions";
 import { parseProgressNote, serializeProgressNote, type NoteBlock } from "@/lib/progress-format";
@@ -59,8 +60,34 @@ function changeIndent(editor: Editor, direction: -1 | 1, apply = true): boolean 
   if (changed && apply) { editor.view.dispatch(tr); editor.commands.focus(); }
   return changed;
 }
+// Native caret moves can precede ProseMirror's selectionchange notification.
+// Read the current DOM selection before handling an editing shortcut.
+function syncTextSelection(editor: Editor) {
+  const { view, state } = editor;
+  if (view.composing) return;
+  const selection = view.dom.ownerDocument.getSelection();
+  if (!selection?.anchorNode || !selection.focusNode ||
+    !view.dom.contains(selection.anchorNode) || !view.dom.contains(selection.focusNode)) return;
+  const anchor = view.posAtDOM(selection.anchorNode, selection.anchorOffset);
+  const head = view.posAtDOM(selection.focusNode, selection.focusOffset);
+  const next = TextSelection.between(state.doc.resolve(anchor), state.doc.resolve(head));
+  if (!next.eq(state.selection)) view.dispatch(state.tr.setSelection(next));
+}
 const Indent = Extension.create({
   name: "paragraphIndent",
+  priority: 110,
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => { syncTextSelection(this.editor); return changeIndent(this.editor, 1); },
+      "Shift-Tab": () => { syncTextSelection(this.editor); return changeIndent(this.editor, -1); },
+      Backspace: () => {
+        syncTextSelection(this.editor);
+        const { selection } = this.editor.state;
+        if (!selection.empty || selection.$from.parentOffset !== 0) return false;
+        return changeIndent(this.editor, -1);
+      },
+    };
+  },
   addGlobalAttributes() {
     return [{ types: ["paragraph", "heading"], attributes: { indent: {
       default: 0,
@@ -69,19 +96,14 @@ const Indent = Extension.create({
     } } }];
   },
 });
-const IndentedListItem = ListItem.extend({
-  addKeyboardShortcuts() {
-    return { ...this.parent?.(), Tab: () => changeIndent(this.editor, 1), "Shift-Tab": () => changeIndent(this.editor, -1) };
-  },
-});
 const AutomaticBulletList = BulletList.extend({
   addInputRules() {
-    return [wrappingInputRule({ find: /^•[ \t\u00a0]$/, type: this.type })];
+    return [wrappingInputRule({ find: /^[•-][ \t\u00a0]$/, type: this.type })];
   },
   addPasteRules() {
-    const rule = wrappingInputRule({ find: /^•[ \t\u00a0]+/g, type: this.type });
+    const rule = wrappingInputRule({ find: /^[•-][ \t\u00a0]+/g, type: this.type });
     return [new PasteRule({
-      find: /^•[ \t\u00a0]+/g,
+      find: /^[•-][ \t\u00a0]+/g,
       handler: props => {
         // A match at the start of the pasted fragment may still be mid-paragraph.
         if (props.range.from !== props.state.doc.resolve(props.range.from).start()) return null;
@@ -98,7 +120,7 @@ function setTextBlock(editor: Editor, heading: boolean) {
   if (heading) editor.chain().focus().setHeading({ level: 3 }).run();
   else editor.chain().focus().setParagraph().run();
 }
-const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, AutomaticBulletList, IndentedListItem, Indent];
+const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, AutomaticBulletList, ListItem, Indent];
 
 export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBlur, onCompositionStart, onCompositionEnd, autoSave = true, ariaLabel = "Progress note", ariaDescribedBy }: {
   autoSave?: boolean; id?: string; value: string; onChange: (value: string) => void; readOnly?: boolean;
