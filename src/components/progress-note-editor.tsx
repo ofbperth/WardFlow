@@ -8,7 +8,7 @@ import Text from "@tiptap/extension-text";
 import Heading from "@tiptap/extension-heading";
 import HardBreak from "@tiptap/extension-hard-break";
 import { Extension, type Editor } from "@tiptap/core";
-import { ListItem } from "@tiptap/extension-list";
+import { ListItem, ListKeymap } from "@tiptap/extension-list";
 import { TextSelection } from "@tiptap/pm/state";
 import { List, IndentDecrease, IndentIncrease } from "lucide-react";
 import { UndoRedo } from "@tiptap/extensions";
@@ -105,7 +105,10 @@ function setTextBlock(editor: Editor, heading: boolean) {
   if (heading) editor.chain().focus().setHeading({ level: 3 }).run();
   else editor.chain().focus().setParagraph().run();
 }
-const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, AutomaticBulletList, ListItem, Indent];
+// After Backspace lifts an item, merge its paragraph into the preceding list
+// item on the next Backspace instead of wrapping it back into a new item.
+const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, AutomaticBulletList, ListItem,
+  ListKeymap.configure({ listTypes: [{ itemName: "listItem", wrapperNames: ["bulletList"] }] }), Indent];
 
 export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBlur, onCompositionStart, onCompositionEnd, autoSave = true, ariaLabel = "Progress note", ariaDescribedBy }: {
   autoSave?: boolean; id?: string; value: string; onChange: (value: string) => void; readOnly?: boolean;

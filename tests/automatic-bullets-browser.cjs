@@ -51,6 +51,28 @@ const wait = async fn => {
         });
       };
       await open();
+      for (const trailingText of ['', 'Second']) {
+        await note.evaluate((el, text) => {
+          const paragraph = text => ({ type: 'paragraph', content: text ? [{ type: 'text', text }] : [] });
+          el.editor.commands.setContent({ type: 'doc', content: [{ type: 'bulletList', content: [
+            { type: 'listItem', content: [paragraph('First')] },
+            { type: 'listItem', content: [paragraph(text)] },
+          ] }] });
+          el.focus();
+          window.getSelection().collapse(el.querySelectorAll('li > p')[1], 0);
+        }, trailingText);
+        await page.keyboard.press('Backspace');
+        assert.equal(await note.locator(':scope > p').count(), 1, 'first Backspace lifts the item');
+        await page.keyboard.press('Backspace');
+        assert.deepEqual(await note.locator('li').allTextContents(), [`First${trailingText}`],
+          `${kind}: second Backspace removes the line boundary instead of recreating the item`);
+        assert.equal(await note.locator('p').count(), 1);
+        await page.keyboard.press('Backspace');
+        assert.equal(await note.textContent(), `Firs${trailingText}`, 'next Backspace deletes text at the join');
+        await saved(); await page.reload({ waitUntil: 'domcontentloaded' }); await open();
+        assert.deepEqual(await note.locator('li').allTextContents(), [`Firs${trailingText}`], 'deleted line stays deleted after reload');
+      }
+      console.log(`PASS ${kind}: repeated Backspace removes empty/nonempty list lines without a bullet/text loop`);
       // Exercise insertion routes that have no clipboard event, plus HTML with
       // hard breaks as mobile notes apps may provide. These are browser tests,
       // not a claim to reproduce the physical Android long-press menu.
