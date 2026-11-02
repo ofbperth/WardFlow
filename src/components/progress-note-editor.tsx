@@ -7,12 +7,13 @@ import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import Heading from "@tiptap/extension-heading";
 import HardBreak from "@tiptap/extension-hard-break";
-import { Extension, PasteRule, wrappingInputRule, type Editor } from "@tiptap/core";
-import { BulletList, ListItem } from "@tiptap/extension-list";
+import { Extension, type Editor } from "@tiptap/core";
+import { ListItem } from "@tiptap/extension-list";
 import { TextSelection } from "@tiptap/pm/state";
 import { List, IndentDecrease, IndentIncrease } from "lucide-react";
 import { UndoRedo } from "@tiptap/extensions";
 import { parseProgressNote, serializeProgressNote, type NoteBlock } from "@/lib/progress-format";
+import { AutomaticBulletList } from "@/lib/automatic-bullet-list";
 import { ProgressNoteContent } from "@/components/progress-note-content";
 
 function nodeFor(block: NoteBlock): JSONContent {
@@ -94,22 +95,6 @@ const Indent = Extension.create({
       parseHTML: element => Math.min(6, Math.max(0, Number(element.getAttribute("data-indent")) || 0)),
       renderHTML: attributes => attributes.indent ? { "data-indent": attributes.indent, style: `margin-inline-start: ${attributes.indent * 1.25}rem` } : {},
     } } }];
-  },
-});
-const AutomaticBulletList = BulletList.extend({
-  addInputRules() {
-    return [wrappingInputRule({ find: /^[•-][ \t\u00a0]$/, type: this.type })];
-  },
-  addPasteRules() {
-    const rule = wrappingInputRule({ find: /^[•-][ \t\u00a0]+/g, type: this.type });
-    return [new PasteRule({
-      find: /^[•-][ \t\u00a0]+/g,
-      handler: props => {
-        // A match at the start of the pasted fragment may still be mid-paragraph.
-        if (props.range.from !== props.state.doc.resolve(props.range.from).start()) return null;
-        return rule.handler(props);
-      },
-    })];
   },
 });
 function setTextBlock(editor: Editor, heading: boolean) {

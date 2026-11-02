@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:resident-ward": "tsc -p tsconfig.test.json && node --test .test-build/tests/resident-ward-assignment.test.js",
     "test:summary-note": "node --test tests/summary-note.test.mjs",
+    "test:automatic-bullets": "node --test tests/automatic-bullets.test.cjs",
     "verify": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {

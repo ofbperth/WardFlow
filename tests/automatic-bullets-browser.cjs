@@ -51,6 +51,45 @@ const wait = async fn => {
         });
       };
       await open();
+      // Exercise insertion routes that have no clipboard event, plus HTML with
+      // hard breaks as mobile notes apps may provide. These are browser tests,
+      // not a claim to reproduce the physical Android long-press menu.
+      const bulkLines = ['24/10/69 มีไข้ BT 38.0 C', 'due to organism pending identification', 'on treatment (30/9/69 - 20/10/69) ** follow up'];
+      for (const route of ['insertText', 'insertContent', 'dom', 'htmlPaste']) {
+        await reset();
+        await wait(async () => {
+          const status = await panel.getByRole('status', { includeHidden: true }).textContent();
+          return status === 'บันทึกแล้ว' || (status === 'พร้อมพิมพ์' && await note.textContent() === '');
+        });
+        const text = bulkLines.map((line, i) => `${i ? '  ' : ''}• ${line}`).join('\n');
+        if (route === 'insertText') await page.keyboard.insertText(text);
+        else if (route === 'insertContent') await note.evaluate((el, text) => {
+          el.editor.commands.insertContent({ type: 'paragraph', content: [{ type: 'text', text }] });
+        }, text);
+        else if (route === 'dom') await note.evaluate((el, text) => {
+          const p = el.querySelector('p');
+          p.textContent = text;
+          const selection = window.getSelection();
+          selection.collapse(p.firstChild, text.length);
+          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+        }, text);
+        else await note.evaluate((el, text) => {
+          const data = new DataTransfer();
+          data.setData('text/plain', text);
+          data.setData('text/html', `<div>${text.replaceAll('\n', '<br>')}</div>`);
+          el.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data }));
+        }, text);
+        await wait(async () => await note.locator('li').count() === 3);
+        assert.deepEqual(await note.locator('li').allTextContents(), bulkLines, `${kind}: ${route}`);
+        assert.equal(await note.locator(':scope > ul').count(), 1);
+        await page.keyboard.press('Control+z');
+        await wait(async () => await note.textContent() === '');
+        await page.keyboard.press('Control+Shift+z');
+        await wait(async () => await note.locator('li').count() === 3);
+        await saved(); await page.reload(); await open();
+        assert.deepEqual(await note.locator('li').allTextContents(), bulkLines);
+      }
+      console.log(`PASS ${kind}: bulk insertText/insertContent/DOM mutation/HTML paste, exact text, undo/redo, autosave/reload`);
       for (let iteration = 0; iteration < 12; iteration++) {
         await reset();
         await page.keyboard.type('- Parent', { delay: 0 });
