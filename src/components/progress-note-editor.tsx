@@ -7,7 +7,7 @@ import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import Heading from "@tiptap/extension-heading";
 import HardBreak from "@tiptap/extension-hard-break";
-import { Extension, type Editor } from "@tiptap/core";
+import { Extension, PasteRule, wrappingInputRule, type Editor } from "@tiptap/core";
 import { BulletList, ListItem } from "@tiptap/extension-list";
 import { List, IndentDecrease, IndentIncrease } from "lucide-react";
 import { UndoRedo } from "@tiptap/extensions";
@@ -74,6 +74,22 @@ const IndentedListItem = ListItem.extend({
     return { ...this.parent?.(), Tab: () => changeIndent(this.editor, 1), "Shift-Tab": () => changeIndent(this.editor, -1) };
   },
 });
+const AutomaticBulletList = BulletList.extend({
+  addInputRules() {
+    return [wrappingInputRule({ find: /^•[ \t\u00a0]$/, type: this.type })];
+  },
+  addPasteRules() {
+    const rule = wrappingInputRule({ find: /^•[ \t\u00a0]+/g, type: this.type });
+    return [new PasteRule({
+      find: /^•[ \t\u00a0]+/g,
+      handler: props => {
+        // A match at the start of the pasted fragment may still be mid-paragraph.
+        if (props.range.from !== props.state.doc.resolve(props.range.from).start()) return null;
+        return rule.handler(props);
+      },
+    })];
+  },
+});
 function setTextBlock(editor: Editor, heading: boolean) {
   // Lift only the selected list item; keep neighboring items and their nesting intact.
   while (editor.isActive("listItem")) {
@@ -82,7 +98,7 @@ function setTextBlock(editor: Editor, heading: boolean) {
   if (heading) editor.chain().focus().setHeading({ level: 3 }).run();
   else editor.chain().focus().setParagraph().run();
 }
-const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, BulletList, IndentedListItem, Indent];
+const extensions = [Document, Paragraph, Text, Heading.configure({ levels: [3] }), HardBreak, UndoRedo, AutomaticBulletList, IndentedListItem, Indent];
 
 export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBlur, onCompositionStart, onCompositionEnd, autoSave = true, ariaLabel = "Progress note", ariaDescribedBy }: {
   autoSave?: boolean; id?: string; value: string; onChange: (value: string) => void; readOnly?: boolean;
@@ -90,7 +106,7 @@ export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBl
   ariaLabel?: string; ariaDescribedBy?: string;
 }) {
   const editor = useEditor({
-    extensions, enableInputRules: false, immediatelyRender: false, content: documentFor(value), editable: !readOnly,
+    extensions, enableInputRules: ["bulletList"], immediatelyRender: false, content: documentFor(value), editable: !readOnly,
     editorProps: { attributes: {
       id: id ?? "", role: "textbox", "aria-label": ariaLabel, "aria-multiline": "true",
       ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
