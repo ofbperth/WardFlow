@@ -9,12 +9,25 @@ import { cn } from "@/lib/utils";
 
 const InlineEditorCloseContext = createContext<(() => void) | null>(null);
 
-export function TaskCreateForm({ children }: { children: React.ReactNode }) {
+type ClinicalSaveResource = "problems" | "ward-work";
+
+export async function submitClinicalForm(resource: ClinicalSaveResource, data: FormData) {
+  const response = await fetch(`/api/${resource}`, { method: "POST", body: data });
+  if (!response.ok || (await response.json()).ok !== true) {
+    throw new Error("Save not confirmed");
+  }
+}
+
+export function ClinicalSaveForm({ resource, children }: {
+  resource: ClinicalSaveResource;
+  children: React.ReactNode;
+}) {
   const close = useContext(InlineEditorCloseContext);
   const router = useRouter();
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const createsWardWork = resource === "ward-work";
 
   return <form className="space-y-3" onSubmit={async (event) => {
     event.preventDefault();
@@ -25,14 +38,14 @@ export function TaskCreateForm({ children }: { children: React.ReactNode }) {
     setPending(true);
     setError("");
     try {
-      const response = await fetch("/api/ward-work", { method: "POST", body: data });
-      const result = await response.json();
-      if (!response.ok || result.ok !== true) throw new Error("Creation not confirmed");
+      await submitClinicalForm(resource, data);
       form.reset();
       close?.();
       router.refresh();
     } catch {
-      setError("ยังยืนยันการสร้างไม่ได้ ข้อมูลในฟอร์มยังอยู่ กรุณาตรวจรายการ Ward work ก่อนลองใหม่เพื่อป้องกันงานซ้ำ");
+      setError(createsWardWork
+        ? "ยังยืนยันการสร้างไม่ได้ ข้อมูลในฟอร์มยังอยู่ กรุณาตรวจรายการ Ward work ก่อนลองใหม่เพื่อป้องกันงานซ้ำ"
+        : "ยังยืนยันการบันทึกไม่ได้ ข้อมูลในฟอร์มยังอยู่ กรุณาตรวจรายการ Problems ล่าสุดก่อนลองใหม่");
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -44,7 +57,7 @@ export function TaskCreateForm({ children }: { children: React.ReactNode }) {
       <div className="flex justify-end">
         <button type="submit" disabled={pending} aria-busy={pending}
           className="button-accent inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-70">
-          {pending ? <><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />กำลังบันทึก...</> : "Create ward work"}
+          {pending ? <><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />กำลังบันทึก...</> : createsWardWork ? "Create ward work" : "Save problem"}
         </button>
       </div>
     </fieldset>

@@ -7,7 +7,6 @@ import { getRequestOrigin, hasLiveSupabase, isDemoModeEnabled } from "@/lib/env"
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   bulkCreateTasks,
-  autosaveProblemNote,
   autosaveUnderlyingDisease,
   deleteUser,
   deleteWard,
@@ -29,7 +28,6 @@ import {
   saveWard,
   updateTaskStatus,
 } from "@/lib/wardflow";
-import type { ProgressSaveInput, ProgressSaveResult } from "@/lib/progress-autosave";
 import type { UnderlyingSaveInput, UnderlyingSaveResult } from "@/lib/underlying-draft";
 
 export async function autosaveUnderlyingDiseaseAction(input: UnderlyingSaveInput): Promise<UnderlyingSaveResult> {
@@ -39,17 +37,6 @@ export async function autosaveUnderlyingDiseaseAction(input: UnderlyingSaveInput
     return await autosaveUnderlyingDisease(input, session);
   } catch {
     return { ok: false, message: "ยังบันทึก U/D ไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติ" };
-  }
-}
-
-export async function autosaveProblemNoteAction(input: ProgressSaveInput): Promise<ProgressSaveResult> {
-  try {
-    const session = await getCurrentSessionContext();
-    if (!session) return { ok: false, retryable: false, message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่ ข้อความ draft ยังอยู่ในแท็บนี้" };
-    if (session.profile.role === "student") return { ok: false, retryable: false, message: "Student อ่าน Progress note ได้อย่างเดียว" };
-    return await autosaveProblemNote(input, session);
-  } catch {
-    return { ok: false, message: "ยังบันทึกไม่สำเร็จ ข้อความยังอยู่ในช่องนี้ ระบบจะลองใหม่อัตโนมัติ" };
   }
 }
 

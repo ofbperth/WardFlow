@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { saveTaskAction } from "@/app/actions";
+import { submitClinicalForm } from "@/components/form-feedback";
 import type { UserProfile } from "@/lib/types";
 
 export function WardWorkShortcut({ patientId, patientName, bed, wardName, profiles, defaultOwnerId }: {
@@ -11,6 +11,7 @@ export function WardWorkShortcut({ patientId, patientName, bed, wardName, profil
   profiles: UserProfile[]; defaultOwnerId: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -29,12 +30,22 @@ export function WardWorkShortcut({ patientId, patientName, bed, wardName, profil
       </div>
       <form onSubmit={async (event) => {
         event.preventDefault();
+        if (inFlight.current) return;
         const form = event.currentTarget;
         const data = new FormData(form);
+        inFlight.current = true;
         setPending(true); setError("");
-        try { await saveTaskAction(data); form.reset(); dialog.current?.close(); router.refresh(); }
-        catch { setError("สร้าง Ward work ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และลองใหม่ ข้อมูลในฟอร์มยังอยู่"); }
-        finally { setPending(false); }
+        try {
+          await submitClinicalForm("ward-work", data);
+          form.reset();
+          dialog.current?.close();
+          router.refresh();
+        } catch {
+          setError("ยังยืนยันการสร้างไม่ได้ ข้อมูลในฟอร์มยังอยู่ กรุณาตรวจรายการ Ward work ก่อนลองใหม่เพื่อป้องกันงานซ้ำ");
+        } finally {
+          inFlight.current = false;
+          setPending(false);
+        }
       }} className="space-y-3">
         <input type="hidden" name="patientId" value={patientId} />
         <input type="hidden" name="status" value="not_started" />
@@ -53,7 +64,7 @@ export function WardWorkShortcut({ patientId, patientName, bed, wardName, profil
           </select></label>
           <label className="block text-sm font-medium">Note<textarea name="note" rows={3} className={inputClass} /></label>
           {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-          <div className="flex justify-end"><button type="submit" className="button-accent min-h-11 rounded-full px-5 py-2 text-sm font-semibold">{pending ? "กำลังสร้าง…" : "Create ward work"}</button></div>
+          <div className="flex justify-end"><button type="submit" aria-busy={pending} className="button-accent min-h-11 rounded-full px-5 py-2 text-sm font-semibold">{pending ? "กำลังสร้าง…" : "Create ward work"}</button></div>
         </fieldset>
       </form>
     </dialog>

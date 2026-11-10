@@ -3800,7 +3800,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
     requireWardWriteAccess(session, patient.wardId);
 
     if (parsed.id) {
-      const existing = store.problemMasters.find((entry) => entry.id === parsed.id);
+      const existing = store.problemMasters.find((entry) => entry.id === parsed.id && entry.patientId === parsed.patientId);
       if (!existing) throw new Error("Problem not found");
       assertNoConflict(parsed.updatedAt, existing.updatedAt, "problem");
 
@@ -3876,7 +3876,7 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
 
   if (parsed.id) {
     const existing = await fetchLiveProblem(supabase, parsed.id);
-    if (!existing) throw new Error("Problem not found");
+    if (!existing || existing.patient_id !== parsed.patientId) throw new Error("Problem not found");
     assertNoConflict(parsed.updatedAt, existing.updated_at, "problem");
 
     const payload = {
@@ -3889,10 +3889,15 @@ export async function saveProblemMaster(formData: FormData, session: SessionCont
       resolved_at: resolvedAt,
       updated_by_id: session.profile.id,
     };
-    ensureNoError(
-      await supabase.from("problems").update(payload).eq("id", parsed.id),
-      "Failed to update problem",
-    );
+    const updated = await supabase
+      .from("problems")
+      .update(payload)
+      .eq("id", parsed.id)
+      .eq("updated_at", existing.updated_at)
+      .select("id")
+      .maybeSingle();
+    ensureNoError(updated, "Failed to update problem");
+    if (!updated.data) throw new Error("Conflict error: problem was updated by another session. Refresh and retry.");
 
     await insertActivityLog(supabase, {
       patient_id: parsed.patientId,

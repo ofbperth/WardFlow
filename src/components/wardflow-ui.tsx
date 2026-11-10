@@ -34,6 +34,7 @@ import {
 } from "@/lib/utils";
 import {
   AdminEditor,
+  ClinicalSaveForm,
   ConfirmingSubmitButton,
   CopyTextButton,
   DangerZone,
@@ -317,7 +318,6 @@ export function ProblemCards({
   tasks,
   patientId,
   reorderAction,
-  saveProblemMasterAction,
   saveTaskAction,
   updateStatusAction,
   profiles,
@@ -331,7 +331,6 @@ export function ProblemCards({
   tasks: TaskWithUpdates[];
   patientId: string;
   reorderAction: (formData: FormData) => Promise<void>;
-  saveProblemMasterAction: (formData: FormData) => Promise<void>;
   saveTaskAction: (formData: FormData) => Promise<void>;
   updateStatusAction: (formData: FormData) => Promise<void>;
   profiles: UserProfile[];
@@ -398,7 +397,7 @@ export function ProblemCards({
               {canEdit ? (
                 <div className="flex items-center justify-end gap-1">
                   <ProblemEditor iconOnly compactTrigger buttonTitle="Edit problem">
-                    <form action={saveProblemMasterAction} className="space-y-3">
+                    <ClinicalSaveForm resource="problems">
                       <input type="hidden" name="id" value={problem.id} />
                       <input type="hidden" name="patientId" value={patientId} />
                       <input type="hidden" name="updatedAt" value={problem.updatedAt} />
@@ -432,8 +431,7 @@ export function ProblemCards({
                           />
                         </Field>
                       </div>
-                      <SubmitButton pendingLabel="Updating problem...">Save problem</SubmitButton>
-                    </form>
+                    </ClinicalSaveForm>
                   </ProblemEditor>
 
                   <TaskCreator
@@ -447,7 +445,7 @@ export function ProblemCards({
                     contentClassName="space-y-3"
                     compactTrigger
                   >
-                    <form action={saveTaskAction} className="space-y-3">
+                    <ClinicalSaveForm resource="ward-work">
                       <input type="hidden" name="patientId" value={patientId} />
                       <input type="hidden" name="problemId" value={problem.id} />
                       <Field label="Ward work title">
@@ -483,8 +481,7 @@ export function ProblemCards({
                       <Field label="Note">
                         <TextArea name="note" placeholder="Short ward work note" />
                       </Field>
-                      <SubmitButton>Create ward work</SubmitButton>
-                    </form>
+                    </ClinicalSaveForm>
                   </TaskCreator>
                 </div>
               ) : null}

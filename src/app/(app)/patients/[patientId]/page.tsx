@@ -7,19 +7,18 @@ import {
   reorderProblemAction,
   saveHandoverAction,
   savePatientDetailAction,
-  saveProblemMasterAction,
   saveTaskAction,
   saveTaskUpdateAction,
   updateTaskStatusAction,
   transferPatientAction,
 } from "@/app/actions";
 import {
+  ClinicalSaveForm,
   DischargeSummaryEditor,
   PatientEditor,
   PatientTransferEditor,
   ProblemCreator,
   TaskCreator,
-  TaskCreateForm,
 } from "@/components/form-feedback";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { PatientUnderlyingNote } from "@/components/patient-underlying-note";
@@ -177,7 +176,7 @@ export default async function PatientPage({
                 headerClassName="items-start"
                 contentClassName="space-y-3"
               >
-                <form action={saveProblemMasterAction} className="space-y-3">
+                <ClinicalSaveForm resource="problems">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
                   <input type="hidden" name="priority" value="ACTIVE_STABLE" />
                   <input type="hidden" name="diagnosisStatus" value="CONFIRMED" />
@@ -190,10 +189,7 @@ export default async function PatientPage({
                       placeholder={"08:00 first note\nKey update for this problem\nPlan or concern if needed"}
                     />
                   </Field>
-                  <div className="flex justify-end">
-                    <SubmitButton>Save problem</SubmitButton>
-                  </div>
-                </form>
+                </ClinicalSaveForm>
               </ProblemCreator>
             ) : null
           }
@@ -203,7 +199,6 @@ export default async function PatientPage({
             tasks={bundle.tasks}
             patientId={bundle.patient.id}
             reorderAction={reorderProblemAction}
-            saveProblemMasterAction={saveProblemMasterAction}
             saveTaskAction={saveTaskAction}
             updateStatusAction={updateTaskStatusAction}
             profiles={taskProfiles}
@@ -399,7 +394,7 @@ export default async function PatientPage({
                 headerClassName="items-start"
                 contentClassName="space-y-3"
               >
-                <TaskCreateForm>
+                <ClinicalSaveForm resource="ward-work">
                   <input type="hidden" name="patientId" value={bundle.patient.id} />
                   <Field label="Ward work title">
                     <TextInput
@@ -435,7 +430,7 @@ export default async function PatientPage({
                   <Field label="Note">
                     <TextArea name="note" placeholder="Escalate if resistant organism" />
                   </Field>
-                </TaskCreateForm>
+                </ClinicalSaveForm>
               </TaskCreator>
             ) : null
           }

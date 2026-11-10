@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { ProgressNoteEditor } from "@/components/progress-note-editor";
-import { autosaveProblemNoteAction } from "@/app/actions";
-import type { ProgressSaveInput, ProgressSnapshot } from "@/lib/progress-autosave";
+import type { ProgressSaveInput, ProgressSaveResult, ProgressSnapshot } from "@/lib/progress-autosave";
 import { acknowledgeProgressDraft, progressDraftKey, readProgressDraft, removeProgressDraft, writeProgressDraft } from "@/lib/progress-draft";
 
 const subscribeHydration = () => () => {};
@@ -13,6 +13,7 @@ const serverReady = () => false;
 export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, readOnly = false }: {
   ownerId: string; patientId: string; problemId: string; initial: ProgressSnapshot; readOnly?: boolean;
 }) {
+  const router = useRouter();
   const draftKey = progressDraftKey(ownerId, patientId, problemId);
   const hydrated = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
   const [value, setValue] = useState(initial.note);
@@ -75,7 +76,13 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
       writeProgressDraft(draftKey, { note: current.current, base: saved.current, request: request.current });
       const sentRequest = request.current;
       try {
-        const result = await autosaveProblemNoteAction(sentRequest);
+        const response = await fetch("/api/problems/progress-note", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sentRequest),
+        });
+        if (!response.ok) throw new Error("Progress note save not confirmed");
+        const result: ProgressSaveResult = await response.json();
         if (result.ok) acknowledgeProgressDraft(draftKey, sentRequest.requestId, result.snapshot);
         if (disposed) return;
         if (!result.ok) {
@@ -86,6 +93,7 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
           saved.current = result.snapshot;
           request.current = null;
           setStatus(current.current === saved.current.note ? "บันทึกแล้ว" : "รอบันทึก…");
+          router.refresh();
         }
       } catch {
         if (disposed) return;
@@ -124,7 +132,7 @@ export function ProgressNoteAutosave({ ownerId, patientId, problemId, initial, r
       document.removeEventListener("click", beforeNavigate, true);
       window.removeEventListener("online", online);
     };
-  }, [patientId, problemId, readOnly, draftKey, restored]);
+  }, [patientId, problemId, readOnly, draftKey, restored, router]);
 
   return (
     <div className="rounded-[14px] border clinical-divider bg-[color:var(--color-paper-3)] p-3">
