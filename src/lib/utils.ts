@@ -3,6 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import type {
   PatientLifecycle,
+  ProblemMaster,
   ProblemDiagnosisStatus,
   PatientStatus,
   Precaution,
@@ -90,6 +91,10 @@ export function priorityTone(priority: TaskPriority) {
     default:
       return "bg-emerald-100 text-emerald-700";
   }
+}
+
+export function problemIsResolved(problem: Pick<ProblemMaster, "priority" | "resolvedAt">) {
+  return problem.priority === "RESOLVED_CHRONIC" || Boolean(problem.resolvedAt);
 }
 
 export function problemPriorityTone(priority: ProblemPriority) {

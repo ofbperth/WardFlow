@@ -187,11 +187,11 @@ export function buildGoogleDocsRequests(payload: SummaryNotePayload): GoogleDocs
 
   if (payload.identification) insertParagraph(payload.identification);
   if (payload.underlyingDisease) insertParagraph(`U/D ${payload.underlyingDisease}`);
-  if (payload.hospitalCourse.length) {
+  for (const section of payload.problemSections) {
     insertParagraph("");
-    insertParagraph("Hospital Course:", "HEADING_2");
+    insertParagraph(section.title, "HEADING_2");
     insertParagraph("");
-    for (const [index, problem] of payload.hospitalCourse.entries()) {
+    for (const [index, problem] of section.problems.entries()) {
       if (index) insertParagraph("");
       insertParagraph(`#${problem.problemName}`, "HEADING_3");
       if (problem.latestNote) insertParagraph(problem.latestNote);

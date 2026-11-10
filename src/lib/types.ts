@@ -360,7 +360,7 @@ export type SummaryNotePayload = {
   dateLabel: string;
   identification: string;
   underlyingDisease: string;
-  hospitalCourse: SummaryNoteProblemEntry[];
+  problemSections: { title: string; problems: SummaryNoteProblemEntry[] }[];
   plainText: string;
 };
 

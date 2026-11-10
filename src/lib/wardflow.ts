@@ -13,6 +13,7 @@ import {
   compareProblemPriority,
   labelForTaskPriority,
   labelForTaskStatus,
+  problemIsResolved,
 } from "@/lib/utils";
 import {
   demoActivitySeed,
@@ -954,10 +955,6 @@ function defaultProblemPriority(status: ProblemStatus): ProblemPriority {
     default:
       return "RESOLVED_CHRONIC";
   }
-}
-
-function problemIsResolved(problem: ProblemMaster | Problem) {
-  return problem.priority === "RESOLVED_CHRONIC" || Boolean(problem.resolvedAt);
 }
 
 function sortProblemProgressEntries(left: ProblemProgressEntry, right: ProblemProgressEntry) {

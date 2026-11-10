@@ -44,7 +44,7 @@ test("nested bullets retain indentation in summary payload and both exports", ()
       ] }] },
     ]) } }];
   const payload = buildSummaryNotePayload(data);
-  assert.equal(payload.hospitalCourse[0].latestNote, "  Indented\n• Parent\n  • Child");
+  assert.equal(payload.problemSections[0].problems[0].latestNote, "  Indented\n• Parent\n  • Child");
   for (const text of [payload.plainText, docText(payload)]) {
     assert(text.includes("  • Child"));
     assert(text.includes("  Indented"));
@@ -72,7 +72,7 @@ test("empty, whitespace and placeholder fields omit headings from both exports",
     const payload = buildSummaryNotePayload(data);
     for (const text of [payload.plainText, docText(payload)]) {
       for (const heading of ["HN:", "U/D", "Brief Background", "Reason for Admission", "Hospital Course",
-        "Active Problem List", "Consultations", "Pending Issues", "Safety Alerts", "Ward work", "Admission date:"]) {
+        "Resolved/Chronic", "Active Problem List", "Consultations", "Pending Issues", "Safety Alerts", "Ward work", "Admission date:"]) {
         assert(!text.includes(heading), `${JSON.stringify(empty)} contains ${heading}`);
       }
       assert(!text.includes("No latest note"));
@@ -96,14 +96,20 @@ test("compact template excludes unrelated metadata, duplicate summaries and task
   data.tasks = [{ title: "OMIT task", status: "pending", type: "consult" }];
   data.activity = [{ action: "patient.created", createdAt: "2026-10-20T10:00:00Z" }];
   data.problems = [
+    { id: "p2", problemName: "Chronic problem", priority: "RESOLVED_CHRONIC", resolvedAt: null,
+      latestEntry: { note: "Chronic course" }, linkedTasks: [] },
     { id: "p1", problemName: "Heart failure", latestEntry: { note: "Presented with edema\n• Diuresis" },
       currentStatusSummary: "OMIT summary", linkedTasks: data.tasks,
       historyEntries: [{ note: "OMIT older note" }] },
-    { id: "p2", problemName: "Resolved problem", priority: "RESOLVED_CHRONIC", resolvedAt: "2026-10-28",
+    { id: "p3", problemName: "Resolved problem", priority: "ACTIVE_STABLE", resolvedAt: "2026-10-28",
       latestEntry: { note: "Resolved course" }, linkedTasks: [] },
   ];
   const payload = buildSummaryNotePayload(data);
-  const expected = "ทดสอบ อายุ 22 ปี 0123\nU/D #HT\n• Follow-up\n\nHospital Course:\n\n#Heart failure\nPresented with edema\n• Diuresis\n\n#Resolved problem\nResolved course";
+  const expected = [
+    "ทดสอบ อายุ 22 ปี 0123\nU/D #HT\n• Follow-up",
+    "Hospital Course:\n\n#Heart failure\nPresented with edema\n• Diuresis",
+    "Resolved/Chronic\n\n#Chronic problem\nChronic course\n\n#Resolved problem\nResolved course",
+  ].join("\n\n");
   assert.equal(payload.plainText, expected);
   assert.equal(docText(payload).trim(), expected);
   for (const text of [payload.plainText, docText(payload)]) {

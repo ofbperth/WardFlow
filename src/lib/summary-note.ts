@@ -1,5 +1,6 @@
 import { progressNoteText } from "@/lib/progress-format";
-import type { Patient, Problem, SummaryNotePayload } from "@/lib/types";
+import type { Patient, Problem, SummaryNotePayload, SummaryNoteProblemEntry } from "@/lib/types";
+import { problemIsResolved } from "@/lib/utils";
 
 function present(value: string | null | undefined): string {
   return value?.trim() && value.trim() !== "-" ? value : "";
@@ -18,21 +19,29 @@ export function buildSummaryNotePayload({ patient, problems }: {
     present(patient.hospitalNumber),
   ].filter(Boolean).join(" ");
   const underlyingDisease = present(progressNoteText(patient.underlyingDisease));
-  // Keep recorded order and resolved problems in the hospital course.
+  const hospitalCourse: SummaryNoteProblemEntry[] = [];
+  const resolvedChronic: SummaryNoteProblemEntry[] = [];
   // Cleared latest notes must never fall back to old notes or status summaries.
-  const hospitalCourse = problems.map(problem => ({
-    id: problem.id,
-    problemName: problem.problemName,
-    latestNote: present(progressNoteText(problem.latestEntry?.note)),
-  }));
+  for (const problem of problems) {
+    const entries = problemIsResolved(problem) ? resolvedChronic : hospitalCourse;
+    entries.push({
+      id: problem.id,
+      problemName: problem.problemName,
+      latestNote: present(progressNoteText(problem.latestEntry?.note)),
+    });
+  }
+  const problemSections = [
+    { title: "Hospital Course:", problems: hospitalCourse },
+    { title: "Resolved/Chronic", problems: resolvedChronic },
+  ].filter(section => section.problems.length > 0);
   const background = [identification, underlyingDisease ? `U/D ${underlyingDisease}` : ""]
     .filter(Boolean).join("\n");
-  const course = hospitalCourse.length ? [
-    "Hospital Course:",
-    ...hospitalCourse.map(problem => [
+  const sections = problemSections.map(section => [
+    section.title,
+    ...section.problems.map(problem => [
       `#${problem.problemName}`, problem.latestNote,
     ].filter(Boolean).join("\n")),
-  ].join("\n\n") : "";
+  ].join("\n\n"));
 
   return {
     patientId: patient.id,
@@ -41,7 +50,7 @@ export function buildSummaryNotePayload({ patient, problems }: {
     dateLabel,
     identification,
     underlyingDisease,
-    hospitalCourse,
-    plainText: [background, course].filter(Boolean).join("\n\n"),
+    problemSections,
+    plainText: [background, ...sections].filter(Boolean).join("\n\n"),
   };
 }

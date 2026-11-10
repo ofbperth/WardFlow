@@ -51,11 +51,11 @@ export default async function SummaryNotePage({ params, searchParams }: {
             <p className={styles.noteText}>U/D {payload.underlyingDisease}</p>
           ) : null}
         </section>
-        {payload.hospitalCourse.length ? (
-          <section className={styles.section}>
-            <h2>Hospital Course:</h2>
+        {payload.problemSections.map(section => (
+          <section key={section.title} className={styles.section}>
+            <h2>{section.title}</h2>
             <ul className={styles.problems}>
-              {payload.hospitalCourse.map(problem => (
+              {section.problems.map(problem => (
                 <li key={problem.id} className={styles.problem}>
                   <h3>#{problem.problemName}</h3>
                   {problem.latestNote ? <p className={styles.noteText}>{problem.latestNote}</p> : null}
@@ -63,7 +63,7 @@ export default async function SummaryNotePage({ params, searchParams }: {
               ))}
             </ul>
           </section>
-        ) : null}
+        ))}
       </article>
 
       <details className={styles.plainText}>
