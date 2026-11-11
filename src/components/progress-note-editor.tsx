@@ -10,6 +10,7 @@ import HardBreak from "@tiptap/extension-hard-break";
 import { Extension, type Editor } from "@tiptap/core";
 import { ListItem, ListKeymap } from "@tiptap/extension-list";
 import { TextSelection } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { List, IndentDecrease, IndentIncrease } from "lucide-react";
 import { UndoRedo } from "@tiptap/extensions";
 import { parseProgressNote, serializeProgressNote, type NoteBlock } from "@/lib/progress-format";
@@ -62,9 +63,11 @@ function changeIndent(editor: Editor, direction: -1 | 1, apply = true): boolean 
   return changed;
 }
 // Native caret moves can precede ProseMirror's selectionchange notification.
-// Read the current DOM selection before handling an editing shortcut.
-function syncTextSelection(editor: Editor) {
-  const { view, state } = editor;
+// Read the current DOM selection on the actual keydown event. ProseMirror also
+// replays Backspace while parsing native DOM deletions; syncing during that
+// replay would read the post-deletion caret against the pre-deletion document.
+function syncTextSelection(view: EditorView) {
+  const { state } = view;
   if (view.composing) return;
   const selection = view.dom.ownerDocument.getSelection();
   if (!selection?.anchorNode || !selection.focusNode ||
@@ -79,10 +82,9 @@ const Indent = Extension.create({
   priority: 110,
   addKeyboardShortcuts() {
     return {
-      Tab: () => { syncTextSelection(this.editor); return changeIndent(this.editor, 1); },
-      "Shift-Tab": () => { syncTextSelection(this.editor); return changeIndent(this.editor, -1); },
+      Tab: () => changeIndent(this.editor, 1),
+      "Shift-Tab": () => changeIndent(this.editor, -1),
       Backspace: () => {
-        syncTextSelection(this.editor);
         const { selection } = this.editor.state;
         if (!selection.empty || selection.$from.parentOffset !== 0) return false;
         return changeIndent(this.editor, -1);
@@ -117,7 +119,12 @@ export function ProgressNoteEditor({ id, value, onChange, readOnly = false, onBl
 }) {
   const editor = useEditor({
     extensions, enableInputRules: ["bulletList"], immediatelyRender: false, content: documentFor(value), editable: !readOnly,
-    editorProps: { attributes: {
+    editorProps: { handleDOMEvents: {
+      keydown: (view, event) => {
+        if (event.key === "Backspace" || event.key === "Tab") syncTextSelection(view);
+        return false;
+      },
+    }, attributes: {
       id: id ?? "", role: "textbox", "aria-label": ariaLabel, "aria-multiline": "true",
       ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
       class: "progress-note-input min-h-36 whitespace-pre-wrap break-words px-3 py-3 text-sm leading-7 outline-none [&_h3]:text-lg [&_h3]:font-bold [&_h3]:leading-8 [&_ul]:list-disc [&_ul]:pl-5 [&_ul_ul]:list-[circle]",

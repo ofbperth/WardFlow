@@ -22,7 +22,7 @@ const wait = async fn => {
     await page.goto(`${base}/wards`);
     await page.getByRole('button', { name: /^Show ward:/ }).first().click();
     await page.locator('article:visible a').first().click();
-    await page.waitForURL('**/patients/**');
+    await page.waitForURL('**/patients/**', { waitUntil: 'domcontentloaded' });
     const patientUrl = page.url();
     const paste = async text => {
       await page.evaluate(text => navigator.clipboard.writeText(text), text);
@@ -51,6 +51,52 @@ const wait = async fn => {
         });
       };
       await open();
+      for (const text of ['x', 'Test', 'ก', 'ไข้', 'กิ', 'กำ', '🙂']) {
+        await note.evaluate((el, text) => {
+          const paragraph = text => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+          el.editor.commands.setContent({ type: 'doc', content: [{ type: 'bulletList', content: [
+            { type: 'listItem', content: [paragraph('First')] },
+            { type: 'listItem', content: [paragraph(text)] },
+          ] }] });
+          el.editor.commands.setTextSelection(el.editor.state.doc.content.size - 3);
+          el.focus();
+        }, text);
+        await saved(); // Keep setup outside the deletion's undo history group.
+        let remaining = text;
+        while (remaining) {
+          await page.keyboard.press('Backspace');
+          const items = await note.locator('li').allTextContents();
+          assert.equal(items.length, 2, `${kind}: Backspace preserves both bullet lines (${text})`);
+          assert.equal(items[0], 'First', 'previous line is untouched');
+          assert(items[1].length < remaining.length, `${kind}: each Backspace deletes text (${text})`);
+          remaining = items[1];
+        }
+        assert.equal(await note.evaluate(el => el.editor.state.selection.$from.parentOffset), 0);
+        if (text === 'x') {
+          await page.keyboard.press('Control+z');
+          assert.deepEqual(await note.locator('li').allTextContents(), ['First', 'x']);
+          await page.keyboard.press('Control+Shift+z');
+          assert.deepEqual(await note.locator('li').allTextContents(), ['First', '']);
+        }
+        await saved(); await page.reload({ waitUntil: 'domcontentloaded' }); await open();
+        assert.deepEqual(await note.locator('li').allTextContents(), ['First', ''],
+          `${kind}: empty bullet persists after saving and reloading (${text})`);
+      }
+      // Mobile keyboards may mutate the DOM without a usable keydown event.
+      await note.evaluate(el => {
+        el.editor.commands.setTextSelection(el.editor.state.doc.content.size - 3);
+        el.editor.commands.insertContent('x');
+        el.focus();
+      });
+      await note.evaluate(el => {
+        const paragraph = el.querySelectorAll('li > p')[1];
+        paragraph.textContent = '';
+        window.getSelection().collapse(paragraph, 0);
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }));
+      });
+      await wait(async () => await note.evaluate(el => el.editor.state.selection.$from.parent.textContent === ''));
+      assert.deepEqual(await note.locator('li').allTextContents(), ['First', '']);
+      console.log(`PASS ${kind}: delete all English/Thai/emoji text, same-line caret, undo/redo, autosave/reload and DOM-only deletion`);
       for (const trailingText of ['', 'Second']) {
         await note.evaluate((el, text) => {
           const paragraph = text => ({ type: 'paragraph', content: text ? [{ type: 'text', text }] : [] });
