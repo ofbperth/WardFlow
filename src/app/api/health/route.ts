@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/server";
-import { clinicalConfigFromEnv } from "@/lib/server/clinical-crypto.mjs";
 import {
   getRequestOrigin,
   getSupabasePublicEnv,
@@ -13,7 +12,6 @@ const requiredTables = [
   "profiles",
   "patients",
   "problems",
-  "problem_progress_entries",
   "ward_tasks",
   "task_updates",
   "handover_notes",
@@ -105,14 +103,6 @@ export async function GET(request: Request) {
       },
       { status: 503 },
     );
-  }
-
-  try {
-    const encryption = clinicalConfigFromEnv();
-    if (encryption.allowLegacyReads) throw new Error("Migration in progress");
-  } catch {
-    return NextResponse.json({ ok: false, service: "wardflow", timestamp, mode: "partial",
-      reason: "Clinical encryption is not configured for strict reads" }, { status: 503 });
   }
 
   const admin = createAdminSupabaseClient();
