@@ -2,8 +2,10 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabasePublicEnv, getSupabaseServiceRoleKey } from "@/lib/env";
+import { createClinicalFetch } from "@/lib/server/clinical-fetch";
+import { clinicalConfigFromEnv, createClinicalCodec } from "@/lib/server/clinical-crypto.mjs";
 
-export async function createServerSupabaseClient() {
+export async function createServerSupabaseClient(options: { clinicalData?: boolean } = {}) {
   const config = getSupabasePublicEnv();
 
   if (!config) {
@@ -13,6 +15,9 @@ export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
   return createServerClient(config.url, config.publishableKey, {
+    ...(options.clinicalData ? {
+      global: { fetch: createClinicalFetch(config.url, createClinicalCodec(clinicalConfigFromEnv())) },
+    } : {}),
     cookies: {
       getAll() {
         return cookieStore.getAll();
