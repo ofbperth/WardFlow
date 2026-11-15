@@ -289,7 +289,7 @@ type ActivityInsert = {
 
 type LiveClient = NonNullable<Awaited<ReturnType<typeof createServerSupabaseClient>>>;
 
-const DEMO_STORE_PATH = path.join(process.cwd(), ".wardflow-demo", "store.json");
+const DEMO_STORE_PATH = process.env.WARDFLOW_DEMO_STORE_PATH || path.join(process.cwd(), ".wardflow-demo", "store.json");
 
 function buildSessionCacheSeed(
   mode: SessionContext["mode"],
@@ -1420,7 +1420,7 @@ function attachTaskUpdates(input: DemoStore, tasks: WardTask[]): TaskWithUpdates
 }
 
 async function getLiveClient() {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient({ clinicalData: true });
   if (!supabase) {
     throw new Error("Supabase client unavailable");
   }
@@ -4033,6 +4033,18 @@ export async function autosaveProblemNote(input: ProgressSaveInput, session: Ses
     p_expected_id: parsed.expectedId, p_expected_updated_at: parsed.expectedUpdatedAt, p_note: parsed.note,
   });
   if (result.error) {
+    // A new random IV is generated on a retried request. SQL sees different
+    // ciphertext, so verify the already-committed request after an Invalid retry.
+    // No extra read is added to the successful autosave path.
+    if (result.error.code === "P0001" && result.error.message === "Invalid retry") {
+      const retry = await supabase.from("problem_progress_entries")
+        .select("id, problem_id, author_id, note, updated_at").eq("id", parsed.requestId).maybeSingle();
+      if (!retry.error && retry.data?.problem_id === parsed.problemId &&
+          retry.data.author_id === session.profile.id && retry.data.note === parsed.note) {
+        revalidateWardflowPaths(parsed.patientId);
+        return { ok: true, snapshot: { id: retry.data.id, updatedAt: retry.data.updated_at, note: retry.data.note } };
+      }
+    }
     const retryable = !["42501", "P0001", "23503", "22P02"].includes(result.error.code);
     return { ok: false, retryable, message: retryable
       ? "ยังบันทึกไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติ"
