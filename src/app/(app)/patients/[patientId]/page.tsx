@@ -109,6 +109,9 @@ export default async function PatientPage({
           <>
             <span className="block break-words text-lg font-semibold leading-7 text-foreground tabular-nums">
               HN {bundle.patient.hospitalNumber?.trim() || "ยังไม่ระบุ"}
+              <span className="ml-2 inline-block whitespace-nowrap">
+                · อายุ {bundle.patient.age != null ? `${bundle.patient.age} ปี` : "ยังไม่ระบุ"}
+              </span>
             </span>
             <span className="mt-1 block">
               {bundle.patient.diagnosis} | Updated {formatDateTime(bundle.patient.lastUpdate)}
