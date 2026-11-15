@@ -40,7 +40,6 @@ import {
 } from "@/components/wardflow-ui";
 import { requireAppSession } from "@/lib/auth";
 import { canEditProgressNote } from "@/lib/progress-autosave";
-import { displayHospitalNumber } from "@/lib/hospital-number";
 import { formatDateTime, normalizePatientSexOption, labelForPrecaution, labelForPatientStatus } from "@/lib/utils";
 import {
   getAssignableProfilesForWard,
@@ -111,7 +110,7 @@ export default async function PatientPage({
           <>
             <span className="flex flex-wrap items-center gap-x-2 text-lg font-semibold leading-7 text-foreground tabular-nums">
               <span className="inline-flex max-w-full items-center">
-                <span className="min-w-0 break-words">HN {displayHospitalNumber(bundle.patient.hospitalNumber) || "ยังไม่ระบุ"}</span>
+                <span className="min-w-0 break-words">HN {bundle.patient.hospitalNumber?.trim() || "ยังไม่ระบุ"}</span>
                 <CopyTextButton
                   text={bundle.patient.hospitalNumber?.trim() || ""}
                   iconOnly

@@ -1,7 +1,6 @@
 import { TaskStatusFields } from "@/components/task-status-fields";
 import { TaskStatusButton } from "@/components/task-status-button";
 import { progressNoteText } from "@/lib/progress-format";
-import { displayHospitalNumber } from "@/lib/hospital-number";
 import { ProgressNoteAutosave } from "@/components/progress-note-autosave";
 import { ProgressNoteContent } from "@/components/progress-note-content";
 import Link from "next/link";
@@ -258,7 +257,7 @@ export function PatientCensus({
                       </Link>
                       <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted">
                         <span className="inline-flex max-w-full items-center">
-                          <span className="min-w-0 break-words">HN {displayHospitalNumber(patient.hospitalNumber) || "-"}</span>
+                          <span className="min-w-0 break-words">HN {patient.hospitalNumber?.trim() || "-"}</span>
                           <CopyTextButton text={patient.hospitalNumber?.trim() || ""} iconOnly label="Copy HN" className="shrink-0" />
                         </span>
                         <span className="break-words">| AN {patient.admissionNumber ?? "-"}</span>
@@ -306,7 +305,7 @@ export function SummaryGrid({ patient, ward }: { patient: Patient; ward: string 
   const facts = [
     ["Ward", ward ?? "—"], ["Bed", patient.bed],
     ["Age / Sex", `${patient.age ?? "—"} / ${formatPatientSex(patient.sex)}`],
-    ["HN", displayHospitalNumber(patient.hospitalNumber) || "—"], ["AN", patient.admissionNumber ?? "—"],
+    ["HN", patient.hospitalNumber ?? "—"], ["AN", patient.admissionNumber ?? "—"],
     ["Diagnosis", patient.diagnosis], ["Underlying disease", patient.underlyingDisease ?? "—"],
     ["Status", labelForPatientStatus(patient.status)],
     ["Precaution", labelForPrecaution(patient.precaution)],

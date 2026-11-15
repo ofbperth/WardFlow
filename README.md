@@ -53,11 +53,6 @@ npm run dev
 
 If Supabase env is missing in local development, WardFlow falls back to demo mode so the UI can still be reviewed end-to-end.
 
-Live clinical access also requires server-only encryption keys. Follow
-[Clinical encryption and rollout](docs/clinical-encryption.md) before deploying this change;
-the application blocks clinical access when keys are missing. HN rotation is display-only:
-admit/edit forms, Copy HN and Summary Note keep the original HN.
-
 ## Database
 
 - Migrations: `supabase/migrations/*.sql`
