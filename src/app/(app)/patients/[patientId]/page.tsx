@@ -14,6 +14,7 @@ import {
 } from "@/app/actions";
 import {
   ClinicalSaveForm,
+  CopyTextButton,
   DischargeSummaryEditor,
   PatientEditor,
   PatientTransferEditor,
@@ -107,9 +108,17 @@ export default async function PatientPage({
         title={`${bundle.patient.displayName} · Bed ${bundle.patient.bed}`}
         subtitle={
           <>
-            <span className="block break-words text-lg font-semibold leading-7 text-foreground tabular-nums">
-              HN {bundle.patient.hospitalNumber?.trim() || "ยังไม่ระบุ"}
-              <span className="ml-2 inline-block whitespace-nowrap">
+            <span className="flex flex-wrap items-center gap-x-2 text-lg font-semibold leading-7 text-foreground tabular-nums">
+              <span className="inline-flex max-w-full items-center">
+                <span className="min-w-0 break-words">HN {bundle.patient.hospitalNumber?.trim() || "ยังไม่ระบุ"}</span>
+                <CopyTextButton
+                  text={bundle.patient.hospitalNumber?.trim() || ""}
+                  iconOnly
+                  label="Copy HN"
+                  className="shrink-0"
+                />
+              </span>
+              <span className="inline-block whitespace-nowrap">
                 · อายุ {bundle.patient.age != null ? `${bundle.patient.age} ปี` : "ยังไม่ระบุ"}
               </span>
             </span>

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowRightLeft, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
+import { ArrowRightLeft, Check, Copy, LoaderCircle, Pencil, Plus, ShieldAlert, TriangleAlert } from "lucide-react";
 import { EditorDialog } from "@/components/editor-dialog";
 import { cn } from "@/lib/utils";
 
@@ -723,9 +723,13 @@ export function DangerZone({
 export function CopyTextButton({
   text,
   className,
+  iconOnly = false,
+  label = "Copy text",
 }: {
   text: string;
   className?: string;
+  iconOnly?: boolean;
+  label?: string;
 }) {
   const [status, setStatus] = useState<"idle" | "copying" | "copied" | "error">("idle");
   const statusId = useId();
@@ -739,6 +743,8 @@ export function CopyTextButton({
     <span className="inline-flex max-w-full flex-col items-start gap-1">
       <button
         type="button"
+        aria-label={iconOnly ? label : undefined}
+        title={iconOnly ? label : undefined}
         disabled={!text || status === "copying"}
         aria-busy={status === "copying"}
         aria-describedby={statusId}
@@ -754,13 +760,20 @@ export function CopyTextButton({
           }
         }}
         className={cn(
-          "button-secondary min-h-11 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-[color:var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-55",
+          "min-h-11 whitespace-nowrap rounded-full text-sm font-semibold text-[color:var(--color-accent-strong)] disabled:cursor-not-allowed disabled:opacity-55",
+          iconOnly
+            ? "inline-flex h-11 w-11 items-center justify-center hover:bg-[color:var(--color-accent-soft)] active:bg-[color:var(--color-paper-3)]"
+            : "button-secondary px-4 py-2",
           className,
         )}
       >
-        {status === "copied" ? "Copied" : status === "copying" ? "Copying…" : "Copy text"}
+        {iconOnly ? (
+          status === "copied" ? <Check aria-hidden="true" className="h-4 w-4" />
+            : status === "copying" ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+              : <Copy aria-hidden="true" className="h-4 w-4" />
+        ) : status === "copied" ? "Copied" : status === "copying" ? "Copying…" : label}
       </button>
-      <span id={statusId} role="status" className={status === "error" ? "max-w-64 text-xs text-[color:var(--color-ink)]" : "sr-only"}>
+      <span id={statusId} role="status" className={status === "error" ? "max-w-64 whitespace-normal text-xs font-normal text-[color:var(--color-ink)]" : "sr-only"}>
         {status === "error" ? "Copy failed. Select and copy the text manually, or try again." : status === "copied" ? "Text copied." : ""}
       </span>
     </span>
