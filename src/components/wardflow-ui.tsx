@@ -241,29 +241,35 @@ export function PatientCensus({
                   key={patient.id}
                   className="group rounded-[16px] border clinical-divider bg-white p-3 transition hover:border-[color:var(--color-accent)]/30 hover:bg-[color:var(--color-accent-soft)]/50"
                 >
-                  <Link href={`/patients/${patient.id}`} className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                          {summary.ward.name} · Bed {patient.bed}
-                        </p>
-                        <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
+                      <Link href={`/patients/${patient.id}`} className="block">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                            {summary.ward.name} · Bed {patient.bed}
+                          </p>
+                          <Pill tone={statusTone(patient.status)}>{labelForPatientStatus(patient.status)}</Pill>
+                        </div>
+                        <h3 className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">
+                          {patient.displayName}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-muted">Age {patient.age ?? "-"}</p>
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted">
+                        <span className="inline-flex max-w-full items-center">
+                          <span className="min-w-0 break-words">HN {patient.hospitalNumber?.trim() || "-"}</span>
+                          <CopyTextButton text={patient.hospitalNumber?.trim() || ""} iconOnly label="Copy HN" className="shrink-0" />
+                        </span>
+                        <span className="break-words">| AN {patient.admissionNumber ?? "-"}</span>
                       </div>
-                      <h3 className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">
-                        {patient.displayName}
-                      </h3>
-                      <p className="mt-0.5 text-xs text-muted">Age {patient.age ?? "-"}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        HN {patient.hospitalNumber ?? "-"} | AN {patient.admissionNumber ?? "-"}
-                      </p>
-                      <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-5 text-foreground/90">
+                      <Link href={`/patients/${patient.id}`} className="mt-1.5 line-clamp-2 text-sm font-medium leading-5 text-foreground/90">
                         {patient.diagnosis}
-                      </p>
+                      </Link>
                     </div>
-                    <div className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-1.5 text-[color:var(--color-accent-strong)]">
+                    <Link href={`/patients/${patient.id}`} aria-label={`Open patient ${patient.displayName}`} className="rounded-full border clinical-divider bg-[color:var(--color-accent-soft)] p-1.5 text-[color:var(--color-accent-strong)]">
                       <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
 
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t clinical-divider pt-3">
                     <Pill tone="border-[color:var(--color-warning)]/35 bg-[color:var(--color-warning)]/12 text-[color:var(--color-ink)]">
